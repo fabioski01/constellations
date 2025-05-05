@@ -2,6 +2,7 @@ from sgp4.api import Satrec
 import numpy as np
 from datetime import datetime, timezone
 from math import trunc
+import time
 
 class orbiter:
     def __init__(self, tle_file):
