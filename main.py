@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     # Usage: include derivatives
     orbital_parameters = {
-        'semi_major_axis':     7000.0,    # km
-        'eccentricity':        0.001,    # unitless
+        'semi_major_axis':     6771.0,    # km
+        'eccentricity':        0.000,    # unitless
         'inclination':         60.0,     # deg
         'RAAN':                15.0,     # deg
         'argument_of_periapsis': 250.0,  # deg     
@@ -87,9 +87,9 @@ if __name__ == "__main__":
     # #####################################
     
     # Estimate one period index to stop ground track after one orbit
-
     a = orbital_parameters['semi_major_axis']  # km from Earth's center
     GRAVITATIONAL_CONSTANT = 398600.4418  # Earth grav. parameter [km³/s²]
+    EARTH_RADIUS = 6371.0  # km
     orbital_period = 2 * np.pi * np.sqrt(a**3 / GRAVITATIONAL_CONSTANT)
 
     orbital_period_hours = int(orbital_period // 3600)
@@ -131,167 +131,72 @@ if __name__ == "__main__":
             markersize=2,
             linestyle="-",
             color=colors[satellite],  # Assign unique color
-            label=f"Satellite {satellite + 1}",  # Add label for legend
+            label=f"Satellite {satellite + 1} (RAAN={orbital_parameters['RAAN'] + satellite*(360/num_satellites)}°)",  # Include RAAN in label
             transform=ccrs.PlateCarree(),
         )
 
     ax.legend(loc="lower left", fontsize="small", ncol=2)
-    ax.set_title("Ground Tracks of All Satellites")
-    plt.savefig("plots/constellation_ground_tracks_sequential.png")
+    # ax.set_title("Ground Tracks of All Satellites")
+    # plt.savefig("plots/constellation_ground_tracks_sequential.png")
+    # Dynamically include orbital parameters in the title and filename
+    orbital_params_str = (
+        f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-EARTH_RADIUS} km, "
+        f"e={orbital_parameters['eccentricity']}, "
+        f"i={orbital_parameters['inclination']}°, "
+        f"RAAN varies by satellite, "
+        f"ω={orbital_parameters['argument_of_periapsis']}°"
+    )
 
-    # # Convert Julian dates to elapsed time in seconds
-    # times_seconds = (times - times[0]) * 86400  # Time relative to start in seconds
+    ax.set_title(f"Ground Tracks of {num_satellites} Satellites\n({orbital_params_str})")
+    filename = f"plots/constellation_ground_tracks_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
 
-    # ### CARTESIAN
-    # # Create figure and subplots
-    # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-    # # Plot position components on the first subplot
-    # ax1.plot(times_seconds, positions[:, 0], label="X position component", color='r')
-    # ax1.plot(times_seconds, positions[:, 1], label="Y", color='g')
-    # ax1.plot(times_seconds, positions[:, 2], label="Z", color='b')
-    # ax1.plot(times_seconds, np.linalg.norm(positions[:], axis=1), label="Radius", color='y', linestyle='--')
-    # ax1.set_title("Position vs. Time")
-    # ax1.set_ylabel("Position (km)")
-    # ax1.legend()
-    # ax1.grid()
-    # # Plot velocity components on the second subplot
-    # ax2.plot(times_seconds, velocities[:, 0], label="X velocity component (Vx)", color='r', linestyle='-')
-    # ax2.plot(times_seconds, velocities[:, 1], label="Vy", color='g', linestyle='-')
-    # ax2.plot(times_seconds, velocities[:, 2], label="Vz", color='b', linestyle='-')
-    # ax2.plot(times_seconds, np.linalg.norm(velocities[:], axis=1), label="Velocity module", color='y', linestyle='--')
-    # ax2.set_title("Velocity vs. Time")
-    # ax2.set_xlabel("Time (s)")
-    # ax2.set_ylabel("Velocity (km/s)")
-    # ax2.legend()
-    # ax2.grid()
-    # # Adjust layout
-    # plt.tight_layout()
-    # plt.savefig('plots/cartesian_original.png')
+    plt.savefig(filename)
 
-    # ### KEPLERIAN
-    # # Extract orbital parameters
-    # semi_major_axes = [elem["semi_major_axis"] for elem in keplerian_elements]
-    # eccentricities = [elem["eccentricity"] for elem in keplerian_elements]
-    # inclinations = [elem["inclination"] for elem in keplerian_elements]
-    # RAANs = [elem["RAAN"] for elem in keplerian_elements]
-    # arguments_of_periapsis = [elem["argument_of_periapsis"] for elem in keplerian_elements]
-    # true_anomalies = [elem["true_anomaly"] for elem in keplerian_elements]
+    # # Convert to geographic coordinates
+    # for satellite in range(num_satellites):
+    #     satellite_considered = satellite  # Index of the satellite to consider
+    #     geographic_orbit_MOD = CoordinateConversion.cartesian_to_geographic_mod(positions_all[satellite_considered, :, :], times_seconds)
 
-    # # Create the 3x2 grid of subplots
-    # fig, axes = plt.subplots(3, 2, figsize=(12, 10), sharex=True)
+    #     # Extract data
+    #     times = [entry[0] for entry in geographic_orbit_MOD]
+    #     latitudes = [entry[1] for entry in geographic_orbit_MOD]
+    #     longitudes = [entry[2] for entry in geographic_orbit_MOD]
+    #     # altitudes = [entry[3] for entry in geographic_orbit_MOD] # in m
+    #     radial_distances = [entry[3] for entry in geographic_orbit_MOD] # in m
+    #     # radial_distances = [entry[4] for entry in geographic_orbit_MOD] # in m
 
-    # # Function to apply ScalarFormatter to y-axis
-    # def set_plain_yaxis(ax):
-    #     ax.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-    #     ax.ticklabel_format(style='plain', axis='y')
+    #     # Normalize longitude to [-180, 180] for better ground track visualization
+    #     normalized_longitudes = [(lon + 180) % 360 - 180 for lon in longitudes]
 
-    # # Plot each quantity with thinner lines and grid
-    # axes[0, 0].plot(times_seconds, semi_major_axes, marker='o', markersize=0.5, linewidth=1, label='Semi-Major Axis')
-    # axes[0, 0].set_ylabel('Semi-Major Axis (km)')
-    # axes[0, 0].legend()
-    # axes[0, 0].grid(True)
-    # set_plain_yaxis(axes[0, 0])
+    #     # Normalize time for color gradient (0 to 1)
+    #     norm_times = (np.array(times) - min(times)) / (max(times) - min(times))
+    #     colors = cm.plasma(norm_times)  # Use a colormap (e.g., 'plasma', 'viridis', etc.)
 
-    # axes[0, 1].plot(times_seconds, eccentricities, marker='o', markersize=0.5, linewidth=1, color='orange', label='Eccentricity')
-    # axes[0, 1].set_ylabel('Eccentricity')
-    # axes[0, 1].legend()
-    # axes[0, 1].grid(True)
-    # set_plain_yaxis(axes[0, 1])
+    #     # Plot with Earth map background
+    #     fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
 
-    # axes[1, 0].plot(times_seconds, inclinations, marker='o', markersize=0.5, linewidth=1, color='green', label='Inclination')
-    # axes[1, 0].set_ylabel('Inclination (deg)')
-    # axes[1, 0].legend()
-    # axes[1, 0].grid(True)
-    # set_plain_yaxis(axes[1, 0])
+    #     # Add Earth map features
+    #     ax.stock_img()  # Add a simple Earth map
+    #     ax.coastlines()  # Add coastlines
+    #     ax.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
 
-    # axes[1, 1].plot(times_seconds, RAANs, marker='o', markersize=0.5, linewidth=1, color='red', label='RAAN')
-    # axes[1, 1].set_ylabel('RAAN (deg)')
-    # axes[1, 1].legend()
-    # axes[1, 1].grid(True)
-    # set_plain_yaxis(axes[1, 1])
+    #     # Plot ground track
+    #     for i in range(len(latitudes) - 1):
+    #         ax.plot(
+    #             normalized_longitudes[i:i + 2],
+    #             latitudes[i:i + 2],
+    #             color=colors[i],
+    #             linewidth=0,  # Set line width to 0
+    #             marker="o",
+    #             markersize=2,
+    #             transform=ccrs.PlateCarree(),  # Transform coordinates to map projection
+    #         )
 
-    # axes[2, 0].plot(times_seconds, arguments_of_periapsis, marker='o', markersize=0.5, linewidth=1, color='purple', label='Arg. of Periapsis')
-    # axes[2, 0].set_ylabel('Argument of Periapsis (deg)')
-    # axes[2, 0].set_xlabel('Time from start of propagation (s)')
-    # axes[2, 0].legend()
-    # axes[2, 0].grid(True)
-    # set_plain_yaxis(axes[2, 0])
+    #     # Add color bar to show time progression
+    #     sm = cm.ScalarMappable(cmap="plasma", norm=plt.Normalize(vmin=min(times), vmax=max(times)))
+    #     sm.set_array([])  # Necessary for ScalarMappable to work properly
+    #     cbar = plt.colorbar(sm, ax=ax, orientation="horizontal", label="Time (s)")
 
-    # axes[2, 1].plot(times_seconds, true_anomalies, marker='o', markersize=0.5, linewidth=0, color='brown', label='True Anomaly')
-    # axes[2, 1].set_ylabel('True Anomaly (deg)')
-    # axes[2, 1].set_xlabel('Time from start of propagation (s)')
-    # axes[2, 1].legend()
-    # axes[2, 1].grid(True)
-    # set_plain_yaxis(axes[2, 1])
-
-    # # Adjust layout
-    # fig.suptitle('Osculating Keplerian Elements over Time', fontsize=16)
-    # plt.tight_layout(rect=[0, 0, 1, 0.95])
-    # plt.savefig('plots/kepl_elements.png')
-
-    # Convert to geographic coordinates
-    for satellite in range(num_satellites):
-        satellite_considered = satellite  # Index of the satellite to consider
-        geographic_orbit_MOD = CoordinateConversion.cartesian_to_geographic_mod(positions_all[satellite_considered, :, :], times_seconds)
-
-        # Extract data
-        times = [entry[0] for entry in geographic_orbit_MOD]
-        latitudes = [entry[1] for entry in geographic_orbit_MOD]
-        longitudes = [entry[2] for entry in geographic_orbit_MOD]
-        # altitudes = [entry[3] for entry in geographic_orbit_MOD] # in m
-        radial_distances = [entry[3] for entry in geographic_orbit_MOD] # in m
-        # radial_distances = [entry[4] for entry in geographic_orbit_MOD] # in m
-
-        # Normalize longitude to [-180, 180] for better ground track visualization
-        normalized_longitudes = [(lon + 180) % 360 - 180 for lon in longitudes]
-
-        # # Plotting
-        # fig, axs = plt.subplots(2, 1, figsize=(10, 10))
-
-        # # Plotting
-        # fig, ax = plt.subplots(figsize=(10, 6))
-
-        # # Radial Distance vs. Time
-        # ax.plot(times, radial_distances, marker='o', markersize=0.5, linewidth=1, color='green', label="Radial Distance")
-        # ax.set_title(f"Radial Distance Over Time, satellite n. {satellite_considered+1}")
-        # ax.set_xlabel("Time (s)")
-        # ax.set_ylabel("Radial Distance (km)")
-        # ax.grid(True)
-        # ax.legend()
-
-        # # Save the plot
-        # plt.tight_layout()
-        # plt.savefig(f'plots/corotating_radial_mod_{satellite_considered}.png')
-
-        # Normalize time for color gradient (0 to 1)
-        norm_times = (np.array(times) - min(times)) / (max(times) - min(times))
-        colors = cm.plasma(norm_times)  # Use a colormap (e.g., 'plasma', 'viridis', etc.)
-
-        # Plot with Earth map background
-        fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
-
-        # Add Earth map features
-        ax.stock_img()  # Add a simple Earth map
-        ax.coastlines()  # Add coastlines
-        ax.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
-
-        # Plot ground track
-        for i in range(len(latitudes) - 1):
-            ax.plot(
-                normalized_longitudes[i:i + 2],
-                latitudes[i:i + 2],
-                color=colors[i],
-                linewidth=0,  # Set line width to 0
-                marker="o",
-                markersize=2,
-                transform=ccrs.PlateCarree(),  # Transform coordinates to map projection
-            )
-
-        # Add color bar to show time progression
-        sm = cm.ScalarMappable(cmap="plasma", norm=plt.Normalize(vmin=min(times), vmax=max(times)))
-        sm.set_array([])  # Necessary for ScalarMappable to work properly
-        cbar = plt.colorbar(sm, ax=ax, orientation="horizontal", label="Time (s)")
-
-        # Labels and Title
-        ax.set_title(f"Ground Track with time legend, satellite n. {satellite_considered+1}")
-        plt.savefig(f'plots/corotating_gradient_with_map_mod_{satellite_considered}.png')
+    #     # Labels and Title
+    #     ax.set_title(f"Ground Track with time legend, satellite n. {satellite_considered+1}")
+    #     plt.savefig(f'plots/corotating_gradient_with_map_mod_{satellite_considered}.png')
