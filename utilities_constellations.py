@@ -35,27 +35,78 @@ class Constellation:
         print(orbital_parameters)
         print(epoch)
 
-    def generate_positions(self):
-        """
-        Generates the Cartesian positions of all satellites in the constellation.
+    # def generate_positions(self):
+    #     """
+    #     Generates the Cartesian positions of all satellites in the constellation.
 
-        The satellites are evenly distributed along the orbit based on their true anomalies.
+    #     The satellites are evenly distributed along the orbit based on their true anomalies.
+
+    #     Returns:
+    #         np.ndarray: A 2D array of shape (num_satellites, 3) containing the Cartesian
+    #                     positions of the satellites in the Earth-Centered Inertial (ECI) frame.
+    #                     Each row corresponds to the (x, y, z) coordinates of a satellite.
+    #     """
+    #     positions = []
+    #     velocities = []
+    #     for i in range(self.num_satellites):
+    #         # Update the true anomaly for each satellite
+    #         self.orbital_parameters["true_anomaly"] = 360 * i / self.num_satellites
+    #         # Use the existing keplerian_to_cartesian function
+    #         pos, vel = CoordinateConversion.keplerian_to_cartesian([self.orbital_parameters])
+    #         positions.append(pos[0])  # Extract the position vector
+    #         velocities.append(vel[0])  # Extract the velocity vector
+    #     return np.array(positions), np.array(velocities)
+    
+    def generate_positions_with_time(self, start_time, end_time, time_step):
+        """
+        Generates the Cartesian positions, velocities, and time stamps of all satellites in the constellation.
+
+        Args:
+            start_time (datetime): Start time of the propagation.
+            end_time (datetime): End time of the propagation.
+            time_step (float): Time step in seconds.
 
         Returns:
-            np.ndarray: A 2D array of shape (num_satellites, 3) containing the Cartesian
-                        positions of the satellites in the Earth-Centered Inertial (ECI) frame.
-                        Each row corresponds to the (x, y, z) coordinates of a satellite.
+            dict: A dictionary containing:
+                - "positions": A 3D numpy array of shape (num_satellites, num_time_steps, 3) with satellite positions.
+                - "velocities": A 3D numpy array of shape (num_satellites, num_time_steps, 3) with satellite velocities.
+                - "time_stamps": A 1D numpy array of shape (num_time_steps,) with time stamps in seconds since epoch.
         """
-        positions = []
-        velocities = []
-        for i in range(self.num_satellites):
-            # Update the true anomaly for each satellite
-            self.orbital_parameters["true_anomaly"] = 360 * i / self.num_satellites
-            # Use the existing keplerian_to_cartesian function
-            pos, vel = CoordinateConversion.keplerian_to_cartesian([self.orbital_parameters])
-            positions.append(pos[0])  # Extract the position vector
-            velocities.append(vel[0])  # Extract the velocity vector
-        return np.array(positions), np.array(velocities)
+
+        # Convert start and end times to Julian dates
+        start_jd, start_fr = jday(
+            start_time.year, start_time.month, start_time.day,
+            start_time.hour, start_time.minute, start_time.second
+        )
+        end_jd, end_fr = jday(
+            end_time.year, end_time.month, end_time.day,
+            end_time.hour, end_time.minute, end_time.second
+        )
+
+        # Compute the number of time steps
+        num_time_steps = int((end_jd + end_fr - start_jd - start_fr) * 86400 / time_step) + 1
+
+        # Pre-allocate arrays for positions, velocities, and time stamps
+        positions = np.zeros((self.num_satellites, num_time_steps, 3))
+        velocities = np.zeros((self.num_satellites, num_time_steps, 3))
+        time_stamps = np.linspace(0, (num_time_steps - 1) * time_step, num_time_steps)
+
+        # Propagate each satellite
+        for i, sat in enumerate(self.satrecs):
+            for j in range(num_time_steps):
+                jd = start_jd + (j * time_step) / 86400.0
+                fr = start_fr
+                err, r, v = sat.sgp4(jd, fr)
+                if err != 0:
+                    raise RuntimeError(f"SGP4 error {err} for satellite {i} at time step {j}")
+                positions[i, j, :] = r  # Position [x, y, z] in km
+                velocities[i, j, :] = v  # Velocity [vx, vy, vz] in km/s
+
+        return {
+            "positions": positions,
+            "velocities": velocities,
+            "time_stamps": time_stamps
+        }    
 
     def _build_satrecs(self):
         """

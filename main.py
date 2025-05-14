@@ -25,8 +25,8 @@ if __name__ == "__main__":
     orbital_parameters = {
         'semi_major_axis':     6771.0,    # km
         'eccentricity':        0.000,    # unitless
-        'inclination':         60.0,     # deg
-        'RAAN':                15.0,     # deg
+        'inclination':         50.0,     # deg
+        'RAAN':                0.0,     # deg
         'argument_of_periapsis': 250.0,  # deg     
         'true_anomaly':        0.0,      # deg
         'ndot':                1e-8,     # rev/day²
@@ -73,14 +73,27 @@ if __name__ == "__main__":
             err, r, v = sat.sgp4(jd, 0)
             if err:
                 raise RuntimeError(f"SGP4 error {err} at sat {i}, step {j}")
-            positions_all[i, j, :]  = r   # [x, y, z] in km
-            velocities_all[i, j, :] = v   # [vx, vy, vz] in km/s
-
-    # - `positions_all` is shape (satnum, M, 3)
-    # - `velocities_all` is shape (satnum, M, 3)
+            positions_all[i, j, :]  = r   # [x, y, z] in km, positions_all is shape (satnum, M, 3)
+            velocities_all[i, j, :] = v   # [vx, vy, vz] in km/s velocities_all is shape (satnum, M, 3)
 
     # # Access example: position of satellite #2 at time index 10:
     # print( positions_all[2, 10] )
+
+    ### different kind of propagation by constellation class function
+
+    result = const.generate_positions_with_time(start_time_datetime, end_time_datetime, step)
+
+    positions = result["positions"]
+    velocities = result["velocities"]
+    time_stamps = result["time_stamps"]
+
+    # Example: Access position of satellite 0 at time step 10
+    satellite_index = 0
+    time_step_index = 10
+    print(f"Time: {time_stamps[time_step_index]} seconds")
+    print(f"Position: {positions[satellite_index, time_step_index]}")
+    print(f"Velocity: {velocities[satellite_index, time_step_index]}")
+
 
     # #####################################
     # ### PLOTTING ########################
@@ -147,7 +160,7 @@ if __name__ == "__main__":
         f"ω={orbital_parameters['argument_of_periapsis']}°"
     )
 
-    ax.set_title(f"Ground Tracks of {num_satellites} Satellites\n({orbital_params_str})")
+    ax.set_title(f"Ground Tracks of {num_satellites} Satellites during 1 orbital period\n({orbital_params_str})")
     filename = f"plots/constellation_ground_tracks_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
 
     plt.savefig(filename)
