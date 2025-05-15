@@ -367,7 +367,7 @@ class CoordinateConversion:
         return positions, velocities
 
     @staticmethod
-    def cartesian_to_geographic_mod(positions, times, reference_time=None):
+    def cartesian_to_geographic(positions, times, reference_time=None):
         """
         Convert Cartesian positions to geographic latitude, longitude, and radial distance,
         accounting for Earth's rotation using ERA and GMST.
@@ -401,6 +401,21 @@ class CoordinateConversion:
             return gmst_hours
 
         results = []
+       
+        # Ensure positions is a 2D array
+        if isinstance(positions, np.ndarray) and positions.ndim == 1:
+            positions = positions.reshape(1, -1)  # Reshape to 2D array if it's 1D
+        # Ensure times is a 1D array
+        if isinstance(times, (float, int)):
+            times = np.array([times])  # Convert scalar to 1D array
+        elif isinstance(times, np.ndarray) and times.ndim == 0:
+            times = times.reshape(1)  # Reshape scalar array to 1D
+
+        if len(positions) != len(times):
+            raise ValueError("Positions and times must have the same length")
+        
+        # print(f"Positions shape: {positions.shape}, Times shape: {times.shape}")
+        # print(f"Positions: {positions}, Times: {times}")
 
         for i, position in enumerate(positions):
             x, y, z = position*1000
@@ -429,6 +444,7 @@ class CoordinateConversion:
 
             # Store results as a tuple (time, latitude, longitude, radial_distance)
             results.append((times[i], latitude, rotated_longitude, r))
+            # print(f"Appending to results: time={times[i]}, latitude={latitude}, longitude={rotated_longitude}, radial_distance={r}")
 
         return results
 
