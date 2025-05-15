@@ -1,5 +1,8 @@
 import numpy as np
 from utilities import CoordinateConversion
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import constants
 
 """
 Theory from Wertz. Earth coverage refers to the part of  the Earth that a s/c instrument (sensor, antenna, etc.) 
@@ -77,10 +80,24 @@ class Coverage:
 
         # Extract satellite position
         sat_position = self.state["position"]
-        sat_lat, sat_lon, sat_alt = CoordinateConversion.cartesian_to_geographic(sat_position)
+        # if not isinstance(sat_position, (list, np.ndarray)) or len(sat_position) != 3:
+        #     raise ValueError(f"Expected a 3D position vector, got {sat_position}")
+        sat_times = self.state["time"]
+        results = CoordinateConversion.cartesian_to_geographic(sat_position, sat_times)
+        print(results)
 
+        # Access the first (and only) tuple in the results list
+        if len(results) == 0:
+            raise ValueError("No results returned from cartesian_to_geographic")
+        time, sat_lat, sat_lon, sat_radial = results[0]  # Unpack the single tuple
+
+        # print(f"sat_lat: {sat_lat}, sat_lon: {sat_lon}, sat_radial: {sat_radial}")
+    
+        sat_radial_km = sat_radial/1000.0  # Convert to km
         # Compute the coverage radius on Earth's surface
-        coverage_radius = np.arccos(EARTH_RADIUS / (EARTH_RADIUS + sat_alt)) * (180 / np.pi)
+        coverage_radius = np.arccos(EARTH_RADIUS / (sat_radial_km)) * (180 / np.pi)
+
+        # print(f"Coverage radius: {coverage_radius} degrees")
 
         # Generate coverage points (latitude, longitude)
         coverage_points = []
@@ -88,9 +105,14 @@ class Coverage:
             for lon_offset in np.linspace(-coverage_radius, coverage_radius, 50):
                 lat = sat_lat + lat_offset
                 lon = sat_lon + lon_offset
+
+                # Normalize longitude to [-180, 180]
+                lon = (lon + 180) % 360 - 180
+
                 if -90 <= lat <= 90 and -180 <= lon <= 180:  # Ensure valid coordinates
                     coverage_points.append((lat, lon))
-
+        
+        # print("Coverage points:", coverage_points)
         return coverage_points
 
     def compute_global_coverage(self, time_window):
@@ -113,9 +135,17 @@ class Coverage:
         Args:
             coverage_points (list of tuple): List of (latitude, longitude) tuples representing the covered area.
         """
-        import matplotlib.pyplot as plt
-        import cartopy.crs as ccrs
 
+        # Extract orbital parameters for the subtitle
+        orbital_params_str = (
+            f"a={self.orbital_parameters['semi_major_axis']}km / h={self.orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+            f"e={self.orbital_parameters['eccentricity']}, "
+            f"i={self.orbital_parameters['inclination']}°, "
+            f"RAAN: {self.orbital_parameters['RAAN']}°, "
+            f"ω={self.orbital_parameters['argument_of_periapsis']}°,"
+            f"True Anomaly: {self.orbital_parameters['true_anomaly']}°"
+        )
+        
         fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
         ax.stock_img()
         ax.coastlines()
@@ -127,4 +157,6 @@ class Coverage:
         ax.scatter(lons, lats, s=1, color="blue", label="Coverage Area", transform=ccrs.PlateCarree())
         ax.legend(loc="lower left")
         ax.set_title("Satellite Coverage Area")
-        plt.show()
+        plt.suptitle(orbital_params_str, fontsize=10, y=0.92)  # Add subtitle with orbital parameters
+        filename = f"plots/coverage_sample_1sat_a{self.orbital_parameters['semi_major_axis']}_e{self.orbital_parameters['eccentricity']}_i{self.orbital_parameters['inclination']}.png"
+        plt.savefig(filename)
