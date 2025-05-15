@@ -156,7 +156,6 @@ class Coverage:
         # Plot coverage points
         ax.scatter(lons, lats, s=1, color="blue", label="Coverage Area", transform=ccrs.PlateCarree())
         ax.legend(loc="lower left")
-        ax.set_title("Satellite Coverage Area")
-        plt.suptitle(orbital_params_str, fontsize=10, y=0.92)  # Add subtitle with orbital parameters
+        ax.set_title(f"Satellite Coverage Area\n({orbital_params_str})")
         filename = f"plots/coverage_sample_1sat_a{self.orbital_parameters['semi_major_axis']}_e{self.orbital_parameters['eccentricity']}_i{self.orbital_parameters['inclination']}.png"
         plt.savefig(filename)
