@@ -13,7 +13,7 @@ import constants
 
 # atmosense, darpa, raytracing mit,
 ### INPUTS ###
-num_satellites = 10  # Number of satellites in the constellation
+num_satellites = 5  # Number of satellites in the constellation
 
 # Usage: include derivatives
 orbital_parameters = {
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         f"ω={orbital_parameters['argument_of_periapsis']}°"
     )
 
-    ax.set_title(f"Ground Tracks of {num_satellites} Satellites during 1 orbital period\n({orbital_params_str})")
+    ax.set_title(f"Ground tracks of {num_satellites} satellites during 1 orbital period\n({orbital_params_str})")
     filename = f"plots/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
 
     plt.savefig(filename)
@@ -167,8 +167,10 @@ if __name__ == "__main__":
     )
 
     # Loop through all satellites
+    elevation_angle = 75.0 # degrees, the larger the smaller the coverage area
+
     for satellite_index in range(num_satellites):
-        for index in range(0, idx_max):
+        for index in range(0, idx_max): # up until idx_max for one orbital period
             state = {
                 "position": positions[satellite_index, index, :],  # Position of the satellite
                 "velocity": velocities[satellite_index, index, :],  # Velocity of the satellite
@@ -179,7 +181,7 @@ if __name__ == "__main__":
             coverage = Coverage(orbital_parameters, state)
 
             # Compute sample coverage
-            coverage_points = coverage.compute_sample_coverage(elevation_angle=75.0)
+            coverage_points = coverage.compute_sample_coverage(elevation_angle=elevation_angle)
 
             # Extract latitudes and longitudes
             if coverage_points:  # Ensure there are valid coverage points
@@ -194,10 +196,10 @@ if __name__ == "__main__":
     legend_labels = [f"Satellite {i + 1} (RAAN={orbital_parameters['RAAN'] + i * (360 / num_satellites):.1f}°)"
         for i in range(num_satellites)]
     ax.legend(legend_labels, loc="lower left", fontsize="small", ncol=2)
-    ax.set_title(f"Coverage Areas of {num_satellites} Satellites\n({orbital_params_str})")
+    ax.set_title(f"Coverage areas of {num_satellites} satellites during 1 orbital period\n({orbital_params_str}), Elevation Angle: {elevation_angle}°")
 
     # Save the plot
-    filename = f"plots/coverage_multiple_satellites_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+    filename = f"plots/coverage_multiple_satellites_step{step}_N{num_satellites}_el{elevation_angle}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
     plt.savefig(filename)
 
     # ### Sample coverage plot of one satellite
@@ -230,7 +232,8 @@ if __name__ == "__main__":
     #     coverage = Coverage(orbital_parameters, state)
 
     #     # Compute sample coverage
-    #     coverage_points = coverage.compute_sample_coverage(elevation_angle=5.0)
+    #     elevation_angle = 55.0 # degrees, the larger the smaller the coverage area
+    #     coverage_points = coverage.compute_sample_coverage(elevation_angle=elevation_angle)
 
     #     # Extract latitudes and longitudes
     #     lats, lons = zip(*coverage_points)
@@ -240,8 +243,8 @@ if __name__ == "__main__":
 
     # # Add legend and title
     # ax.legend(["Coverage Area"], loc="lower left")
-    # ax.set_title(f"Satellite Coverage Area Over Time\n({orbital_params_str})")
+    # ax.set_title(f"Coverage area of a single satellite (N. {satellite_index+1}) during 1 orbital period\n({orbital_params_str}), Elevation Angle: {elevation_angle}°")
 
     # # Save the single plot
-    # filename = f"plots/coverage_sample_step{step}_1sat_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+    # filename = f"plots/coverage_sample_step{step}_1sat(N{satellite_index+1})_el{elevation_angle}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
     # plt.savefig(filename)
