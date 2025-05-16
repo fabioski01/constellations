@@ -11,12 +11,13 @@ from sgp4.api import Satrec, jday, WGS84
 from matplotlib.colors import hsv_to_rgb
 import constants
 
+# atmosense, darpa, raytracing mit,
 ### INPUTS ###
-num_satellites = 5  # Number of satellites in the constellation
+num_satellites = 10  # Number of satellites in the constellation
 
 # Usage: include derivatives
 orbital_parameters = {
-    'semi_major_axis':     6771.0,    # km
+    'semi_major_axis':     6800.0,    # km
     'eccentricity':        0.000,    # unitless
     'inclination':         50.0,     # deg
     'RAAN':                0.0,     # deg
@@ -147,26 +148,100 @@ if __name__ == "__main__":
     )
 
     ax.set_title(f"Ground Tracks of {num_satellites} Satellites during 1 orbital period\n({orbital_params_str})")
-    filename = f"plots/constellation_ground_tracks_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+    filename = f"plots/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
 
     plt.savefig(filename)
 
-    ### Sample coverage plots
-    satellite_index = 0
-    time_step_index = 0
-    state = {
-        "position": positions[satellite_index, time_step_index, :],  # Ensure it's a 2D array
-        "velocity": velocities[satellite_index, time_step_index, :],  # km/s
-        "time": time_stamps[time_step_index],  # seconds since epoch
-    }
+    ### Plot coverage for multiple satellites
+    fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
+    ax.stock_img()
+    ax.coastlines()
 
-    # print(state)
+    # Extract orbital parameters for the subtitle
+    orbital_params_str = (
+        f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+        f"e={orbital_parameters['eccentricity']}, "
+        f"i={orbital_parameters['inclination']}°, "
+        f"RAAN varies by satellite, "
+        f"ω={orbital_parameters['argument_of_periapsis']}°"
+    )
 
-    # Instantiate the Coverage class
-    coverage = Coverage(orbital_parameters, state)
+    # Loop through all satellites
+    for satellite_index in range(num_satellites):
+        for index in range(0, idx_max):
+            state = {
+                "position": positions[satellite_index, index, :],  # Position of the satellite
+                "velocity": velocities[satellite_index, index, :],  # Velocity of the satellite
+                "time": time_stamps[index],  # Time stamp
+            }
 
-    # Compute sample coverage
-    coverage_points = coverage.compute_sample_coverage(elevation_angle=5.0)
+            # Instantiate the Coverage class
+            coverage = Coverage(orbital_parameters, state)
 
-    # Plot the coverage area
-    coverage.plot_coverage(coverage_points)
+            # Compute sample coverage
+            coverage_points = coverage.compute_sample_coverage(elevation_angle=75.0)
+
+            # Extract latitudes and longitudes
+            if coverage_points:  # Ensure there are valid coverage points
+                lats, lons = zip(*coverage_points)
+
+                # Plot coverage points for this satellite and time step
+                ax.scatter(
+                    lons, lats, s=1, color=colors[satellite_index], alpha=0.5, transform=ccrs.PlateCarree()
+                )
+
+    # Add legend and title
+    legend_labels = [f"Satellite {i + 1} (RAAN={orbital_parameters['RAAN'] + i * (360 / num_satellites):.1f}°)"
+        for i in range(num_satellites)]
+    ax.legend(legend_labels, loc="lower left", fontsize="small", ncol=2)
+    ax.set_title(f"Coverage Areas of {num_satellites} Satellites\n({orbital_params_str})")
+
+    # Save the plot
+    filename = f"plots/coverage_multiple_satellites_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+    plt.savefig(filename)
+
+    # ### Sample coverage plot of one satellite
+    # satellite_index = 0
+
+    # # Create a single figure and axes for the plot
+    # fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
+    # ax.stock_img()
+    # ax.coastlines()
+
+    # # Extract orbital parameters for the subtitle
+    # orbital_params_str = (
+    #     f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+    #     f"e={orbital_parameters['eccentricity']}, "
+    #     f"i={orbital_parameters['inclination']}°, "
+    #     f"RAAN: {orbital_parameters['RAAN']}°, "
+    #     f"ω={orbital_parameters['argument_of_periapsis']}°, "
+    #     f"True Anomaly: {orbital_parameters['true_anomaly']}°"
+    # )
+
+    # # Loop through all time steps and add coverage points to the same plot
+    # for index in range(0, idx_max):
+    #     state = {
+    #         "position": positions[satellite_index, index, :],  # Ensure it's a 2D array
+    #         "velocity": velocities[satellite_index, index, :],  # km/s
+    #         "time": time_stamps[index],  # seconds since epoch
+    #     }
+
+    #     # Instantiate the Coverage class
+    #     coverage = Coverage(orbital_parameters, state)
+
+    #     # Compute sample coverage
+    #     coverage_points = coverage.compute_sample_coverage(elevation_angle=5.0)
+
+    #     # Extract latitudes and longitudes
+    #     lats, lons = zip(*coverage_points)
+
+    #     # Plot coverage points for this time step
+    #     ax.scatter(lons, lats, s=1, color="blue", alpha=0.5, transform=ccrs.PlateCarree())
+
+    # # Add legend and title
+    # ax.legend(["Coverage Area"], loc="lower left")
+    # ax.set_title(f"Satellite Coverage Area Over Time\n({orbital_params_str})")
+
+    # # Save the single plot
+    # filename = f"plots/coverage_sample_step{step}_1sat_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+    # plt.savefig(filename)
