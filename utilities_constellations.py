@@ -32,8 +32,8 @@ class Constellation:
         self.epoch = epoch
         self.satrecs = self._build_satrecs()
 
-        print(orbital_parameters)
-        print(epoch)
+        # print(orbital_parameters)
+        # print(epoch)
 
     # def generate_positions(self):
     #     """
