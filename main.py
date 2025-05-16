@@ -9,6 +9,7 @@ from matplotlib.ticker import ScalarFormatter
 import cartopy.crs as ccrs
 from sgp4.api import Satrec, jday, WGS84
 from matplotlib.colors import hsv_to_rgb
+from matplotlib.lines import Line2D
 import constants
 
 # atmosense, darpa, raytracing mit,
@@ -189,13 +190,21 @@ if __name__ == "__main__":
 
                 # Plot coverage points for this satellite and time step
                 ax.scatter(
-                    lons, lats, s=1, color=colors[satellite_index], alpha=0.5, transform=ccrs.PlateCarree()
+                    lons, lats, s=1, color=colors[satellite_index], alpha=0.05, transform=ccrs.PlateCarree()
                 )
 
-    # Add legend and title
-    legend_labels = [f"Satellite {i + 1} (RAAN={orbital_parameters['RAAN'] + i * (360 / num_satellites):.1f}°)"
-        for i in range(num_satellites)]
-    ax.legend(legend_labels, loc="lower left", fontsize="small", ncol=2)
+    # Create custom legend entries with opaque colors
+    legend_handles = [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[i], markersize=8)
+        for i in range(num_satellites)
+    ]
+    legend_labels = [
+        f"Satellite {i + 1} (RAAN={orbital_parameters['RAAN'] + i * (360 / num_satellites):.1f}°)"
+        for i in range(num_satellites)
+    ]
+
+    # Add legend to the plot
+    ax.legend(handles=legend_handles, labels=legend_labels, loc="lower left", fontsize="small", ncol=2)
     ax.set_title(f"Coverage areas of {num_satellites} satellites during 1 orbital period\n({orbital_params_str}), Elevation Angle: {elevation_angle}°")
 
     # Save the plot
