@@ -14,7 +14,7 @@ import constants
 
 # atmosense, darpa, raytracing mit,
 ### INPUTS ###
-num_satellites = 5  # Number of satellites in the constellation
+num_satellites = 10  # Number of satellites in the constellation
 
 # Usage: include derivatives
 orbital_parameters = {
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     # Define propagation window & step
     start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
     end_time_datetime =   datetime(2025, 5, 5, 13, 37, 8, 00, tzinfo=timezone.utc) # my input
-    step = 100  # Time step input
+    step = 10  # Time step input
 
     ###### INITIAL PROPAGATION METHOD, SUBSTITUTED BY THE FUNCTION IN THE CONSTELLATION CLASS
     # # Convert start/end to Julian dates + fraction
@@ -190,7 +190,7 @@ if __name__ == "__main__":
 
                 # Plot coverage points for this satellite and time step
                 ax.scatter(
-                    lons, lats, s=1, color=colors[satellite_index], alpha=0.05, transform=ccrs.PlateCarree()
+                    lons, lats, s=1, color=colors[satellite_index], alpha=0.1, transform=ccrs.PlateCarree()
                 )
 
     # Create custom legend entries with opaque colors
