@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime, timezone
 from math import trunc
 import time
+import constants
 
 class orbiter:
     def __init__(self, tle_file):
@@ -367,7 +368,7 @@ class CoordinateConversion:
         return positions, velocities
 
     @staticmethod
-    def cartesian_to_geographic(positions, times, reference_time=None):
+    def ECI_cartesian_to_geographic(positions, times, reference_time=None):
         """
         Convert Cartesian positions to geographic latitude, longitude, and radial distance,
         accounting for Earth's rotation using ERA and GMST.
@@ -379,12 +380,12 @@ class CoordinateConversion:
         
         Returns:
             list: A list of tuples (time, latitude, longitude, radial_distance).
+
+        Notes:
+            - Latitude is geocentric latitude (for spherical Earth model), and not geodetic (for ellipsoidal Earth model).
+            - Longitude is correct for both geographic and geodetic systems.
+            - Radial distance is from Earth's constant radius, not accounting for Earth's ellipsoidal shape.
         """
-        # Constants
-        EARTH_ROTATION_RATE = 15.04107  # degrees per hour (mean sidereal rate)
-        SECONDS_PER_HOUR = 3600.0
-        GMST_CONSTANT = 18.697375  # Approximate GMST constant at J2000.0
-        EARTH_OMEGA = 24.065709824279  # Rotation rate in degrees per day
         
         # Default reference time as current time if not provided
         if reference_time is None:
@@ -397,7 +398,7 @@ class CoordinateConversion:
             D_UT = jd - 2451545.0  # Number of days since J2000.0
 
             # GMST in hours at 0h UT
-            gmst_hours = (GMST_CONSTANT + EARTH_OMEGA * D_UT) % 24.0  # Normalize to [0, 24)
+            gmst_hours = (constants.GMST_CONSTANT + constants.EARTH_OMEGA * D_UT) % 24.0  # Normalize to [0, 24)
             return gmst_hours
 
         results = []
@@ -447,6 +448,151 @@ class CoordinateConversion:
             # print(f"Appending to results: time={times[i]}, latitude={latitude}, longitude={rotated_longitude}, radial_distance={r}")
 
         return results
+    
+    @staticmethod
+    def ECI_cartesian_to_ECEF_cartesian(eci_positions, times, reference_time=None):
+        """
+        Convert ECI (Earth-Centered Inertial) Cartesian positions to ECEF (Earth-Centered, Earth-Fixed) Cartesian positions.
+
+        Args:
+            eci_positions (np.ndarray): Nx3 array of ECI positions (x, y, z) in meters.
+            times (np.ndarray): 1D array of time values in seconds (since reference_time).
+            reference_time (datetime, optional): The reference time (used to calculate GMST).
+
+        Returns:
+            np.ndarray: Nx3 array of ECEF positions (x, y, z) in meters.
+
+        Notes:
+            - This function rotates the ECI position vector about the Z-axis by the GMST angle to obtain ECEF coordinates.
+            - Assumes positions are given in meters.
+        """
+
+        if reference_time is None:
+            reference_time = datetime.utcnow()
+
+        def calculate_gmst(time_in_seconds):
+            # Calculate Julian Date (JD)
+            jd = 2451545.0 + (time_in_seconds / 86400.0)  # Convert from seconds to Julian days
+            D_UT = jd - 2451545.0  # Number of days since J2000.0
+            # GMST in hours at 0h UT
+            gmst_hours = (constants.GMST_CONSTANT + constants.EARTH_OMEGA * D_UT) % 24.0  # Normalize to [0, 24)
+            return gmst_hours
+
+        # Ensure positions is a 2D array
+        eci_positions = np.atleast_2d(eci_positions)
+        # Ensure times is a 1D array
+        times = np.atleast_1d(times)
+        if len(eci_positions) != len(times):
+            raise ValueError("Positions and times must have the same length")
+
+        ecef_positions = np.zeros_like(eci_positions)
+
+        for i, position in enumerate(eci_positions):
+            # Calculate GMST for this time
+            gmst = calculate_gmst(times[i])
+            # Convert GMST (in hours) to radians (1 hour = 15 degrees)
+            theta = np.radians(gmst * 15.0)
+            # Rotation matrix about Z-axis
+            R = np.array([
+                [np.cos(theta), np.sin(theta), 0],
+                [-np.sin(theta), np.cos(theta), 0],
+                [0, 0, 1]
+            ])
+            # Apply rotation
+            ecef_positions[i] = R @ position
+
+        return ecef_positions
+    
+    @staticmethod
+    def ECEF_cartesian_to_geodetic(x, y, z):
+        """
+        Convert ECEF (Earth-Centered, Earth-Fixed) Cartesian coordinates to geodetic coordinates (latitude, longitude, altitude)
+        using the WGS84 ellipsoid model.
+
+        Args:
+            x (float): X coordinate in meters (ECEF).
+            y (float): Y coordinate in meters (ECEF).
+            z (float): Z coordinate in meters (ECEF).
+
+        Returns:
+            tuple: (latitude, longitude, altitude)
+                - latitude (float): Geodetic latitude in degrees.
+                - longitude (float): Longitude in degrees.
+                - altitude (float): Altitude above the WGS84 ellipsoid in meters.
+
+        Notes:
+            - Geodetic latitude is the angle between the equatorial plane and the normal to the reference ellipsoid.
+            - Longitude is the angle from the prime meridian.
+            - Altitude is measured above the reference ellipsoid.
+            - This function uses the Bowring's method for the conversion.
+        """
+        # WGS84 ellipsoid constants
+        a = 6378137.0                # Semi-major axis [m]
+        e2 = 6.69437999014e-3        # First eccentricity squared
+        b = a * np.sqrt(1 - e2)      # Semi-minor axis [m]
+        ep = np.sqrt((a**2 - b**2) / b**2)  # Second eccentricity
+
+        # Distance from Z axis
+        p = np.sqrt(x**2 + y**2)
+
+        # Parametric (or reduced) latitude
+        th = np.arctan2(a * z, b * p)
+
+        # Longitude calculation
+        lon = np.arctan2(y, x)
+
+        # Latitude calculation (Bowring's formula)
+        lat = np.arctan2(z + ep**2 * b * np.sin(th)**3,
+                        p - e2 * a * np.cos(th)**3)
+
+        # Radius of curvature in the prime vertical
+        N = a / np.sqrt(1 - e2 * np.sin(lat)**2)
+
+        # Altitude above ellipsoid
+        alt = p / np.cos(lat) - N
+
+        # Convert latitude and longitude from radians to degrees
+        lat = np.degrees(lat)
+        lon = np.degrees(lon)
+
+        return lat, lon, alt
+
+    @staticmethod
+    def geodetic_to_ECEF_cartesian(lat, lon, alt):
+        """
+        Convert geodetic coordinates (latitude, longitude, altitude) to ECEF (Earth-Centered, Earth-Fixed) Cartesian coordinates.
+
+        Args:
+            lat (float): Latitude in degrees.
+            lon (float): Longitude in degrees.
+            alt (float): Altitude above the WGS84 ellipsoid in meters.
+
+        Returns:
+            np.ndarray: ECEF position vector [x, y, z] in meters.
+
+        Notes:
+            - Uses the WGS84 ellipsoid model.
+            - Latitude and longitude should be in degrees; altitude in meters.
+            - ECEF is a right-handed coordinate system with:
+                x-axis passing through the intersection of the Equator and Prime Meridian,
+                y-axis passing through the Equator at 90°E longitude,
+                z-axis passing through the North Pole.
+        """
+        # WGS84 ellipsoid constants
+        a = 6378137.0  # semi-major axis [m]
+        e2 = 6.69437999014e-3  # first eccentricity squared
+
+        # Convert latitude and longitude from degrees to radians
+        lat_rad = np.radians(lat)
+        lon_rad = np.radians(lon)
+
+        # Prime vertical radius of curvature
+        N = a / np.sqrt(1 - e2 * np.sin(lat_rad)**2)
+
+        x = (N + alt) * np.cos(lat_rad) * np.cos(lon_rad)    # X coordinate ECEF (m)
+        y = (N + alt) * np.cos(lat_rad) * np.sin(lon_rad)    # Y coordinate ECEF (m)
+        z = (N * (1 - e2) + alt) * np.sin(lat_rad)           # Z coordinate ECEF (m)
+        return np.array([x, y, z])
 
 class ExtendedCoordinateConversion(CoordinateConversion):
     @staticmethod
