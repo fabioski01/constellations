@@ -81,7 +81,7 @@ class Coverage:
         # if not isinstance(sat_position, (list, np.ndarray)) or len(sat_position) != 3:
         #     raise ValueError(f"Expected a 3D position vector, got {sat_position}")
         sat_times = self.state["time"]
-        results = CoordinateConversion.cartesian_to_geographic(sat_position, sat_times)
+        results = CoordinateConversion.ECI_cartesian_to_geographic(sat_position, sat_times)
         # print(results)
 
         # Access the first (and only) tuple in the results list
@@ -158,4 +158,31 @@ class Coverage:
     #     filename = f"plots/coverage_sample_1sat_a{self.orbital_parameters['semi_major_axis']}_e{self.orbital_parameters['eccentricity']}_i{self.orbital_parameters['inclination']}.png"
     #     plt.savefig(filename)
 
+    ######## test
+    def is_visible_geodetic(sat_geodetic, gs_geodetic, elevation_threshold_deg):
+        """
+        Check if a satellite is visible from a ground station given geodetic coordinates and elevation threshold.
 
+        Args:
+            sat_geodetic (tuple): (lat, lon, alt) of satellite in degrees and meters.
+            gs_geodetic (tuple): (lat, lon, alt) of ground station in degrees and meters.
+            elevation_threshold_deg (float): Minimum elevation angle in degrees.
+
+        Returns:
+            bool: True if visible, False otherwise.
+            float: Elevation angle in degrees.
+        """
+        sat_ecef = CoordinateConversion.geodetic_to_ECEF_cartesian(*sat_geodetic)
+        gs_ecef = CoordinateConversion.geodetic_to_ECEF_cartesian(*gs_geodetic)
+
+        # Vector from ground station to satellite
+        rho = sat_ecef - gs_ecef
+        rho_norm = rho / np.linalg.norm(rho)
+        gs_norm = gs_ecef / np.linalg.norm(gs_ecef)  # Local zenith
+
+        # Angle between rho and zenith
+        cos_alpha = np.dot(rho_norm, gs_norm)
+        alpha = np.arccos(cos_alpha)
+        elevation = np.degrees(np.pi/2 - alpha)
+
+        return elevation >= elevation_threshold_deg, elevation
