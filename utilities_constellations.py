@@ -59,7 +59,7 @@ class Constellation:
     
     def generate_positions_with_time(self, start_time, end_time, time_step):
         """
-        Generates the Cartesian positions, velocities, and time stamps of all satellites in the constellation.
+        Generates the ECI TEME (True Equator Mean Equinox) Cartesian positions, velocities, and time stamps of all satellites in the constellation.
 
         Args:
             start_time (datetime): Start time of the propagation.
@@ -68,8 +68,8 @@ class Constellation:
 
         Returns:
             dict: A dictionary containing:
-                - "positions": A 3D numpy array of shape (num_satellites, num_time_steps, 3) with satellite positions.
-                - "velocities": A 3D numpy array of shape (num_satellites, num_time_steps, 3) with satellite velocities.
+                - "positions": A 3D numpy array of shape (num_satellites, num_time_steps, 3) with satellite positions in ECI TEME (True Equator Mean Equinox).
+                - "velocities": A 3D numpy array of shape (num_satellites, num_time_steps, 3) with satellite velocities in ECI TEME (True Equator Mean Equinox).
                 - "time_stamps": A 1D numpy array of shape (num_time_steps,) with time stamps in seconds since epoch.
         """
 
