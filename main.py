@@ -19,7 +19,7 @@ num_satellites = 10  # Number of satellites in the constellation
 
 # Usage: include derivatives
 orbital_parameters = {
-    'semi_major_axis':     7800.0,    # km
+    'semi_major_axis':     6800.0,    # km
     'eccentricity':        0.000,    # unitless
     'inclination':         50.0,     # deg
     'RAAN':                0.0,     # deg
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # Define propagation window & step
     start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
     end_time_datetime =   datetime(2025, 5, 6, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-    step = 10  # Time step input
+    step = 100  # Time step input
 
     ### Propagation by constellation class function
     result = const.generate_positions_with_time(start_time_datetime, end_time_datetime, step) # ECI Cartesian
@@ -116,110 +116,111 @@ if __name__ == "__main__":
     colors = [hsv_to_rgb((i / num_satellites, 0.8, 0.9)) for i in range(num_satellites)]    
     # colors = cm.tab20(np.linspace(0, 1, num_satellites))
 
-    # for satellite in range(num_satellites):
-    #     satellite_considered = satellite
-    #     geographic_orbit = CoordinateConversion.ECI_cartesian_to_geographic(positions[satellite_considered, :idx_max, :], time_stamps[:idx_max]) # A list of tuples (time, latitude, longitude, radial_distance)
+    for satellite in range(num_satellites):
+        satellite_considered = satellite
+        # geographic_orbit = CoordinateConversion.ECI_cartesian_to_geographic(positions[satellite_considered, :idx_max, :], time_stamps[:idx_max]) # A list of tuples (time, latitude, longitude, radial_distance)
 
-    #     ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(positions[satellite_considered, :idx_max, :], time_stamps[:idx_max]) # A list of tuples (time, x, y, z)
-    #     ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) for x, y, z in ECEF_cartesian_orbit] # A list of tuples (time, latitude, longitude, altitude)
+        ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(positions[satellite_considered, :idx_max, :]*1000, time_stamps[:idx_max]) # A list of tuples (time, x, y, z), km to m
+        ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) for x, y, z in ECEF_cartesian_orbit] # A list of tuples (latitude, longitude, altitude)
 
-    #     # Extract data
-    #     times = [entry[0] for entry in geographic_orbit]
-    #     latitudes = [entry[1] for entry in geographic_orbit]
-    #     longitudes = [entry[2] for entry in geographic_orbit]
+        # # Extract data
+        # times = [entry[0] for entry in geographic_orbit]
+        # latitudes = [entry[1] for entry in geographic_orbit]
+        # longitudes = [entry[2] for entry in geographic_orbit]
+        latitudes, longitudes, altitudes = zip(*ECEF_geodetic_orbit)  # Unzip the tuples
         
-    #     # Handle longitude discontinuities
-    #     unwrapped_longitudes = np.unwrap(np.radians(longitudes))  # Unwrap in radians
-    #     normalized_longitudes = np.degrees(unwrapped_longitudes)  # Convert back to degrees
+        # Handle longitude discontinuities
+        unwrapped_longitudes = np.unwrap(np.radians(longitudes))  # Unwrap in radians
+        normalized_longitudes = np.degrees(unwrapped_longitudes)  # Convert back to degrees
 
-    #     #############################################
-    #     # Plot ground track for this satellite (in loop)
-    #     ax.plot(
-    #         normalized_longitudes,
-    #         latitudes,
-    #         marker="o",
-    #         markersize=2,
-    #         linestyle="-",
-    #         color=colors[satellite],  # Assign unique color
-    #         label=f"Satellite {satellite + 1} (RAAN={orbital_parameters['RAAN'] + satellite*(360/num_satellites)}°)",  # Include RAAN in label
-    #         transform=ccrs.PlateCarree(),
-    #     )
+        #############################################
+        # Plot ground track for this satellite (in loop)
+        ax.plot(
+            normalized_longitudes,
+            latitudes,
+            marker="o",
+            markersize=2,
+            linestyle="-",
+            color=colors[satellite],  # Assign unique color
+            label=f"Satellite {satellite + 1} (RAAN={orbital_parameters['RAAN'] + satellite*(360/num_satellites)}°)",  # Include RAAN in label
+            transform=ccrs.PlateCarree(),
+        )
 
-    # ax.legend(loc="lower left", fontsize="small", ncol=2)
-    # # ax.set_title("Ground Tracks of All Satellites")
-    # # plt.savefig("plots/constellation_ground_tracks_sequential.png")
-    # # Dynamically include orbital parameters in the title and filename
-    # orbital_params_str = (
-    #     f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
-    #     f"e={orbital_parameters['eccentricity']}, "
-    #     f"i={orbital_parameters['inclination']}°, "
-    #     f"RAAN varies by satellite, "
-    #     f"ω={orbital_parameters['argument_of_periapsis']}°"
-    # )
+    ax.legend(loc="lower left", fontsize="small", ncol=2)
+    # ax.set_title("Ground Tracks of All Satellites")
+    # plt.savefig("plots/constellation_ground_tracks_sequential.png")
+    # Dynamically include orbital parameters in the title and filename
+    orbital_params_str = (
+        f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+        f"e={orbital_parameters['eccentricity']}, "
+        f"i={orbital_parameters['inclination']}°, "
+        f"RAAN varies by satellite, "
+        f"ω={orbital_parameters['argument_of_periapsis']}°"
+    )
 
-    # ax.set_title(f"Ground tracks of {num_satellites} satellites during 1 orbital period\n({orbital_params_str})")
-    # filename = f"plots/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-    # plt.savefig(filename)
+    ax.set_title(f"Ground tracks of {num_satellites} satellites during 1 orbital period\n({orbital_params_str})")
+    filename = f"plots/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+    plt.savefig(filename)
 
-    # #############################################
-    # ### Plot coverage for multiple satellites
-    # fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
-    # ax.stock_img()
-    # ax.coastlines()
+    #############################################
+    ### Plot coverage for multiple satellites
+    fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
+    ax.stock_img()
+    ax.coastlines()
 
-    # # Extract orbital parameters for the subtitle
-    # orbital_params_str = (
-    #     f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
-    #     f"e={orbital_parameters['eccentricity']}, "
-    #     f"i={orbital_parameters['inclination']}°, "
-    #     f"RAAN varies by satellite, "
-    #     f"ω={orbital_parameters['argument_of_periapsis']}°"
-    # )
+    # Extract orbital parameters for the subtitle
+    orbital_params_str = (
+        f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+        f"e={orbital_parameters['eccentricity']}, "
+        f"i={orbital_parameters['inclination']}°, "
+        f"RAAN varies by satellite, "
+        f"ω={orbital_parameters['argument_of_periapsis']}°"
+    )
 
-    # # Loop through all satellites
-    # elevation_angle = 75.0 # degrees, the larger the smaller the coverage area
-    # # consider this a 90- half swath angle
+    # Loop through all satellites
+    half_swath_angle = 0.5  # degrees, half of the swath angle
+    elevation_angle = 90-half_swath_angle*2 # degrees, the larger the smaller the coverage area. This is not the proper way to do this
 
-    # for satellite_index in range(num_satellites):
-    #     for index in range(0, idx_max): # up until idx_max for one orbital period
-    #         state = {
-    #             "position": positions[satellite_index, index, :],  # Position of the satellite
-    #             "velocity": velocities[satellite_index, index, :],  # Velocity of the satellite
-    #             "time": time_stamps[index],  # Time stamp
-    #         }
+    for satellite_index in range(num_satellites):
+        for index in range(0, idx_max): # up until idx_max for one orbital period
+            state = {
+                "position": positions[satellite_index, index, :],  # Position of the satellite
+                "velocity": velocities[satellite_index, index, :],  # Velocity of the satellite
+                "time": time_stamps[index],  # Time stamp
+            }
 
-    #         # Instantiate the Coverage class
-    #         coverage = Coverage(orbital_parameters, state)
+            # Instantiate the Coverage class
+            coverage = Coverage(orbital_parameters, state)
 
-    #         # Compute sample coverage
-    #         coverage_points = coverage.compute_sample_coverage(elevation_angle=elevation_angle)
+            # Compute sample coverage
+            coverage_points = coverage.compute_sample_coverage(elevation_angle=elevation_angle)
 
-    #         # Extract latitudes and longitudes
-    #         if coverage_points:  # Ensure there are valid coverage points
-    #             lats, lons = zip(*coverage_points)
+            # Extract latitudes and longitudes
+            if coverage_points:  # Ensure there are valid coverage points
+                lats, lons = zip(*coverage_points)
 
-    #             # Plot coverage points for this satellite and time step
-    #             ax.scatter(
-    #                 lons, lats, s=1, color=colors[satellite_index], alpha=0.1, transform=ccrs.PlateCarree()
-    #             )
+                # Plot coverage points for this satellite and time step
+                ax.scatter(
+                    lons, lats, s=1, color=colors[satellite_index], alpha=0.1, transform=ccrs.PlateCarree()
+                )
 
-    # # Create custom legend entries with opaque colors
-    # legend_handles = [
-    #     Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[i], markersize=8)
-    #     for i in range(num_satellites)
-    # ]
-    # legend_labels = [
-    #     f"Satellite {i + 1} (RAAN={orbital_parameters['RAAN'] + i * (360 / num_satellites):.1f}°)"
-    #     for i in range(num_satellites)
-    # ]
+    # Create custom legend entries with opaque colors
+    legend_handles = [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[i], markersize=8)
+        for i in range(num_satellites)
+    ]
+    legend_labels = [
+        f"Satellite {i + 1} (RAAN={orbital_parameters['RAAN'] + i * (360 / num_satellites):.1f}°)"
+        for i in range(num_satellites)
+    ]
 
-    # # Add legend to the plot
-    # ax.legend(handles=legend_handles, labels=legend_labels, loc="lower left", fontsize="small", ncol=2)
-    # ax.set_title(f"Coverage areas of {num_satellites} satellites during 1 orbital period\n({orbital_params_str}), Elevation Angle: {elevation_angle}°")
+    # Add legend to the plot
+    ax.legend(handles=legend_handles, labels=legend_labels, loc="lower left", fontsize="small", ncol=2)
+    ax.set_title(f"Coverage areas of {num_satellites} satellites during 1 orbital period\n({orbital_params_str}), Elevation Angle: {elevation_angle}°")
 
-    # # Save the plot
-    # filename = f"plots/coverage_multiple_satellites_step{step}_N{num_satellites}_el{elevation_angle}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-    # plt.savefig(filename)
+    # Save the plot
+    filename = f"plots/coverage_multiple_satellites_step{step}_N{num_satellites}_hswath{half_swath_angle}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+    plt.savefig(filename)
 
 
     # #############################################
