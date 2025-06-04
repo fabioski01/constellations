@@ -66,12 +66,12 @@ class Coverage:
         self.orbital_parameters = orbital_parameters
         self.state = state
 
-    def compute_sample_coverage(self, elevation_angle=10.0):
+    def compute_sample_coverage(self, elevation_angle=80.0):
         """
         Compute the coordinates of the area covered by the satellite at a specific instant.
 
         Args:
-            elevation_angle (float): Minimum elevation angle (in degrees) for coverage. Default is 10°.
+            elevation_angle (float): Minimum elevation angle (in degrees) for coverage. Default is 80°. Consider it a 90 degrees - the swath angle. The larger the elevation angle, the smaller the coverage area.
 
         Returns:
             list of tuple: List of (latitude, longitude) tuples representing the covered area.
@@ -81,20 +81,30 @@ class Coverage:
         # if not isinstance(sat_position, (list, np.ndarray)) or len(sat_position) != 3:
         #     raise ValueError(f"Expected a 3D position vector, got {sat_position}")
         sat_times = self.state["time"]
-        results = CoordinateConversion.ECI_cartesian_to_geographic(sat_position, sat_times)
+        # results = CoordinateConversion.ECI_cartesian_to_geographic(sat_position, sat_times)
         # print(results)
-
+        ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(sat_position*1000, sat_times) # km to m
+        ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) for x, y, z in ECEF_cartesian_orbit]
         # Access the first (and only) tuple in the results list
-        if len(results) == 0:
+        if len(ECEF_geodetic_orbit) == 0:
             raise ValueError("No results returned from cartesian_to_geographic")
-        time, sat_lat, sat_lon, sat_radial = results[0]  # Unpack the single tuple
+        sat_lat, sat_lon, altitudes = zip(*ECEF_geodetic_orbit)  # Unpack the single tuple
 
-        # print(f"sat_lat: {sat_lat}, sat_lon: {sat_lon}, sat_radial: {sat_radial}")
-    
-        sat_radial_km = sat_radial/1000.0  # Convert to km
-        # Compute the coverage radius on Earth's surface
-        coverage_radius = np.arccos(constants.EARTH_RADIUS / (sat_radial_km)) * (180 / np.pi) * np.cos(np.radians(elevation_angle)) # to be checked
+        # sat_radial_km = sat_radial/1000.0  # Convert to km
+        # # Compute the coverage radius on Earth's surface
+        # coverage_radius = np.arccos(constants.EARTH_RADIUS / (sat_radial_km)) * (180 / np.pi) * np.cos(np.radians(elevation_angle)) # to be checked
+        
+        # Compute satellite altitude in km
+        sat_altitude_km = altitudes[0] / 1000.0  # altitudes is in meters, [0] to get the first (and only) altitude value as float
 
+        # Convert elevation angle to radians
+        elev_rad = np.radians(elevation_angle)
+
+        # Compute central angle ψ (in radians)
+        psi = np.arccos(constants.EARTH_RADIUS / (constants.EARTH_RADIUS + sat_altitude_km) * np.cos(elev_rad))
+
+        # Coverage radius in degrees (angle at Earth's center)
+        coverage_radius = np.degrees(psi)
         # print(f"Coverage radius: {coverage_radius} degrees")
 
         # Generate coverage points (latitude, longitude)
