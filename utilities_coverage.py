@@ -66,23 +66,42 @@ class Coverage:
         self.orbital_parameters = orbital_parameters
         self.state = state
 
-    def compute_sample_coverage(self, elevation_angle=80.0):
+    def compute_sample_coverage(self, masking_angle=80.0, fov=120.0):
         """
         Compute the coordinates of the area covered by the satellite at a specific instant.
 
         Args:
-            elevation_angle (float): Minimum elevation angle (in degrees) for coverage. Default is 80°. Consider it a 90 degrees - the swath angle. The larger the elevation angle, the smaller the coverage area.
+            masking_angle (float): Minimum elevation angle (in degrees) for coverage, the same as the elevation threshold. Default is 80°. The larger the elevation angle, the smaller the coverage area.
+            fov (float): Field of view of the satellite sensor in degrees. Default is 120°, which is slightly more than 2 rad, which gives gamma>1>rho, and does not limit the cap angle. 
 
         Returns:
             list of tuple: List of (latitude, longitude) tuples representing the covered area.
+            float: Fraction of Earth covered by the satellite.
+            float: Cap angle in degrees.
+
+        Notes:
+            From Earth Coverage by Satellites in Circular Orbit, Alan R. Washburn, Department of Operations Research, Naval Postgraduate School
+            - R = radius of Earth (6378 km)
+            - r = radius of orbit
+            - alpha = cap angle, the central Earth angle. Angle between the satellite's position (r) and the edge of the coverage area (R).
+            - beta = masking angle, same as the elevation threshold.
+            - 2gamma = field of view
+            Coverage is often limited by a masking angle (BETA), which is the minimum elevation angle (elevation threshold) that the satellite's sensor can detect a target on the ground. 
+            A target is visible to the satellite only if the satellite's elevation, as viewed by the target, is at least BETA (the masking angle). 
+            The relation between ALPHA and BETA is that, with RHO = R/r < 1, using the law of sines on the sides r and R, plus the fact that
+            `GAMMA + ALPHA = BETA = pi/2
+            we have the following relations:
+                ALPHA = arccos(RHO*cosBETA) - BETA (with 0 < BETA < pi/2)
+            Coverage may also be limited by a sensor's field of view (2GAMMA), rather than a masking angle (or elevation threshold, BETA), in  which case,
+                ALPHA = arcsin((sinGAMMA) / RHO) - GAMMA; with sinGAMMA <= RHO
+            #If sinGAMMA>RHO, the sensor's field of view is not limiting and the formula for ALPHA(BETA) applies with BETA=0.
+            A cap of size ALPHA covers a fraction f of Earth, where
+                f = (1 - cos(ALPHA)) / 2; with 0 < ALPHA < pi/2
         """
         # Extract satellite position
         sat_position = self.state["position"] # in km
-        # if not isinstance(sat_position, (list, np.ndarray)) or len(sat_position) != 3:
-        #     raise ValueError(f"Expected a 3D position vector, got {sat_position}")
         sat_times = self.state["time"]
-        # results = CoordinateConversion.ECI_cartesian_to_geographic(sat_position, sat_times)
-        # print(results)
+
         ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(sat_position*1000, sat_times) # km to m
         ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) for x, y, z in ECEF_cartesian_orbit]
         # Access the first (and only) tuple in the results list
@@ -90,75 +109,51 @@ class Coverage:
             raise ValueError("No results returned from cartesian_to_geographic")
         sat_lat, sat_lon, altitudes = zip(*ECEF_geodetic_orbit)  # Unpack the single tuple
 
-        # sat_radial_km = sat_radial/1000.0  # Convert to km
-        # # Compute the coverage radius on Earth's surface
-        # coverage_radius = np.arccos(constants.EARTH_RADIUS / (sat_radial_km)) * (180 / np.pi) * np.cos(np.radians(elevation_angle)) # to be checked
-        
-        # Compute satellite altitude in km
         sat_altitude_km = altitudes[0] / 1000.0  # altitudes is in meters, [0] to get the first (and only) altitude value as float
-        print(f"Satellite altitude: {sat_altitude_km} km")
 
-        # Convert elevation angle to radians
-        elev_rad = np.radians(elevation_angle)
+        beta = np.radians(masking_angle)
+        gamma = np.radians(fov / 2.0)
+        rho = constants.EARTH_RADIUS / (constants.EARTH_RADIUS + sat_altitude_km)  # RHO = R/r, with R the radius of Earth and r the radius of orbit
 
-        # Compute central angle ψ (in radians), using formula of the cap angle
-        psi = np.arccos((constants.EARTH_RADIUS / (constants.EARTH_RADIUS + sat_altitude_km)) * np.cos(elev_rad)) - elev_rad
-        print(f"Central angle ψ (radians): {psi}")
-        # Coverage radius in degrees (angle at Earth's center)
-        coverage_radius = np.degrees(psi)
-        print(f"Coverage radius: {coverage_radius} degrees")
+        if np.sin(gamma) > rho:
+            # If the field of view is not limiting, use the masking angle formula
+            # print("Field of view is not limiting, using masking angle formula.")
+            # Compute the cap angle alpha with the masking angle BETA
+            alpha = np.arccos(rho * np.cos(beta)) - beta
+        elif np.sin(gamma) <= rho:
+            # If the field of view is limiting, use the field of view formula
+            # print("Field of view is limiting, using field of view formula.")
+            # Compute the cap angle alpha with the field of view GAMMA
+            alpha = np.arcsin(np.sin(gamma) / rho) - gamma
 
-# Figure 1 shows four important quantities for determining the size of that cap, those being
-# R = radius of Earth (6378 km)
-# r = radius of orbit
-# alpha = cap angle
-# beta = masking angle.
-# 2gamma = field of view2Space craft
-# coverage is often limited by a masking angle, which is the minimum elevation angle that the satellite's sensor can detect a target on the ground. 
-# A target is visible to the satellite only if the satellite’s elevation, as viewed by the target, is at least BETA (the masking angle). 
-# The relation between ALPHA and BETA is that, with RHO = R/r < 1, using the law of sines on the sides r and R, plus the fact that
-# GAMMA + ALPHA = BETA = pi/2, we have the following relations:
-# ALPHA = arccos(RHO*cosBETA) - BETA (with 0 < BETA < pi/2)
+        cap_angle = np.degrees(alpha)
+        # print(f"Cap angle: {cap_angle} degrees")
 
-# Coverage may also be limited by a sensor’s field of view, rather than a masking angle, in
-# which case,( )
-# ( )
-# 1
-# sin sin ; sin
-# 
-#   
-#  
-# −
-# = − 
-# . (2)
-# If sin
-#  >
-# , the sensor’s field of view is not limiting and formula (1) applies with =0.
-# A cap of size
-#  covers a fraction f of Earth, where1 cos ; 0 22
-# f
-# 
-# 
-# 
-# −
-# =  
-# .
+        fraction_covered = (1 - np.cos(alpha)) / 2
+        # print(f"Fraction of Earth covered: {fraction_covered:.4f}")
 
-        # Generate coverage points (latitude, longitude)
+        # Convert satellite subpoint to radians
+        lat0 = np.radians(sat_lat[0])
+        lon0 = np.radians(sat_lon[0])
+
         coverage_points = []
-        for lat_offset in np.linspace(-coverage_radius, coverage_radius, 50):
-            for lon_offset in np.linspace(-coverage_radius, coverage_radius, 50):
-                lat = sat_lat + lat_offset
-                lon = sat_lon + lon_offset
+        num_points = 100  # Number of points to draw the circle
 
-                # Normalize longitude to [-180, 180]
-                lon = (lon + 180) % 360 - 180
+        for theta in np.linspace(0, 2 * np.pi, num_points):
+            # Spherical law of cosines for latitude
+            lat = np.arcsin(np.sin(lat0) * np.cos(alpha) + np.cos(lat0) * np.sin(alpha) * np.cos(theta))
+            # Spherical law of cosines for longitude
+            lon = lon0 + np.arctan2(np.sin(theta) * np.sin(alpha) * np.cos(lat0),
+                                    np.cos(alpha) - np.sin(lat0) * np.sin(lat))
+            # Convert back to degrees
+            lat_deg = np.degrees(lat)
+            lon_deg = np.degrees(lon)
+            # Normalize longitude to [-180, 180]
+            lon_deg = (lon_deg + 180) % 360 - 180
+            if -90 <= lat_deg <= 90 and -180 <= lon_deg <= 180:
+                coverage_points.append((lat_deg, lon_deg))
 
-                if -90 <= lat <= 90 and -180 <= lon <= 180:  # Ensure valid coordinates
-                    coverage_points.append((lat, lon))
-        
-        # print("Coverage points:", coverage_points)
-        return coverage_points
+        return coverage_points, fraction_covered, cap_angle
 
     def compute_global_coverage(self, time_window):
         """
@@ -205,7 +200,7 @@ class Coverage:
     #     filename = f"plots/coverage_sample_1sat_a{self.orbital_parameters['semi_major_axis']}_e{self.orbital_parameters['eccentricity']}_i{self.orbital_parameters['inclination']}.png"
     #     plt.savefig(filename)
 
-    ######## test
+    @staticmethod
     def is_visible_geodetic_ECEF(sat_geodetic, gs_geodetic, elevation_threshold_deg):
         """
         Check if a satellite is visible from a ground station given geodetic coordinates and elevation threshold.
@@ -233,6 +228,7 @@ class Coverage:
 
         return elevation >= elevation_threshold_deg, elevation
     
+    @staticmethod
     def is_visible_cartesian_ECEF(sat_ecef_cartesian, gs_geodetic, elevation_threshold_deg):
         """
         Check if a satellite is visible from its cartesian ECEF position, the ground station given its geodetic coordinates, and elevation threshold.
