@@ -77,7 +77,7 @@ class Coverage:
             list of tuple: List of (latitude, longitude) tuples representing the covered area.
         """
         # Extract satellite position
-        sat_position = self.state["position"]
+        sat_position = self.state["position"] # in km
         # if not isinstance(sat_position, (list, np.ndarray)) or len(sat_position) != 3:
         #     raise ValueError(f"Expected a 3D position vector, got {sat_position}")
         sat_times = self.state["time"]
@@ -96,16 +96,53 @@ class Coverage:
         
         # Compute satellite altitude in km
         sat_altitude_km = altitudes[0] / 1000.0  # altitudes is in meters, [0] to get the first (and only) altitude value as float
+        print(f"Satellite altitude: {sat_altitude_km} km")
 
         # Convert elevation angle to radians
         elev_rad = np.radians(elevation_angle)
 
-        # Compute central angle ψ (in radians)
-        psi = np.arccos(constants.EARTH_RADIUS / (constants.EARTH_RADIUS + sat_altitude_km) * np.cos(elev_rad))
-
+        # Compute central angle ψ (in radians), using formula of the cap angle
+        psi = np.arccos((constants.EARTH_RADIUS / (constants.EARTH_RADIUS + sat_altitude_km)) * np.cos(elev_rad)) - elev_rad
+        print(f"Central angle ψ (radians): {psi}")
         # Coverage radius in degrees (angle at Earth's center)
         coverage_radius = np.degrees(psi)
-        # print(f"Coverage radius: {coverage_radius} degrees")
+        print(f"Coverage radius: {coverage_radius} degrees")
+
+# Figure 1 shows four important quantities for determining the size of that cap, those being
+# R = radius of Earth (6378 km)
+# r = radius of orbit
+# alpha = cap angle
+# beta = masking angle.
+# 2gamma = field of view2Space craft
+# coverage is often limited by a masking angle, which is the minimum elevation angle that the satellite's sensor can detect a target on the ground. 
+# A target is visible to the satellite only if the satellite’s elevation, as viewed by the target, is at least BETA (the masking angle). 
+# The relation between ALPHA and BETA is that, with RHO = R/r < 1, using the law of sines on the sides r and R, plus the fact that
+# GAMMA + ALPHA = BETA = pi/2, we have the following relations:
+# ALPHA = arccos(RHO*cosBETA) - BETA (with 0 < BETA < pi/2)
+
+# Coverage may also be limited by a sensor’s field of view, rather than a masking angle, in
+# which case,( )
+# ( )
+# 1
+# sin sin ; sin
+# 
+#   
+#  
+# −
+# = − 
+# . (2)
+# If sin
+#  >
+# , the sensor’s field of view is not limiting and formula (1) applies with =0.
+# A cap of size
+#  covers a fraction f of Earth, where1 cos ; 0 22
+# f
+# 
+# 
+# 
+# −
+# =  
+# .
 
         # Generate coverage points (latitude, longitude)
         coverage_points = []
