@@ -2,6 +2,7 @@ from utilities import CoordinateConversion
 import numpy as np
 from datetime import datetime
 from sgp4.api import Satrec, WGS84, jday
+import constants
 
 class Constellation:
     """
@@ -10,14 +11,17 @@ class Constellation:
     Attributes:
         num_satellites (int): Number of satellites in the constellation.
         orbital_parameters (dict): Orbital parameters for the satellites.
+        pattern (str): Constellation pattern (e.g., "Walker-Delta-SinglePlane", "Walker-Delta").
+        P (int): Number of orbital planes (for pattern "Walker-Delta").
+        F (int): Phasing between satellites in adjacent planes (for pattern "Walker-Delta").
     """
 
-    def __init__(self, num_satellites, orbital_parameters, epoch):
+    def __init__(self, num_satellites, orbital_parameters, epoch, pattern, P=1, F=1):
         """
         Initializes the Constellation object with orbital parameters.
 
         Args:
-            num_satellites (int): Number of satellites in the constellation.
+            num_satellites (int): Number of satellites in the constellation. (T in Walker delta pattern notation)
             orbital_parameters (dict): Dictionary containing orbital parameters as keys:
                 - semi_major_axis (a) in km
                 - eccentricity (e)
@@ -26,37 +30,60 @@ class Constellation:
                 - argument_of_periapsis (ω) in degrees
                 - true_anomaly (theta) in degrees (initial value)
                 - *optional* ndot (rev/day²), nddot (rev/day³), bstar (1/ER)
+            epoch (datetime): Epoch for the orbital elements.
+            pattern (str): Constellation pattern (default is "Walker-Delta-SinglePlane").
+            P (int): (default is 1, for pattern "Walker-Delta") Number of orbital planes evenly spaced in node.
+            F (int): (default is 1, for pattern "Walker-Delta") Relative spacing between satellites in adjacent planes, must be between 0 to (P-1).
         """
         self.num_satellites = num_satellites
         self.orbital_parameters = orbital_parameters
         self.epoch = epoch
+        self.pattern = pattern
+
+    #     self.satrecs = self._build_satrecs()
+
+    # def set_walker_parameters(self, P, F):
+        """
+        Sets the Walker-Delta parameters (P and F) after initialization.
+
+        Args:
+            P (int): Number of orbital planes.
+            F (int): Phasing between satellites in adjacent planes.
+
+        Notes:
+        Walker-Delta pattern contains a total number of T satellites, evenly distributed in P orbital planes, with S satellites
+        in each plane (S=T/P).
+        All of the orbits are assumed to be at the same inclination i wrt equator. The reference plane need not be the Earth's ]
+        equator, however, since orbit perturbations depend on the inclination relative to the equator, this is the most
+        practical choice.
+        Unlike the streets of coverage patterns, the ascending nodes of the P orbital planes in Walker patterns are uniformly
+        distributed around the equator at intervals of 360/P degrees.
+        Within each orbital plane, the T/P satellites are evenly distributed along the orbit at intervals of 360/(T/P) degrees.
+        The relative phase between the satellites in adjacent orbit planes is defined by the phase diference, which in a
+        constellation is the angle in the direction of motion from the ascending node to the nearest satellite at a time
+        when a satellite in the next mosst westerly plane is at its ascending node.
+        In order for all the orbit planes to have the same relationship to each other, the phase difference must be an
+        integral multiple, F, of 360/T degrees, where F can be any integer from 0 to P-1.
+        Usually such constellation is written in shorthand notation as i:T/P/F.
+
+        Defining a patern unit PU=360deg/T, then:
+        - planes are spaced at intervals of S PUs in node (node spacing)
+        - satellites are spaced at intervals of P PUs within each plane (in plane spacing)
+
+        If a satellite is at ist ascending node, the next most easterly satellite will be F PUs past the node.
+        F is an integer which can take on any value from 0 to P-1.
+        """
+        self.P = P
+        self.F = F
+
+        # Validate inputs for Walker-Delta
+        if self.pattern == "Walker-Delta" and self.num_satellites % self.P != 0:
+            raise ValueError("Total number of satellites (T) must be divisible by the number of planes (P).")
+        if self.pattern == "Walker-Delta" and self.num_satellites % self.F != 0:
+            raise ValueError("Total number of satellites (T) must be divisible by phasing between satellites in adjacent planes (F).")
+        
         self.satrecs = self._build_satrecs()
 
-        # print(orbital_parameters)
-        # print(epoch)
-
-    # def generate_positions(self):
-    #     """
-    #     Generates the Cartesian positions of all satellites in the constellation.
-
-    #     The satellites are evenly distributed along the orbit based on their true anomalies.
-
-    #     Returns:
-    #         np.ndarray: A 2D array of shape (num_satellites, 3) containing the Cartesian
-    #                     positions of the satellites in the Earth-Centered Inertial (ECI) frame.
-    #                     Each row corresponds to the (x, y, z) coordinates of a satellite.
-    #     """
-    #     positions = []
-    #     velocities = []
-    #     for i in range(self.num_satellites):
-    #         # Update the true anomaly for each satellite
-    #         self.orbital_parameters["true_anomaly"] = 360 * i / self.num_satellites
-    #         # Use the existing keplerian_to_cartesian function
-    #         pos, vel = CoordinateConversion.keplerian_to_cartesian([self.orbital_parameters])
-    #         positions.append(pos[0])  # Extract the position vector
-    #         velocities.append(vel[0])  # Extract the velocity vector
-    #     return np.array(positions), np.array(velocities)
-    
     def generate_positions_with_time(self, start_time, end_time, time_step):
         """
         Generates the ECI TEME (True Equator Mean Equinox) Cartesian positions, velocities, and time stamps of all satellites in the constellation.
@@ -158,9 +185,8 @@ class Constellation:
         argpo  = np.deg2rad(self.orbital_parameters['argument_of_periapsis'])
         f0     = np.deg2rad(self.orbital_parameters['true_anomaly'])
 
-        GRAVITATIONAL_CONSTANT = 398600.4418  # Earth grav. parameter [km³/s²]
         # compute mean_motion and mean anomaly
-        n_rad_s    = np.sqrt(GRAVITATIONAL_CONSTANT / a**3)
+        n_rad_s    = np.sqrt(constants.GRAVITATIONAL_CONSTANT / a**3)
         mean_motion = n_rad_s / (2*np.pi) * 86400.0  # rev/day
         E = 2*np.arctan(np.tan(f0/2) * np.sqrt((1 - ecco)/(1 + ecco)))
         mo = E - ecco*np.sin(E)
@@ -173,34 +199,109 @@ class Constellation:
         # jd, fr from jday(...)
         epoch_days = (jd + fr) - 2433281.5
 
-        for satellite_code in range(self.num_satellites):
-            # simple per‐satellite phasing, adjusting nodeo or mo
-            nodeo = nodeo0 + satellite_code*(2*np.pi/self.num_satellites)
-            # mo    = mo +    satellite_code*(2*np.pi/self.num_satellites)
-            # argpo    = argpo +    satellite_code*(2*np.pi/self.num_satellites)
-            # nodeo = nodeo0
-            
-            # sgp4 expects mean motion in rad/min, not rev/day
-            # μ in km³/s², a in km
-            n_rad_s  = np.sqrt(GRAVITATIONAL_CONSTANT / a**3)      # rad / s
-            no_kozai = n_rad_s * 60.0         # rad / minute
+        if self.pattern == "Walker-Delta-SinglePlane":
+            for satellite_code in range(self.num_satellites):
+                # simple per‐satellite phasing, adjusting nodeo or mo
+                nodeo = nodeo0 + satellite_code*(2*np.pi/self.num_satellites)   # RAAN
+                # mo = mo + satellite_code*(2*np.pi/self.num_satellites)    # mean anomaly
+                # argpo = argpo + satellite_code*(2*np.pi/self.num_satellites)  # argument of perigee
+                # nodeo = nodeo0
+                
+                # sgp4 expects mean motion in rad/min, not rev/day
+                # μ in km³/s², a in km
+                n_rad_s  = np.sqrt(constants.GRAVITATIONAL_CONSTANT / a**3)      # rad / s
+                no_kozai = n_rad_s * 60.0         # rad / minute
 
-            sat = Satrec()
-            sat.sgp4init(
-                WGS84,                # 1. gravity model
-                'i',                  # 2. opsmode
-                satellite_code,       # 3. satnum called in loop
-                epoch_days,           # 4. single epoch (float)
-                bstar,                # 5. B* drag
-                ndot,                 # 6. 1st derivative of mean motion
-                nddot,                # 7. 2nd derivative
-                ecco,                 # 8. eccentricity
-                argpo,                # 9. argument of perigee
-                inclo,                # 10. inclination
-                mo,                   # 11. mean anomaly
-                no_kozai,             # 12. mean motion (radians/minute)
-                nodeo                 # 13. RAAN
-            )
+                sat = Satrec()
+                sat.sgp4init(
+                    WGS84,                # 1. gravity model
+                    'i',                  # 2. opsmode
+                    satellite_code,       # 3. satnum called in loop
+                    epoch_days,           # 4. single epoch (float)
+                    bstar,                # 5. B* drag
+                    ndot,                 # 6. 1st derivative of mean motion
+                    nddot,                # 7. 2nd derivative
+                    ecco,                 # 8. eccentricity
+                    argpo,                # 9. argument of perigee
+                    inclo,                # 10. inclination
+                    mo,                   # 11. mean anomaly
+                    no_kozai,             # 12. mean motion (radians/minute)
+                    nodeo                 # 13. RAAN
+                )
 
-            satrecs.append(sat)
+                satrecs.append(sat)
+                
+        elif self.pattern == "Walker-Delta":
+            # Multiple planes with phasing
+            S = self.num_satellites // self.P # Number of satellites per plane
+            for plane in range(self.P):
+                for satellite_in_plane in range(S):
+                    nodeo = nodeo0 + plane * (2 * np.pi / self.P)  # RAAN for the plane
+                    # mo_plane = mo + (satellite_in_plane * self.F * (2 * np.pi / self.num_satellites))  # Phasing
+                    mo_sat = mo + (satellite_in_plane * (2 * np.pi / S))  # Phasing within the plane
+                    # sgp4 expects mean motion in rad/min, not rev/day
+                    # μ in km³/s², a in km
+                    n_rad_s  = np.sqrt(constants.GRAVITATIONAL_CONSTANT / a**3)      # rad / s
+                    no_kozai = n_rad_s * 60.0         # rad / minute
+
+                    sat = Satrec()
+                    sat.sgp4init(
+                        WGS84,                # 1. gravity model
+                        'i',                  # 2. opsmode
+                        satellite_in_plane,       # 3. satnum called in loop
+                        epoch_days,           # 4. single epoch (float)
+                        bstar,                # 5. B* drag
+                        ndot,                 # 6. 1st derivative of mean motion
+                        nddot,                # 7. 2nd derivative
+                        ecco,                 # 8. eccentricity
+                        argpo,                # 9. argument of perigee
+                        inclo,                # 10. inclination
+                        mo_sat,                   # 11. mean anomaly
+                        no_kozai,             # 12. mean motion (radians/minute)
+                        nodeo                 # 13. RAAN
+                    )
+                    # sat = self._initialize_satrec(epoch_days, bstar, ndot, nddot, ecco, argpo, inclo, mo_plane, mean_motion, nodeo)
+                    satrecs.append(sat)
+
+        else:
+            raise ValueError(f"Unknown constellation pattern: {self.pattern}")
+
         return satrecs
+    
+    # @staticmethod
+    def _initialize_satrec(self, epoch_days, bstar, ndot, nddot, ecco, argpo, inclo, mo, mean_motion, nodeo):
+        """
+        Helper function to initialize a Satrec object.
+
+        Args:
+            epoch_days (float): Epoch in Julian days.
+            bstar (float): Drag coefficient.
+            ndot (float): First derivative of mean motion.
+            nddot (float): Second derivative of mean motion.
+            ecco (float): Eccentricity.
+            argpo (float): Argument of perigee.
+            inclo (float): Inclination.
+            mo (float): Mean anomaly.
+            mean_motion (float): Mean motion in rev/day.
+            nodeo (float): RAAN.
+
+        Returns:
+            Satrec: Initialized satellite object.
+        """
+        sat = Satrec()
+        sat.sgp4init(
+            WGS84,                # Gravity model
+            'i',                  # Opsmode
+            0,                    # Satellite number
+            epoch_days,           # Epoch
+            bstar,                # Drag coefficient
+            ndot,                 # First derivative of mean motion
+            nddot,                # Second derivative of mean motion
+            ecco,                 # Eccentricity
+            argpo,                # Argument of perigee
+            inclo,                # Inclination
+            mo,                   # Mean anomaly
+            mean_motion * (2 * np.pi / 86400.0),  # Mean motion in rad/min
+            nodeo                 # RAAN
+        )
+        return sat

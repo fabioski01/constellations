@@ -14,6 +14,7 @@ import cartopy.crs as ccrs
 from matplotlib.colors import hsv_to_rgb
 from matplotlib.lines import Line2D
 import matplotlib.gridspec as gridspec
+import math
 
 import os # to create directories if they do not exist
 
@@ -21,9 +22,9 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="This figure includes Axes that are not compatible with tight_layout")
 
 ### INPUTS ###
-# num_satellites_list = [5]
-# num_satellites_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,35,40,50,60,70,80,90,100]  ù
-num_satellites_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]  
+num_satellites_list = [6]
+# num_satellites_list = [1,2,3,5,10,15,20,25,30,40,50,100]  
+# num_satellites_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]  
 
 # Includes derivatives
 orbital_parameters = {
@@ -39,8 +40,14 @@ orbital_parameters = {
 }
 epoch = datetime(2025,5,5,0,0,0)
 
+# pattern="Walker-Delta-SinglePlane"
+pattern="Walker-Delta"
+if pattern == 'Walker-Delta':
+    P=3
+    F=1
+
 ### INPUT for visibility plots ###
-gs = "Fucino"  # Ground station location
+gs = "AFB_Andersen"  # Ground station location
 
 ### INPUTS for coverage plots ###
 masking_angles = [5.0,10.0,15.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold. Usually 10-15 deg min
@@ -51,15 +58,14 @@ fovs = [20,70,120,180] # degrees, field of view of the sensor. If too low is lim
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-step = 10  # Time step input
+step = 100  # Time step input
 
 # Swtiches for plotting
-PLOT_GROUND_TRACKS = False
+PLOT_GROUND_TRACKS = True
 PLOT_COVERAGE = False
-COMPUTE_VISIBILITY = True
+COMPUTE_VISIBILITY = False
 PLOT_VISIBILITY = COMPUTE_VISIBILITY
 PLOT_DATA_COMPARISON = COMPUTE_VISIBILITY
-
 
 # Estimate one period index to stop ground track after one orbit
 a = orbital_parameters['semi_major_axis']  # km from Earth's center
@@ -115,7 +121,10 @@ if __name__ == "__main__":
     for num_satellites in num_satellites_list:
         print(f"Processing constellation with {num_satellites} satellites...")
         # Build the constellation
-        const = Constellation(num_satellites, orbital_parameters, epoch)
+        if pattern == "Walker-Delta":
+            const = Constellation(num_satellites, orbital_parameters, epoch, pattern, P=P, F=F)
+        else:
+            const = Constellation(num_satellites, orbital_parameters, epoch, pattern)
 
         ### Propagation by constellation class function
         result = const.generate_positions_with_time(start_time_datetime, end_time_datetime, step) # ECI Cartesian
@@ -139,7 +148,7 @@ if __name__ == "__main__":
             # Plot ground track for this satellite (in loop)
             print(f"Plotting ground tracks of {num_satellites} satellites...")
             
-            n_periods = 5  # Number of periods to plot
+            n_periods = 1  # Number of periods to plot
 
             idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
             idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
@@ -166,16 +175,38 @@ if __name__ == "__main__":
                 unwrapped_longitudes = np.unwrap(np.radians(longitudes))  # Unwrap in radians
                 normalized_longitudes = np.degrees(unwrapped_longitudes)  # Convert back to degrees
 
-                ax.plot(
-                    normalized_longitudes,
-                    latitudes,
-                    marker="o",
-                    markersize=2,
-                    linestyle="-",
-                    color=colors[satellite],  # Assign unique color
-                    label=f"Satellite {satellite + 1} (RAAN={orbital_parameters['RAAN'] + satellite*(360/num_satellites):.2f}°)",  # Include RAAN in label
-                    transform=ccrs.PlateCarree(),
-                )
+                if pattern == 'Walker-Delta':
+                    S = num_satellites // P  # Number of satellites per plane
+                    plane_index = satellite // S  # Determine the plane index
+                    satellite_in_plane = satellite % S  # Determine the satellite index within the plane
+
+                    # Calculate RAAN for the plane
+                    raan = orbital_parameters['RAAN'] + plane_index * (360 / P)
+
+                    # Calculate omega (argument of perigee) for the satellite
+                    omega = orbital_parameters['true_anomaly'] + satellite_in_plane * 180
+
+                    ax.plot(
+                        normalized_longitudes,
+                        latitudes,
+                        marker="o",
+                        markersize=2,
+                        linestyle="-",
+                        color=colors[satellite],  # Assign unique color
+                        label=f"Satellite {satellite + 1} (RAAN={orbital_parameters['RAAN'] + (math.floor(satellite/S))*(360/num_satellites):.2f}°, omega={orbital_parameters['true_anomaly'] + (math.floor(satellite/S)*(360/S)):.2f})",  # Include RAAN in label
+                        transform=ccrs.PlateCarree(),
+                    )
+                else:
+                    ax.plot(
+                        normalized_longitudes,
+                        latitudes,
+                        marker="o",
+                        markersize=2,
+                        linestyle="-",
+                        color=colors[satellite],  # Assign unique color
+                        label=f"Satellite {satellite + 1} (RAAN={orbital_parameters['RAAN'] + satellite*(360/num_satellites):.2f}°)",  # Include RAAN in label
+                        transform=ccrs.PlateCarree(),
+                    )
 
             ax.legend(
                 loc="upper center",
@@ -202,8 +233,11 @@ if __name__ == "__main__":
                 f"ω={orbital_parameters['argument_of_periapsis']}°"
             )
 
-            ax.set_title(f"Ground tracks of {num_satellites} satellite(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
-            filename = f"plots/ground_tracks/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+            if pattern == 'Walker-Delta':
+                ax.set_title(f"Ground tracks of a {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})")
+            else:            
+                ax.set_title(f"Ground tracks of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
+            filename = f"plots/ground_tracks/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             plt.savefig(filename)
 
@@ -290,7 +324,7 @@ if __name__ == "__main__":
                         plt.tight_layout(rect=[-0.03, 0.00, 1, 1])  # Does not leave space at the bottom for the legend
 
                     # Save the plot
-                    filename = f"plots/coverage/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}_mask{masking_angle}_fov{fov}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    filename = f"plots/coverage/{pattern}/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}_mask{masking_angle}_fov{fov}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                     os.makedirs(os.path.dirname(filename), exist_ok=True)
                     plt.savefig(filename)
                     
@@ -299,7 +333,7 @@ if __name__ == "__main__":
         if COMPUTE_VISIBILITY:
             #############################################
             ### VISIBILITY PLOTS
-            n_periods = 25
+            n_periods = 3
             idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
             idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
             
@@ -449,7 +483,7 @@ if __name__ == "__main__":
             plt.tight_layout(rect=[0, 0.08, 1, 1])  # Leave space at the bottom for the legend
             
             # Save the plot
-            filename = f"plots/visibility/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+            filename = f"plots/visibility/{pattern}/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             plt.savefig(filename, bbox_inches='tight')
 
@@ -481,7 +515,7 @@ if __name__ == "__main__":
 
         plt.tight_layout()
         # Save the plot
-        filename = f"plots/visibility/{n_periods}T/DATA_comparison_{gs}_step{step}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+        filename = f"plots/visibility/{pattern}/{n_periods}T/DATA_comparison_{gs}_step{step}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         plt.savefig(filename)
     
