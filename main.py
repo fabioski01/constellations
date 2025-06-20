@@ -14,6 +14,8 @@ import cartopy.crs as ccrs
 from matplotlib.colors import hsv_to_rgb
 from matplotlib.lines import Line2D
 import matplotlib.gridspec as gridspec
+from mpl_toolkits.mplot3d import Axes3D
+
 import math
 
 import os # to create directories if they do not exist
@@ -22,26 +24,32 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="This figure includes Axes that are not compatible with tight_layout")
 
 ### INPUTS ###
-num_satellites_list = [6]
+### SELECT TOTAL NUMBER OF SATELLITES ###
+num_satellites_list = [3]
 # num_satellites_list = [1,2,3,5,10,15,20,25,30,40,50,100]  
 # num_satellites_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]  
 
-# Includes derivatives
+### SELECT ORBITAL PARAMETERS ###
 orbital_parameters = {
     'semi_major_axis':     6800.0,    # km
-    'eccentricity':        0.000,    # unitless
+    'eccentricity':        0.00,    # unitless
     'inclination':         50.0,     # deg
-    'RAAN':                0.0,     # deg
+    'RAAN':                140.0,     # deg
     'argument_of_periapsis': 250.0,  # deg     
     'true_anomaly':        0.0,      # deg
-    'ndot':                1e-8,     # rev/day²
+    'ndot':                1e-8,     # rev/day² # Includes derivatives
     'nddot':               1e-12,    # rev/day³
     'bstar':               2e-5      # 1/er
 }
+### SELECT EPOCH ###
 epoch = datetime(2025,5,5,0,0,0)
 
-# pattern="Walker-Delta-SinglePlane"
-pattern="Walker-Delta"
+### SELECT A PATTERN ###
+# pattern = "Walker-Delta-SingleSatPerPlane"
+pattern = "Walker-Delta-SinglePlane"
+# pattern = "Walker-Delta"
+
+### SELECT PARAMETERS FOR WALKER DELTA ###
 if pattern == 'Walker-Delta':
     P=3
     F=1
@@ -58,10 +66,11 @@ fovs = [20,70,120,180] # degrees, field of view of the sensor. If too low is lim
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-step = 100  # Time step input
+step = 100 # Time step input
 
 # Swtiches for plotting
 PLOT_GROUND_TRACKS = True
+PLOT_INERTIAL_3D = True
 PLOT_COVERAGE = False
 COMPUTE_VISIBILITY = False
 PLOT_VISIBILITY = COMPUTE_VISIBILITY
@@ -180,33 +189,39 @@ if __name__ == "__main__":
                     plane_index = satellite // S  # Determine the plane index
                     satellite_in_plane = satellite % S  # Determine the satellite index within the plane
 
-                    # Calculate RAAN for the plane
-                    raan = orbital_parameters['RAAN'] + plane_index * (360 / P)
+                    # Dynamically format RAAN and mo to exclude decimals if they are 0
+                    raan_value = orbital_parameters['RAAN'] + (plane_index) * (360 / P)
+                    mo_value = orbital_parameters['true_anomaly'] + (satellite_in_plane * (360 / S))
 
-                    # Calculate omega (argument of perigee) for the satellite
-                    omega = orbital_parameters['true_anomaly'] + satellite_in_plane * 180
+                    raan_formatted = f"{raan_value:.2f}".rstrip('0').rstrip('.')  # Remove trailing zeros and decimal point if unnecessary
+                    mo_formatted = f"{mo_value:.2f}".rstrip('0').rstrip('.')     # Same for mean anomaly
 
-                    ax.plot(
-                        normalized_longitudes,
-                        latitudes,
-                        marker="o",
-                        markersize=2,
-                        linestyle="-",
-                        color=colors[satellite],  # Assign unique color
-                        label=f"Satellite {satellite + 1} (RAAN={orbital_parameters['RAAN'] + (math.floor(satellite/S))*(360/num_satellites):.2f}°, omega={orbital_parameters['true_anomaly'] + (math.floor(satellite/S)*(360/S)):.2f})",  # Include RAAN in label
-                        transform=ccrs.PlateCarree(),
-                    )
+                    label = f"Sat-{satellite + 1}, P-{plane_index+1}-S{satellite_in_plane+1} (RAAN={raan_formatted}°, Ω={mo_formatted}°)"
+
+                elif pattern == 'Walker-Delta-SinglePlane':
+                    # Dynamically format RAAN and mo to exclude decimals if they are 0
+                    mo_value = orbital_parameters['true_anomaly'] + satellite*(360/num_satellites)
+                    mo_formatted = f"{mo_value:.2f}".rstrip('0').rstrip('.')     # Same for mean anomaly
+
+                    label = f"Sat-{satellite + 1} (Ω={mo_formatted}°)"                    
+                    
                 else:
-                    ax.plot(
-                        normalized_longitudes,
-                        latitudes,
-                        marker="o",
-                        markersize=2,
-                        linestyle="-",
-                        color=colors[satellite],  # Assign unique color
-                        label=f"Satellite {satellite + 1} (RAAN={orbital_parameters['RAAN'] + satellite*(360/num_satellites):.2f}°)",  # Include RAAN in label
-                        transform=ccrs.PlateCarree(),
-                    )
+                    # Dynamically format RAAN and mo to exclude decimals if they are 0
+                    raan_value = orbital_parameters['RAAN'] + satellite*(360/num_satellites)
+
+                    raan_formatted = f"{raan_value:.2f}".rstrip('0').rstrip('.')  # Remove trailing zeros and decimal point if unnecessary
+                    label=f"Sat {satellite + 1} (RAAN={raan_formatted}°)"
+                
+                ax.plot(
+                    normalized_longitudes,
+                    latitudes,
+                    marker="o",
+                    markersize=2,
+                    linestyle="-.",
+                    color=colors[satellite],  # Assign unique color
+                    label=label,
+                    transform=ccrs.PlateCarree(),
+                )
 
             ax.legend(
                 loc="upper center",
@@ -216,7 +231,6 @@ if __name__ == "__main__":
                 borderaxespad=0
             )
             
-
             if num_satellites > 90:
                 plt.tight_layout(rect=[0, -0.06, 1, 0.95]) # Leave more space at the bottom for bigger legend
             elif num_satellites > 49:
@@ -235,9 +249,150 @@ if __name__ == "__main__":
 
             if pattern == 'Walker-Delta':
                 ax.set_title(f"Ground tracks of a {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})")
+                filename = f"plots/ground_tracks/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+            elif pattern == 'Walker-Delta-SinglePlane':
+                # Dynamically include orbital parameters in the title and filename
+                orbital_params_str = (
+                    f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                    f"e={orbital_parameters['eccentricity']}, "
+                    f"i={orbital_parameters['inclination']}°, "
+                    f"RAAN={orbital_parameters['RAAN']}°, "
+                    f"ω={orbital_parameters['argument_of_periapsis']}°"
+                )     
+                ax.set_title(f"Ground tracks of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
+                filename = f"plots/ground_tracks/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
             else:            
                 ax.set_title(f"Ground tracks of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
-            filename = f"plots/ground_tracks/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                filename = f"plots/ground_tracks/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+            
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            plt.savefig(filename)
+
+            pass
+
+        if PLOT_INERTIAL_3D:
+            #############################################
+            # Plot inertial orbit of satellite in 3D (in loop)
+            print(f"Plotting inertial 3D orbits of {num_satellites} satellites...")
+            
+            n_periods = 1  # Number of periods to plot
+
+            idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
+            idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
+            # 3D Plot of Satellite Orbits
+            fig = plt.figure(figsize=(10, 10))
+            ax = fig.add_subplot(111, projection='3d')
+
+            # Plot the Earth
+            earth_radius = constants.EARTH_RADIUS  # km
+            u = np.linspace(0, 2 * np.pi, 100)
+            v = np.linspace(0, np.pi, 100)
+            x = earth_radius * np.outer(np.cos(u), np.sin(v))
+            y = earth_radius * np.outer(np.sin(u), np.sin(v))
+            z = earth_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+            ax.plot_surface(x, y, z, color='b', alpha=0.05, edgecolor='k')  # Earth as a sphere
+
+            # Plot satellite positions as scatter points
+            for satellite in range(num_satellites):
+                # positions[satellite_considered, :idx_max, :]*1000, time_stamps[:idx_max]
+                satellite_positions = positions[satellite, :idx_max, :]  # Extract positions for this satellite in km
+                
+                if pattern == 'Walker-Delta':
+                    S = num_satellites // P  # Number of satellites per plane
+                    plane_index = satellite // S  # Determine the plane index
+                    satellite_in_plane = satellite % S  # Determine the satellite index within the plane
+
+                    # Dynamically format RAAN and mo to exclude decimals if they are 0
+                    raan_value = orbital_parameters['RAAN'] + (plane_index) * (360 / P)
+                    mo_value = orbital_parameters['true_anomaly'] + (satellite_in_plane * (360 / S))
+
+                    raan_formatted = f"{raan_value:.2f}".rstrip('0').rstrip('.')  # Remove trailing zeros and decimal point if unnecessary
+                    mo_formatted = f"{mo_value:.2f}".rstrip('0').rstrip('.')     # Same for mean anomaly
+
+                    label = f"Sat-{satellite + 1}, P-{plane_index+1}-S{satellite_in_plane+1} (RAAN={raan_formatted}°, Ω={mo_formatted}°)"
+            
+                else:
+                    # Dynamically format RAAN and mo to exclude decimals if they are 0
+                    raan_value = orbital_parameters['RAAN'] + satellite*(360/num_satellites)
+
+                    raan_formatted = f"{raan_value:.2f}".rstrip('0').rstrip('.')  # Remove trailing zeros and decimal point if unnecessary
+                    label=f"Sat {satellite + 1} (RAAN={raan_formatted}°)"
+                
+                # Plot the scatter points
+                ax.scatter(
+                    satellite_positions[:, 0],  # X-coordinates
+                    satellite_positions[:, 1],  # Y-coordinates
+                    satellite_positions[:, 2],  # Z-coordinates
+                    label=label,
+                    color=colors[satellite],
+                    s=5,  # Size of scatter points
+                    alpha=0.8  # Transparency for better visualization
+                )
+
+                # Plot the line connecting the scatter points
+                ax.plot(
+                    satellite_positions[:, 0],  # X-coordinates
+                    satellite_positions[:, 1],  # Y-coordinates
+                    satellite_positions[:, 2],  # Z-coordinates
+                    color=colors[satellite],
+                    linewidth=1,  # Line width
+                    alpha=0.6  # Transparency for better visualization
+                )
+
+            # Set plot limits for better visualization
+            max_range = np.max(np.abs(positions))  # Maximum range of satellite positions
+            ax.set_xlim([-max_range, max_range])
+            ax.set_ylim([-max_range, max_range])
+            ax.set_zlim([-max_range, max_range])
+
+            # Add labels and legend
+            ax.set_xlabel("X [km]")
+            ax.set_ylabel("Y [km]")
+            ax.set_zlabel("Z [km]")
+            # ax.legend(loc="upper left", fontsize="small")
+            
+            ax.legend(
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.13),  # Centered below the plot
+                fontsize="x-small",
+                ncol=4,                       # Adjust columns as needed
+                borderaxespad=0
+            )
+            
+            if num_satellites > 90:
+                plt.tight_layout(rect=[0, -0.06, 1, 0.95]) # Leave more space at the bottom for bigger legend
+            elif num_satellites > 49:
+                plt.tight_layout(rect=[0, -0.03, 1, 0.95])  # Leave less space at the bottom for the legend
+            else:
+                plt.tight_layout(rect=[0, 0.00, 1, 0.95])  # Does not leave space at the bottom for the legend
+
+            # Dynamically include orbital parameters in the title and filename
+            orbital_params_str = (
+                f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                f"e={orbital_parameters['eccentricity']}, "
+                f"i={orbital_parameters['inclination']}°, "
+                f"RAAN varies by satellite, "
+                f"ω={orbital_parameters['argument_of_periapsis']}°"
+            )
+
+            if pattern == 'Walker-Delta':
+                ax.set_title(f"3D inertial visualization of {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})")
+                filename = f"plots/inertial_3D/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+            elif pattern == 'Walker-Delta-SinglePlane':
+                # Dynamically include orbital parameters in the title and filename
+                orbital_params_str = (
+                    f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                    f"e={orbital_parameters['eccentricity']}, "
+                    f"i={orbital_parameters['inclination']}°, "
+                    f"RAAN={orbital_parameters['RAAN']}°, "
+                    f"ω={orbital_parameters['argument_of_periapsis']}°"
+                )     
+                ax.set_title(f"3D inertial visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
+                filename = f"plots/inertial_3D/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+            else:            
+                ax.set_title(f"3D inertial visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
+                filename = f"plots/inertial_3D/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+            
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             plt.savefig(filename)
 

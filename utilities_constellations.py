@@ -199,18 +199,18 @@ class Constellation:
         # jd, fr from jday(...)
         epoch_days = (jd + fr) - 2433281.5
 
-        if self.pattern == "Walker-Delta-SinglePlane":
+        # sgp4 expects mean motion in rad/min, not rev/day
+        # μ in km³/s², a in km
+        n_rad_s  = np.sqrt(constants.GRAVITATIONAL_CONSTANT / a**3)      # rad / s
+        no_kozai = n_rad_s * 60.0         # rad / minute
+        
+        if self.pattern == "Walker-Delta-SingleSatPerPlane":
             for satellite_code in range(self.num_satellites):
                 # simple per‐satellite phasing, adjusting nodeo or mo
                 nodeo = nodeo0 + satellite_code*(2*np.pi/self.num_satellites)   # RAAN
                 # mo = mo + satellite_code*(2*np.pi/self.num_satellites)    # mean anomaly
                 # argpo = argpo + satellite_code*(2*np.pi/self.num_satellites)  # argument of perigee
                 # nodeo = nodeo0
-                
-                # sgp4 expects mean motion in rad/min, not rev/day
-                # μ in km³/s², a in km
-                n_rad_s  = np.sqrt(constants.GRAVITATIONAL_CONSTANT / a**3)      # rad / s
-                no_kozai = n_rad_s * 60.0         # rad / minute
 
                 sat = Satrec()
                 sat.sgp4init(
@@ -230,6 +230,32 @@ class Constellation:
                 )
 
                 satrecs.append(sat)
+
+        elif self.pattern == "Walker-Delta-SinglePlane":
+            for satellite_code in range(self.num_satellites):
+                # simple per‐satellite phasing, adjusting nodeo or mo
+                satellite_mo = mo + satellite_code*(2*np.pi/self.num_satellites)    # mean anomaly
+
+                sat = Satrec()
+                sat.sgp4init(
+                    WGS84,                # 1. gravity model
+                    'i',                  # 2. opsmode
+                    satellite_code,       # 3. satnum called in loop
+                    epoch_days,           # 4. single epoch (float)
+                    bstar,                # 5. B* drag
+                    ndot,                 # 6. 1st derivative of mean motion
+                    nddot,                # 7. 2nd derivative
+                    ecco,                 # 8. eccentricity
+                    argpo,                # 9. argument of perigee
+                    inclo,                # 10. inclination
+                    satellite_mo,                   # 11. mean anomaly
+                    no_kozai,             # 12. mean motion (radians/minute)
+                    nodeo0                # 13. RAAN
+                )
+                print(sat.nodeo, sat.mo, sat.argpo, sat.inclo, sat.ecco, sat.bstar)
+                print(epoch_days)
+                print(f"Satellite {satellite_code}: Mean Anomaly = {np.rad2deg(satellite_mo):.2f}°")
+                satrecs.append(sat)            
                 
         elif self.pattern == "Walker-Delta":
             # Multiple planes with phasing
@@ -239,11 +265,6 @@ class Constellation:
                     nodeo = nodeo0 + plane * (2 * np.pi / self.P)  # RAAN for the plane
                     # mo_plane = mo + (satellite_in_plane * self.F * (2 * np.pi / self.num_satellites))  # Phasing
                     mo_sat = mo + (satellite_in_plane * (2 * np.pi / S))  # Phasing within the plane
-                    # sgp4 expects mean motion in rad/min, not rev/day
-                    # μ in km³/s², a in km
-                    n_rad_s  = np.sqrt(constants.GRAVITATIONAL_CONSTANT / a**3)      # rad / s
-                    no_kozai = n_rad_s * 60.0         # rad / minute
-
                     sat = Satrec()
                     sat.sgp4init(
                         WGS84,                # 1. gravity model
@@ -256,16 +277,16 @@ class Constellation:
                         ecco,                 # 8. eccentricity
                         argpo,                # 9. argument of perigee
                         inclo,                # 10. inclination
-                        mo_sat,                   # 11. mean anomaly
+                        mo_sat,               # 11. mean anomaly
                         no_kozai,             # 12. mean motion (radians/minute)
                         nodeo                 # 13. RAAN
                     )
                     # sat = self._initialize_satrec(epoch_days, bstar, ndot, nddot, ecco, argpo, inclo, mo_plane, mean_motion, nodeo)
+                    print(sat)
                     satrecs.append(sat)
 
         else:
             raise ValueError(f"Unknown constellation pattern: {self.pattern}")
-
         return satrecs
     
     # @staticmethod
