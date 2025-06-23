@@ -1,6 +1,6 @@
 from sgp4.api import Satrec
 import numpy as np
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from math import trunc
 import time
 import constants
@@ -137,7 +137,7 @@ class TimeConversion:
             explained above
         """
             
-        print(f"Converting datetime {datetime_input}")
+        # print(f"Converting datetime {datetime_input}")
         
         if not isinstance(datetime_input, datetime):
             raise TypeError(f"Expected datetime object, got {type(datetime_input)}")
@@ -469,15 +469,39 @@ class CoordinateConversion:
 
         if reference_time is None:
             reference_time = datetime.utcnow()
+        
+        # print(f"Reference time: {reference_time}")
+        # print(f"First time value: {times[0]} seconds")
+        # print(f"Last time value: {times[-1]} seconds")
 
-        def calculate_gmst(time_in_seconds):
-            # Calculate Julian Date (JD)
-            jd = 2451545.0 + (time_in_seconds / 86400.0)  # Convert from seconds to Julian days
-            D_UT = jd - 2451545.0  # Number of days since J2000.0
+        # def calculate_gmst(time_in_seconds):
+        #     # Calculate Julian Date (JD)
+        #     jd = 2451545.0 + (time_in_seconds / 86400.0)  # Convert from seconds to Julian days
+        #     D_UT = jd - 2451545.0  # Number of days since J2000.0
+        #     # GMST in hours at 0h UT
+        #     gmst_hours = (constants.GMST_CONSTANT + constants.EARTH_OMEGA * D_UT) % 24.0  # Normalize to [0, 24)
+        #     return gmst_hours
+        def calculate_gmst(dt):
+            """
+            Calculate GMST from a datetime object.
+            
+            Args:
+                dt (datetime): The datetime object
+                
+            Returns:
+                float: GMST in hours
+            """
+            # Calculate Julian Date (JD) from datetime
+            jd, fr = TimeConversion.datetime_to_sgp4time(dt)
+            jd_total = jd + fr
+            
+            # Days since J2000.0
+            D_UT = jd_total - 2451545.0
+            
             # GMST in hours at 0h UT
-            gmst_hours = (constants.GMST_CONSTANT + constants.EARTH_OMEGA * D_UT) % 24.0  # Normalize to [0, 24)
+            gmst_hours = (constants.GMST_CONSTANT + constants.EARTH_OMEGA * D_UT) % 24.0
             return gmst_hours
-
+        
         # Ensure positions is a 2D array
         eci_positions = np.atleast_2d(eci_positions)
         # Ensure times is a 1D array
@@ -488,10 +512,18 @@ class CoordinateConversion:
         ecef_positions = np.zeros_like(eci_positions)
 
         for i, position in enumerate(eci_positions):
-            # Calculate GMST for this time
-            gmst = calculate_gmst(times[i])
+            # Calculate the absolute time for this time step
+            absolute_time = reference_time + timedelta(seconds=times[i])
+            
+            # Calculate GMST for the absolute time (not the relative time)
+            gmst = calculate_gmst(absolute_time)  # Pass datetime object, not seconds
+
+            # print(f"Time {i}: {times[i]}s, Absolute time: {absolute_time}, GMST: {gmst:.6f} hours")
+
             # Convert GMST (in hours) to radians (1 hour = 15 degrees)
             theta = np.radians(gmst * 15.0)
+            # print(f"Rotation angle: {np.degrees(theta):.6f} degrees")
+
             # Rotation matrix about Z-axis
             R = np.array([
                 [np.cos(theta), np.sin(theta), 0],
@@ -502,7 +534,43 @@ class CoordinateConversion:
             ecef_positions[i] = R @ position
 
         return ecef_positions
-    
+
+    @staticmethod
+    def ECI_cartesian_to_ECI_geodetic(eci_positions):
+        """
+        Convert ECI (Earth-Centered Inertial) Cartesian positions to geodetic coordinates
+        WITHOUT accounting for Earth's rotation (inertial geodetic coordinates).
+        
+        Args:
+            eci_positions (np.ndarray): Nx3 array of ECI positions (x, y, z) in meters.
+        
+        Returns:
+            list: A list of tuples (latitude, longitude, altitude).
+                - latitude (float): Geodetic latitude in degrees.
+                - longitude (float): Longitude in degrees (inertial frame).
+                - altitude (float): Altitude above the WGS84 ellipsoid in meters.
+        
+        Notes:
+            - This function converts ECI coordinates directly to geodetic without Earth rotation.
+            - The longitude represents the inertial longitude (fixed in space).
+            - Useful for plotting inertial ground tracks.
+        """
+        # Ensure positions is a 2D array
+        eci_positions = np.atleast_2d(eci_positions)
+        
+        geodetic_coords = []
+        
+        for position in eci_positions:
+            x, y, z = position
+            
+            # Use the existing ECEF_cartesian_to_geodetic function
+            # Since we're not rotating the coordinates, ECI = ECEF in this case
+            latitude, longitude, altitude = CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z)
+            
+            geodetic_coords.append((latitude, longitude, altitude))
+        
+        return geodetic_coords
+
     @staticmethod
     def ECEF_cartesian_to_geodetic(x, y, z):
         """
