@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 
 ### INPUTS ###
 ### SELECT TOTAL NUMBER OF SATELLITES ###
-num_satellites_list = [9]
+num_satellites_list = [3,6,8]
 # num_satellites_list = [1,2,3,5,10,15,20,25,30,40,50,100]  
 # num_satellites_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]  
 
@@ -45,23 +45,23 @@ orbital_parameters = {
 epoch = datetime(2025,5,5,0,0,0)
 
 ### SELECT A PATTERN ###
-# pattern = "Walker-Delta-SingleSatPerPlane"
+pattern = "Walker-Delta-SingleSatPerPlane"
 # pattern = "Walker-Delta-SinglePlane"
-pattern = "Walker-Delta"
+# pattern = "Walker-Delta"
 
 ### SELECT PARAMETERS FOR WALKER DELTA ###
 if pattern == 'Walker-Delta':
-    P=3
+    P=8
     F=1
 
 ### INPUT for visibility plots ###
 gs = "AFB_Andersen"  # Ground station location
 
 ### INPUTS for coverage plots ###
-masking_angles = [5.0,10.0,15.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold. Usually 10-15 deg min
-# masking_angles = [20.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold
-fovs = [20,70,120,180] # degrees, field of view of the sensor. If too low is limiting, if it's large then the masking angle is limiting
-# fovs = [170] # degrees, field of view of the sensor
+# masking_angles = [5.0,10.0,15.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold. Usually 10-15 deg min
+masking_angles = [20.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold
+# fovs = [20,70,120,180] # degrees, field of view of the sensor. If too low is limiting, if it's large then the masking angle is limiting
+fovs = [170] # degrees, field of view of the sensor
 
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
@@ -69,10 +69,10 @@ end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc)
 step = 100 # Time step input
 
 # Swtiches for plotting
-PLOT_GROUND_TRACKS = True
-PLOT_INERTIAL_GROUND_TRACKS = True # for debugging walker spaced by mean anomaly
-PLOT_INERTIAL_3D = True
-PLOT_COVERAGE = False
+PLOT_GROUND_TRACKS = False
+PLOT_INERTIAL_GROUND_TRACKS = False # for debugging walker spaced by mean anomaly
+PLOT_INERTIAL_3D = False
+PLOT_COVERAGE = True
 COMPUTE_VISIBILITY = False
 PLOT_VISIBILITY = COMPUTE_VISIBILITY
 PLOT_DATA_COMPARISON = COMPUTE_VISIBILITY
@@ -446,7 +446,7 @@ if __name__ == "__main__":
                 f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
                 f"e={orbital_parameters['eccentricity']}, "
                 f"i={orbital_parameters['inclination']}°, "
-                f"RAAN varies by satellite, "
+                f"RAAN varies, "
                 f"ω={orbital_parameters['argument_of_periapsis']}°"
             )
 
@@ -480,20 +480,35 @@ if __name__ == "__main__":
                                     lons, lats, s=1, color=colors[satellite_index], alpha=0.99, transform=ccrs.PlateCarree()
                                 )
 
-                    # Create custom legend entries with opaque colors
+                    # Create legend labels
+                    legend_labels = [
+                        create_label_from_satrec(i, const.satrecs[i], pattern, num_satellites, P if pattern == 'Walker-Delta' else None)
+                        for i in range(num_satellites)
+                    ]
+
+                    # Create legend handles (proxy artists)
                     legend_handles = [
                         Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[i], markersize=8)
                         for i in range(num_satellites)
                     ]
-                    legend_labels = [
-                        f"Satellite {i + 1} (RAAN={orbital_parameters['RAAN'] + i * (360 / num_satellites):.1f}°)"
-                        for i in range(num_satellites)
-                    ]
 
-                    # Add legend to the plot
-                    # ax.legend(handles=legend_handles, labels=legend_labels, loc="lower left", fontsize="small", ncol=2)
-                    ax.set_title(f"Coverage areas of {num_satellites} satellites during {n_periods} orbital period(s)\n({orbital_params_str})\n Masking Angle: {masking_angle}°, FOV: {fov}°, Cap Angle: {cap_angle:.2f}°Instant. Fraction Covered: {100*fraction_covered:.4f}%")
-
+                    if pattern == 'Walker-Delta':
+                        ax.set_title(f"Coverage areas of a {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})\n Masking Angle: {masking_angle}°, FOV: {fov}°, Cap Angle: {cap_angle:.2f}°Instant. Fraction Covered: {100*fraction_covered:.4f}%")
+                        filename = f"plots/coverage/{pattern}/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}-{P}-{F}_mask{masking_angle}_fov{fov}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    elif pattern == 'Walker-Delta-SinglePlane':
+                        # Dynamically include orbital parameters in the title and filename
+                        orbital_params_str = (
+                            f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                            f"e={orbital_parameters['eccentricity']}, "
+                            f"i={orbital_parameters['inclination']}°, "
+                            f"RAAN={orbital_parameters['RAAN']}°, "
+                            f"ω={orbital_parameters['argument_of_periapsis']}°"
+                        )     
+                        ax.set_title(f"Coverage areas of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\n Masking Angle: {masking_angle}°, FOV: {fov}°, Cap Angle: {cap_angle:.2f}°Instant. Fraction Covered: {100*fraction_covered:.4f}%")
+                        filename = f"plots/coverage/{pattern}/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    else:
+                        ax.set_title(f"Coverage areas of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\n Masking Angle: {masking_angle}°, FOV: {fov}°, Cap Angle: {cap_angle:.2f}°Instant. Fraction Covered: {100*fraction_covered:.4f}%")
+                        filename = f"plots/coverage/{pattern}/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
 
                     ax.legend(handles=legend_handles, labels=legend_labels,
                         loc="upper center",
@@ -511,7 +526,7 @@ if __name__ == "__main__":
                         plt.tight_layout(rect=[-0.03, 0.00, 1, 1])  # Does not leave space at the bottom for the legend
 
                     # Save the plot
-                    filename = f"plots/coverage/{pattern}/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}_mask{masking_angle}_fov{fov}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    # filename = f"plots/coverage/{pattern}/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}-{P}-{F}_mask{masking_angle}_fov{fov}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                     os.makedirs(os.path.dirname(filename), exist_ok=True)
                     plt.savefig(filename)
                     
