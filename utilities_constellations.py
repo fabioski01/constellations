@@ -82,7 +82,7 @@ class Constellation:
         if self.pattern == "Walker-Delta" and self.num_satellites % self.F != 0:
             raise ValueError("Total number of satellites (T) must be divisible by phasing between satellites in adjacent planes (F).")
         
-        self.satrecs = self._build_satrecs()
+        self._satrecs = self._build_satrecs()
 
     def generate_positions_with_time(self, start_time, end_time, time_step):
         """
@@ -235,7 +235,8 @@ class Constellation:
             for satellite_code in range(self.num_satellites):
                 # simple per‐satellite phasing, adjusting nodeo or mo
                 satellite_mo = mo + satellite_code*(2*np.pi/self.num_satellites)    # mean anomaly
-
+                # debug
+                # satellite_mo = mo + 0.1*satellite_code
                 sat = Satrec()
                 sat.sgp4init(
                     WGS84,                # 1. gravity model
@@ -252,9 +253,10 @@ class Constellation:
                     no_kozai,             # 12. mean motion (radians/minute)
                     nodeo0                # 13. RAAN
                 )
-                print(sat.nodeo, sat.mo, sat.argpo, sat.inclo, sat.ecco, sat.bstar)
-                print(epoch_days)
-                print(f"Satellite {satellite_code}: Mean Anomaly = {np.rad2deg(satellite_mo):.2f}°")
+                
+                # print(sat.nodeo, sat.mo, sat.argpo, sat.inclo, sat.ecco, sat.bstar)
+                # print(epoch_days)
+                # print(f"Satellite {satellite_code}: Mean Anomaly = {np.rad2deg(satellite_mo):.2f}°")
                 satrecs.append(sat)            
                 
         elif self.pattern == "Walker-Delta":
@@ -326,3 +328,47 @@ class Constellation:
             nodeo                 # RAAN
         )
         return sat
+    
+    @property
+    def satrecs(self):
+        """Access the satrec objects."""
+        return self._satrecs if hasattr(self, '_satrecs') else []
+    
+def create_label_from_satrec(satellite_index, satrec, pattern, num_satellites, P=None):
+    """
+    Create satellite label from satrec orbital elements.
+
+    Args:
+        satellite_index: Index of the satellite (0-based)
+        satrec: SGP4 Satrec object
+        pattern: Constellation pattern
+        num_satellites: Total number of satellites
+        P: Number of planes (for Walker-Delta)
+
+    Returns:
+        str: Formatted label string
+    """
+    # Extract orbital elements from satrec (all in radians, convert to degrees)
+    raan_deg = np.rad2deg(satrec.nodeo) % 360
+    mo_deg = np.rad2deg(satrec.mo) % 360
+
+    # Format to remove unnecessary decimals
+    raan_formatted = f"{raan_deg:.2f}".rstrip('0').rstrip('.')
+    mo_formatted = f"{mo_deg:.2f}".rstrip('0').rstrip('.')
+
+    if pattern == 'Walker-Delta':
+        if P is not None:
+            S = num_satellites // P
+            plane_index = satellite_index // S
+            satellite_in_plane = satellite_index % S
+            label = f"Sat-{satellite_index + 1}, P-{plane_index+1}-S{satellite_in_plane+1} (Ω={raan_formatted}°, M={mo_formatted}°)"
+        else:
+            label = f"Sat-{satellite_index + 1} (Ω={raan_formatted}°, M={mo_formatted}°)"
+
+    elif pattern == 'Walker-Delta-SinglePlane':
+        label = f"Sat-{satellite_index + 1} (M={mo_formatted}°)"
+
+    else:
+        label = f"Sat {satellite_index + 1} (Ω={raan_formatted}°)"
+
+    return label

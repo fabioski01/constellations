@@ -1,5 +1,5 @@
 from utilities import CoordinateConversion, orbiter, TimeConversion
-from utilities_constellations import Constellation
+from utilities_constellations import Constellation, create_label_from_satrec
 from utilities_coverage import Coverage
 import constants
 
@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 
 ### INPUTS ###
 ### SELECT TOTAL NUMBER OF SATELLITES ###
-num_satellites_list = [3]
+num_satellites_list = [9]
 # num_satellites_list = [1,2,3,5,10,15,20,25,30,40,50,100]  
 # num_satellites_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]  
 
@@ -46,8 +46,8 @@ epoch = datetime(2025,5,5,0,0,0)
 
 ### SELECT A PATTERN ###
 # pattern = "Walker-Delta-SingleSatPerPlane"
-pattern = "Walker-Delta-SinglePlane"
-# pattern = "Walker-Delta"
+# pattern = "Walker-Delta-SinglePlane"
+pattern = "Walker-Delta"
 
 ### SELECT PARAMETERS FOR WALKER DELTA ###
 if pattern == 'Walker-Delta':
@@ -70,6 +70,7 @@ step = 100 # Time step input
 
 # Swtiches for plotting
 PLOT_GROUND_TRACKS = True
+PLOT_INERTIAL_GROUND_TRACKS = True # for debugging walker spaced by mean anomaly
 PLOT_INERTIAL_3D = True
 PLOT_COVERAGE = False
 COMPUTE_VISIBILITY = False
@@ -156,6 +157,7 @@ if __name__ == "__main__":
             #############################################
             # Plot ground track for this satellite (in loop)
             print(f"Plotting ground tracks of {num_satellites} satellites...")
+                # Add this debug code right after the ECI propagation in your main.py:
             
             n_periods = 1  # Number of periods to plot
 
@@ -171,7 +173,7 @@ if __name__ == "__main__":
                 satellite_considered = satellite
                 # geographic_orbit = CoordinateConversion.ECI_cartesian_to_geographic(positions[satellite_considered, :idx_max, :], time_stamps[:idx_max]) # A list of tuples (time, latitude, longitude, radial_distance)
 
-                ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(positions[satellite_considered, :idx_max, :]*1000, time_stamps[:idx_max]) # A list of tuples (time, x, y, z), km to m
+                ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(positions[satellite_considered, :idx_max, :]*1000, time_stamps[:idx_max], start_time_datetime) # A list of tuples (time, x, y, z), km to m
                 ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) for x, y, z in ECEF_cartesian_orbit] # A list of tuples (latitude, longitude, altitude)
 
                 # # Extract data
@@ -183,34 +185,8 @@ if __name__ == "__main__":
                 # Handle longitude discontinuities
                 unwrapped_longitudes = np.unwrap(np.radians(longitudes))  # Unwrap in radians
                 normalized_longitudes = np.degrees(unwrapped_longitudes)  # Convert back to degrees
-
-                if pattern == 'Walker-Delta':
-                    S = num_satellites // P  # Number of satellites per plane
-                    plane_index = satellite // S  # Determine the plane index
-                    satellite_in_plane = satellite % S  # Determine the satellite index within the plane
-
-                    # Dynamically format RAAN and mo to exclude decimals if they are 0
-                    raan_value = orbital_parameters['RAAN'] + (plane_index) * (360 / P)
-                    mo_value = orbital_parameters['true_anomaly'] + (satellite_in_plane * (360 / S))
-
-                    raan_formatted = f"{raan_value:.2f}".rstrip('0').rstrip('.')  # Remove trailing zeros and decimal point if unnecessary
-                    mo_formatted = f"{mo_value:.2f}".rstrip('0').rstrip('.')     # Same for mean anomaly
-
-                    label = f"Sat-{satellite + 1}, P-{plane_index+1}-S{satellite_in_plane+1} (RAAN={raan_formatted}°, Ω={mo_formatted}°)"
-
-                elif pattern == 'Walker-Delta-SinglePlane':
-                    # Dynamically format RAAN and mo to exclude decimals if they are 0
-                    mo_value = orbital_parameters['true_anomaly'] + satellite*(360/num_satellites)
-                    mo_formatted = f"{mo_value:.2f}".rstrip('0').rstrip('.')     # Same for mean anomaly
-
-                    label = f"Sat-{satellite + 1} (Ω={mo_formatted}°)"                    
-                    
-                else:
-                    # Dynamically format RAAN and mo to exclude decimals if they are 0
-                    raan_value = orbital_parameters['RAAN'] + satellite*(360/num_satellites)
-
-                    raan_formatted = f"{raan_value:.2f}".rstrip('0').rstrip('.')  # Remove trailing zeros and decimal point if unnecessary
-                    label=f"Sat {satellite + 1} (RAAN={raan_formatted}°)"
+    
+                label = create_label_from_satrec(satellite, const.satrecs[satellite], pattern, num_satellites, P if pattern == 'Walker-Delta' else None)                
                 
                 ax.plot(
                     normalized_longitudes,
@@ -270,6 +246,80 @@ if __name__ == "__main__":
 
             pass
 
+        if PLOT_INERTIAL_GROUND_TRACKS:
+            #############################################
+            # Plot inertial ground track (without Earth rotation)
+            print(f"Plotting inertial ground tracks of {num_satellites} satellites...")
+            
+            n_periods = 1  # Number of periods to plot
+
+            idx_oneperiod = np.searchsorted(time_stamps, orbital_period)
+            idx_max = n_periods * idx_oneperiod
+
+            fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
+            ax.stock_img()
+            ax.coastlines()
+            ax.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
+
+            for satellite in range(num_satellites):
+                satellite_positions = positions[satellite, :idx_max, :]  # ECI positions in km
+                
+                # Convert ECI to inertial geodetic coordinates using the new function
+                eci_positions_m = satellite_positions * 1000  # Convert km to m
+                inertial_geodetic_orbit = CoordinateConversion.ECI_cartesian_to_ECI_geodetic(eci_positions_m)
+                
+                # Extract coordinates
+                latitudes, longitudes, altitudes = zip(*inertial_geodetic_orbit)
+                
+                # Handle longitude discontinuities
+                unwrapped_longitudes = np.unwrap(np.radians(longitudes))
+                normalized_longitudes = np.degrees(unwrapped_longitudes)
+
+                label = create_label_from_satrec(satellite, const.satrecs[satellite], pattern, num_satellites, P if pattern == 'Walker-Delta' else None)                
+                
+                # Plot the ground track
+                ax.plot(
+                    normalized_longitudes,
+                    latitudes,
+                    marker="o",
+                    markersize=2,
+                    linestyle="--",
+                    color=colors[satellite],
+                    label=label,
+                    transform=ccrs.PlateCarree(),
+                )
+
+            # Add legend and formatting
+            ax.legend(
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.13),
+                fontsize="x-small",
+                ncol=5,
+                borderaxespad=0
+            )
+            
+            if num_satellites > 90:
+                plt.tight_layout(rect=[0, -0.06, 1, 0.95])
+            elif num_satellites > 49:
+                plt.tight_layout(rect=[0, -0.03, 1, 0.95])
+            else:
+                plt.tight_layout(rect=[0, 0.00, 1, 0.95])
+
+            # Create title and filename
+            orbital_params_str = (
+                f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                f"e={orbital_parameters['eccentricity']}, "
+                f"i={orbital_parameters['inclination']}°, "
+                f"RAAN={orbital_parameters['RAAN']}°, "
+                f"ω={orbital_parameters['argument_of_periapsis']}°"
+            )
+            
+            ax.set_title(f"Inertial ground tracks of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
+            filename = f"plots/inertial_ground_tracks/{pattern}/{n_periods}T/constellation_inertial_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+            
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            plt.savefig(filename)
+
         if PLOT_INERTIAL_3D:
             #############################################
             # Plot inertial orbit of satellite in 3D (in loop)
@@ -297,27 +347,8 @@ if __name__ == "__main__":
                 # positions[satellite_considered, :idx_max, :]*1000, time_stamps[:idx_max]
                 satellite_positions = positions[satellite, :idx_max, :]  # Extract positions for this satellite in km
                 
-                if pattern == 'Walker-Delta':
-                    S = num_satellites // P  # Number of satellites per plane
-                    plane_index = satellite // S  # Determine the plane index
-                    satellite_in_plane = satellite % S  # Determine the satellite index within the plane
+                label = create_label_from_satrec(satellite, const.satrecs[satellite], pattern, num_satellites, P if pattern == 'Walker-Delta' else None)                
 
-                    # Dynamically format RAAN and mo to exclude decimals if they are 0
-                    raan_value = orbital_parameters['RAAN'] + (plane_index) * (360 / P)
-                    mo_value = orbital_parameters['true_anomaly'] + (satellite_in_plane * (360 / S))
-
-                    raan_formatted = f"{raan_value:.2f}".rstrip('0').rstrip('.')  # Remove trailing zeros and decimal point if unnecessary
-                    mo_formatted = f"{mo_value:.2f}".rstrip('0').rstrip('.')     # Same for mean anomaly
-
-                    label = f"Sat-{satellite + 1}, P-{plane_index+1}-S{satellite_in_plane+1} (RAAN={raan_formatted}°, Ω={mo_formatted}°)"
-            
-                else:
-                    # Dynamically format RAAN and mo to exclude decimals if they are 0
-                    raan_value = orbital_parameters['RAAN'] + satellite*(360/num_satellites)
-
-                    raan_formatted = f"{raan_value:.2f}".rstrip('0').rstrip('.')  # Remove trailing zeros and decimal point if unnecessary
-                    label=f"Sat {satellite + 1} (RAAN={raan_formatted}°)"
-                
                 # Plot the scatter points
                 ax.scatter(
                     satellite_positions[:, 0],  # X-coordinates
@@ -329,14 +360,15 @@ if __name__ == "__main__":
                     alpha=0.8  # Transparency for better visualization
                 )
 
-                # Plot the line connecting the scatter points
+                # Plot the line connecting the scatter points as a dashed line
                 ax.plot(
                     satellite_positions[:, 0],  # X-coordinates
                     satellite_positions[:, 1],  # Y-coordinates
                     satellite_positions[:, 2],  # Z-coordinates
                     color=colors[satellite],
                     linewidth=1,  # Line width
-                    alpha=0.6  # Transparency for better visualization
+                    alpha=0.6,    # Transparency for better visualization
+                    linestyle='--'  # Dashed line
                 )
 
             # Set plot limits for better visualization
@@ -371,7 +403,7 @@ if __name__ == "__main__":
                 f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
                 f"e={orbital_parameters['eccentricity']}, "
                 f"i={orbital_parameters['inclination']}°, "
-                f"RAAN varies by satellite, "
+                f"RAAN varies, "
                 f"ω={orbital_parameters['argument_of_periapsis']}°"
             )
 
