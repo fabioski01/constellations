@@ -284,7 +284,7 @@ class Constellation:
                         nodeo                 # 13. RAAN
                     )
                     # sat = self._initialize_satrec(epoch_days, bstar, ndot, nddot, ecco, argpo, inclo, mo_plane, mean_motion, nodeo)
-                    print(sat)
+                    # print(sat)
                     satrecs.append(sat)
 
         else:
