@@ -246,6 +246,10 @@ class Coverage:
 
         # Vector from ground station to satellite
         rho = sat_ecef_cartesian - gs_ecef
+        # print(f'norm gs_ecef: {np.linalg.norm(gs_ecef)}')
+        # print(f'norm sat_ecef_cartesian: {np.linalg.norm(sat_ecef_cartesian)}')
+        # print(f'norm rho: {np.linalg.norm(rho)}')
+
         rho_norm = rho / np.linalg.norm(rho)
         gs_norm = gs_ecef / np.linalg.norm(gs_ecef)  # Local zenith
 
@@ -254,4 +258,34 @@ class Coverage:
         alpha = np.arccos(cos_alpha)
         elevation = np.degrees(np.pi/2 - alpha)
 
+        # if elevation >= elevation_threshold_deg:
+        #     print(f'norm rho: {np.linalg.norm(rho)}')
+
         return elevation >= elevation_threshold_deg, elevation
+    
+
+def get_ground_station_coordinates(station_name):
+    """
+    Returns the geodetic coordinates for a given ground station.
+    
+    Args:
+        station_name (str): Name of the ground station
+        
+    Returns:
+        tuple: (latitude [deg], longitude [deg], altitude [m])
+    """
+    ground_stations = {
+        "Japan": (45.0, 140.0, 0.0),
+        "AFB_Andersen": (13.6, 144.9, 0.0),
+        "AFB_Hickam": (21.3, -157.9, 0.0),
+        "Kiruna": (67.9, 20.4, 0.0),
+        "AFB_Elmendorf": (61.2, -149.9, 0.0),
+        "Svalbard": (78.2, 15.6, 0.0),
+        "Troll_Antarctica": (-72.0, 2.5, 0.0),
+        "Fucino": (42.0, 13.6, 0.0)
+    }
+    
+    if station_name in ground_stations:
+        return ground_stations[station_name]
+    else:
+        raise ValueError(f"Unknown ground station name: {station_name}")
