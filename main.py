@@ -25,7 +25,8 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 
 ### INPUTS ###
 ### SELECT TOTAL NUMBER OF SATELLITES ###
-num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100]
+# num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for P=4
+num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for P=3
 # num_satellites_list = [4]
 # num_satellites_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,30,35,40,50,60,70,80,90,100] 
 
@@ -45,10 +46,11 @@ orbital_parameters = {
 epoch = datetime(2025,5,5,0,0,0)
 
 ### SELECT A PATTERN ###
-# pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
+pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
 # pattern_list = ["Walker-Delta-SingleSatPerPlane"]
 # pattern_list = ["Walker-Delta-SinglePlane"]
-pattern_list = ["Walker-Delta"]
+# pattern_list = ["Walker-Delta"]
+pattern_params = {} # saving parameters for each pattern for plotting outside the pattern loop
 
 ### INPUT for visibility plots ###
 gs = "AFB_Andersen"  # Ground station location
@@ -62,17 +64,17 @@ fovs = [170] # degrees, field of view of the sensor
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-step = 100 # Time step input
+step = 50 # Time step input
 
 # Swtiches for plotting
-PLOT_GROUND_TRACKS = True
+PLOT_GROUND_TRACKS = False
 PLOT_INERTIAL_GROUND_TRACKS = False # for debugging walker spaced by mean anomaly
 PLOT_INERTIAL_3D = False
-PLOT_COVERAGE = True
+PLOT_COVERAGE = False
 COMPUTE_VISIBILITY = True
-PLOT_VISIBILITY = True # needs compute visibility to be True
-PLOT_DATA_COMPARISON = True # needs plot visibility to be True
-PLOT_PATTERN_VISIBILITY_COMPARISON = True # needs plot visibility to be True
+PLOT_VISIBILITY = False # needs COMPUTE_VISIBILITY to be True
+PLOT_DATA_COMPARISON = True # needs COMPUTE_VISIBILITY to be True
+PLOT_PATTERN_VISIBILITY_COMPARISON = True # needs COMPUTE_VISIBILITY to be True
 
 # Estimate one period index to stop ground track after one orbit
 a = orbital_parameters['semi_major_axis']  # km from Earth's center
@@ -91,17 +93,20 @@ if __name__ == "__main__":
     # Store data for pattern comparison to avoid recalculating later
     pattern_visibility_data = {}  # Store visibility and overlap data for each pattern
     pattern_num_satellites = {}   # Store corresponding num_satellites for each pattern
+    # New: store all visibilities, elevations, and times for plotting
+    if 'pattern_visibility_plotdata' not in locals():
+        pattern_visibility_plotdata = {}
 
     for pattern in pattern_list:
         ### SELECT PARAMETERS FOR WALKER DELTA ###
-        P = None
-        F = None
         if pattern == 'Walker-Delta':
-            P=4
+            P=3
             F=1
             if num_satellites_list[0] < P:
                 raise ValueError(f"Walker-Delta pattern requires at least {P} satellites.")
-        
+            pattern_params[pattern] = {'P': P, 'F': F}
+        else:
+            pattern_params[pattern] = {}
         if pattern == "Walker-Delta":
             print(f"========== Processing pattern: {pattern} {orbital_parameters['inclination']}:N/{P}/{F} ==========")
         else:
@@ -117,6 +122,8 @@ if __name__ == "__main__":
             'overlap': []         # For storing overlap_percentage values
         }
         pattern_num_satellites[pattern] = []  # For storing num_satellites values
+        # New: store all visibilities, elevations, and times for plotting
+        pattern_visibility_plotdata[pattern] = {}
 
         # loop through the number of satellites for this pattern
         for num_satellites in num_satellites_list:
@@ -242,7 +249,7 @@ if __name__ == "__main__":
 
                 if pattern == 'Walker-Delta':
                     ax.set_title(f"Ground tracks of a {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    filename = f"plots/ground_tracks/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    filename = f"plots/ground_tracks/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                 elif pattern == 'Walker-Delta-SinglePlane':
                     # Dynamically include orbital parameters in the title and filename
                     orbital_params_str = (
@@ -511,7 +518,7 @@ if __name__ == "__main__":
 
                         if pattern == 'Walker-Delta':
                             ax.set_title(f"Coverage areas of a {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})\n Masking Angle: {masking_angle}°, FOV: {fov}°, Cap Angle: {cap_angle:.2f}°Instant. Fraction Covered: {100*fraction_covered:.4f}%")
-                            filename = f"plots/coverage/{pattern}/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}-{P}-{F}_mask{masking_angle}_fov{fov}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                            filename = f"plots/coverage/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}-{P}-{F}_mask{masking_angle}_fov{fov}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                         elif pattern == 'Walker-Delta-SinglePlane':
                             # Dynamically include orbital parameters in the title and filename
                             orbital_params_str = (
@@ -551,13 +558,12 @@ if __name__ == "__main__":
 
             if COMPUTE_VISIBILITY:
                 #############################################
-                ### VISIBILITY PLOTS
-                n_periods = 1
+                ### Compute and store visibility/overlap data for all satellites (NO plotting)
+                print(f"Computing visibility and overlap for {num_satellites} satellites in {pattern}...")
+                n_periods = 10
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
-                
                 elevation_threshold = 10.0  # degrees
-
                 # Extract orbital parameters for the subtitle
                 orbital_params_str = (
                     f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
@@ -566,112 +572,75 @@ if __name__ == "__main__":
                     f"RAAN varies, "
                     f"ω={orbital_parameters['argument_of_periapsis']}°"
                 )
-
-                pass
-
-            if PLOT_VISIBILITY:
-                #############################################
-                ### Visibility and Elevation plots for multiple satellites
-                print(f"Plotting visibility and elevation angle of {num_satellites} satellites in {pattern}...")
-
-                fig = plt.figure(figsize=(12, 7))
-                gs_plot = gridspec.GridSpec(2, 1, height_ratios=[1, 1], hspace=0.05)
-                ax1 = fig.add_subplot(gs_plot[0])
-                ax2 = fig.add_subplot(gs_plot[1], sharex=ax1)
-            
-                # Store visibility for all satellites at all time steps
                 all_visibilities = []
-                legend_labels = []  # Dynamic labels for legend
-
-                for satellite_index in range(num_satellites):
+                all_elevations = []
+                all_times = []
+                for satellite_index in range(num_satellites): # saving visibilities, elevation, times, for each N satellites. Same pattern.
                     visibility = []
                     elevations = []
                     times = []
                     for idx in range(idx_max):
-                        # Get satellite state from ECI Cartesian sgp4
                         sat_position = positions[satellite_index, idx, :]  # km 
                         sat_time = time_stamps[idx]
-
-                        ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(sat_position*1000, sat_time) # A list of tuples (time, x, y, z), km to m
-                        
-                        # Check visibility
+                        ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(sat_position*1000, sat_time)
                         vis, elev = Coverage.is_visible_cartesian_ECEF(ECEF_cartesian_orbit, gs_geodetic, elevation_threshold)
-
                         visibility.append(int(np.asarray(vis).item()))
                         elevations.append(elev)
-                        times.append(sat_time / 3600.0)  # convert to hours if desired
+                        times.append(sat_time / 3600.0)
                     all_visibilities.append(visibility)
-                    # Dynamic label from satrec
+                    all_elevations.append(elevations)
+                    all_times.append(times)
+                # Store for plotting
+                pattern_visibility_plotdata[pattern][num_satellites] = {
+                    'visibilities': all_visibilities,
+                    'elevations': all_elevations,
+                    'times': all_times
+                }
+                # Store results for later plotting
+                total_visible_seconds_all = np.sum(all_visibilities) * step
+                any_visible_per_timestep = np.any(all_visibilities, axis=0)
+                total_time_with_any_visible = np.sum(any_visible_per_timestep) * step
+                if total_time_with_any_visible > 0: # this is to avoid division by zero when there is no visibility at all
+                    overlap_percentage = ((total_visible_seconds_all - total_time_with_any_visible) / total_time_with_any_visible) * 100
+                else:
+                    overlap_percentage = 0
+                # Store results for later plotting
+                total_time_with_any_visible_list.append(total_time_with_any_visible / 3600)
+                overlap_percentage_list.append(overlap_percentage)
+                pattern_visibility_data[pattern]['total_time'].append(total_time_with_any_visible / 3600) # this saves the total visibility time for the pattern comparison
+                pattern_visibility_data[pattern]['overlap'].append(overlap_percentage) # this saves the overlap percentage for the pattern comparison
+                num_satellites_record.append(num_satellites) 
+                pattern_num_satellites[pattern].append(num_satellites) # this saves the number of satellites for the pattern comparison
+                pass
+
+            if PLOT_VISIBILITY:
+                #############################################
+                ### Only plot using precomputed data (NO computation)
+                print(f"Plotting visibility and elevation angle of {num_satellites} satellites in {pattern}...")
+                plotdata = pattern_visibility_plotdata[pattern][num_satellites]
+                all_visibilities = np.array(plotdata['visibilities'])
+                all_elevations = plotdata['elevations']
+                all_times = plotdata['times']
+                legend_labels = []
+                fig = plt.figure(figsize=(12, 7))
+                gs_plot = gridspec.GridSpec(2, 1, height_ratios=[1, 1], hspace=0.05)
+                ax1 = fig.add_subplot(gs_plot[0])
+                ax2 = fig.add_subplot(gs_plot[1], sharex=ax1)
+                for satellite_index in range(num_satellites):
                     label = create_label_from_satrec(
                         satellite_index, const.satrecs[satellite_index], pattern, num_satellites, P if pattern == 'Walker-Delta' else None
                     )
                     legend_labels.append(label)
-                    # Plot visibility (dashed line)
-                    ax1.plot(times, visibility, drawstyle='steps-post', color=colors[satellite_index], 
-                            linestyle='--', label=label)
-                    # Plot elevation (solid line)
-                    ax2.plot(times, elevations, color=colors[satellite_index], linestyle='-')
-
-                    # Calculate total visible seconds for the satellite
-                    visible_count = sum(visibility)  # Number of time steps where visible
-                    total_visible_seconds = visible_count * step  # step is your time step in seconds
-                    total_times = len(times) * step  # Total time in hours
-                    # print(f"Total visible time for sat N{satellite_index+1} over {total_times:.2f} s ({total_times/3600:.4f} hr): {total_visible_seconds} s ({total_visible_seconds/3600:.4f} hr), {total_visible_seconds*100/total_times:.4f}%")
-                
-                # Convert to numpy array for easy manipulation
-                all_visibilities = np.array(all_visibilities)  # shape: (num_satellites, num_time_steps)
-                # Total visible time summed over all satellites (double-counts if multiple are visible at once)
-                total_visible_seconds_all = np.sum(all_visibilities) * step
-                print(f"Total visible time from {gs} summed over all satellites: {total_visible_seconds_all} s ({total_visible_seconds_all/3600:.2f} hr)")
-                # Time with at least one satellite visible
-                # For each time step, check if any satellite is visible
-                any_visible_per_timestep = np.any(all_visibilities, axis=0)  # shape: (num_time_steps,)
-                total_time_with_any_visible = np.sum(any_visible_per_timestep) * step
-                
-                print(f"Total time from {gs} with at least one satellite visible: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {total_time_with_any_visible * 100 / (len(times) * step):.2f}%")
-                if total_time_with_any_visible > 0:
-                    overlap_percentage = ((total_visible_seconds_all - total_time_with_any_visible) / total_time_with_any_visible) * 100
-                    print(f"Constellation overlap percentage from {gs}: {overlap_percentage:.2f}%")
-                else:
-                    overlap_percentage = 0
-                    print(f"Constellation overlap percentage from {gs}: 0% (no visibility)")
-
-                overlap_text = f"Overlap: {overlap_percentage:.2f}%" if total_time_with_any_visible > 0 else "No overlap (no visibility)"
-                # ax1.set_title(f"Satellite Visibility from {gs} Ground Station a {pattern} constellation\n{orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})\nTotal time with at least one visible sat: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {total_time_with_any_visible * 100 / (len(times) * step):.2f}%; {overlap_text}", fontsize=10)
-
-                # For the list append operations
-                total_time_with_any_visible_list.append(total_time_with_any_visible / 3600)
-                overlap_percentage_list.append(overlap_percentage)  # Using the same value calculated above
-
-                # Save the plot
-                if pattern == 'Walker-Delta':
-                    ax1.set_title(f"Satellite Visibility from {gs} Ground Station a {pattern} constellation\n{orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})\nTotal time with at least one visible sat: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {total_time_with_any_visible * 100 / (len(times) * step):.2f}%; {overlap_text}", fontsize=10)
-                    filename = f"plots/visibility/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}-{P}-{F}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-                elif pattern == 'Walker-Delta-SinglePlane':
-                    # Extract orbital parameters for the subtitle
-                    orbital_params_str = (
-                        f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
-                        f"e={orbital_parameters['eccentricity']}, "
-                        f"i={orbital_parameters['inclination']}°, "
-                        f"RAAN={orbital_parameters['RAAN']}°, "
-                        f"ω={orbital_parameters['argument_of_periapsis']}°"
-                    )
-                    ax1.set_title(f"Satellite Visibility from {gs} Ground Station a {pattern} constellation\nwith N{num_satellites} sat(s) at RAAN {orbital_parameters['RAAN']}°, during {n_periods} orbital period(s)\n({orbital_params_str})\nTotal time with at least one visible sat: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {total_time_with_any_visible * 100 / (len(times) * step):.2f}%; {overlap_text}", fontsize=10)
-                    filename = f"plots/visibility/{pattern}/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}_RAAN{orbital_parameters['RAAN']}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-                else:
-                    ax1.set_title(f"Satellite Visibility from {gs} Ground Station a {pattern} constellation\nwith N{num_satellites} sat(s), during {n_periods} orbital period(s)\n({orbital_params_str})\nTotal time with at least one visible sat: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {total_time_with_any_visible * 100 / (len(times) * step):.2f}%; {overlap_text}", fontsize=10)
-                    filename = f"plots/visibility/{pattern}/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-
+                    ax1.plot(all_times[satellite_index], all_visibilities[satellite_index], drawstyle='steps-post', color=colors[satellite_index], linestyle='--', label=label)
+                    ax2.plot(all_times[satellite_index], all_elevations[satellite_index], color=colors[satellite_index], linestyle='-')
                 ax1.set_ylabel(f"Visible (elev > {elevation_threshold}°)")
                 ax1.set_yticks([0, 1])
                 ax1.set_yticklabels(["No", "Yes"])
                 ax1.grid(True)
-                # ax1.legend(loc="best", fontsize="small", ncol=2)
                 plt.setp(ax1.get_xticklabels(), visible=False)
 
                 ax2.set_xlabel("Time [hours]")
                 ax2.set_ylabel("Elevation [deg]")
-                # ax2.set_title("Elevation Angle")
                 ax2.grid(True)
                 # Add dashed horizontal line for elevation threshold
                 ax2.axhline(elevation_threshold, color='gray', linestyle='--', linewidth=1, label=f"Threshold ({elevation_threshold}°)")
@@ -696,23 +665,14 @@ if __name__ == "__main__":
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 plt.savefig(filename, bbox_inches='tight')
 
-                # Append results to lists for further analysis
-                # For pattern data storage
-                pattern_visibility_data[pattern]['total_time'].append(total_time_with_any_visible / 3600)
-                pattern_visibility_data[pattern]['overlap'].append(overlap_percentage)
-                num_satellites_record.append(num_satellites)
-
-                # Also store the visibility and overlap data for this pattern
-                pattern_visibility_data[pattern]['total_time'].append(total_time_with_any_visible / 3600)
-                pattern_visibility_data[pattern]['overlap'].append(overlap_percentage)
-                pattern_num_satellites[pattern].append(num_satellites)
-
                 pass
             
             # END OF NUM_SATELLITES LOOP
             #############################################
 
+        ### STILL IN THE PATTERN LOOP
         if PLOT_DATA_COMPARISON:
+            print(f"Plotting comaparison of visibility and elevation angle wrt to number of satellites in {pattern}...")
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(8, 7), gridspec_kw={'height_ratios': [2, 1]})
 
             # Save the plot
@@ -750,6 +710,7 @@ if __name__ == "__main__":
 
     ### Pattern Comparison Plot ###
     if PLOT_PATTERN_VISIBILITY_COMPARISON:
+        print(f"Plotting comaparison of visibility and elevation angle wrt to number of satellites for different patterns: {pattern_list}...")
         # Define pattern colors and styles
         pattern_colors = ['blue', 'red', 'green']
         pattern_styles = ['-', '--', '-.']
@@ -765,7 +726,9 @@ if __name__ == "__main__":
                 
                 # Generate appropriate label based on pattern type
                 if pat == "Walker-Delta":
-                    label = f"Walker-Delta i={orbital_parameters['inclination']}° P={P} F={F}"
+                    P = pattern_params[pat].get('P', None)
+                    F = pattern_params[pat].get('F', None)
+                    label = f"Walker-Delta i={orbital_parameters['inclination']}:N/{P}/{F}"
                 elif pat == "Walker-Delta-SingleSatPerPlane":
                     label = f"Walker-Delta-SingleSatPerPlane i={orbital_parameters['inclination']}°"
                 elif pat == "Walker-Delta-SinglePlane":
@@ -863,6 +826,6 @@ if __name__ == "__main__":
         plt.tight_layout()
         
         # Save the comparison plot
-        filename = f"plots/visibility/PatternComparison_{gs}_step{step}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+        filename = f"plots/visibility/PatternComparison/{n_periods}T/PatternComparison_{gs}_step{step}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         plt.savefig(filename, dpi=300, bbox_inches='tight')
