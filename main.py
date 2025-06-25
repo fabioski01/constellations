@@ -823,9 +823,18 @@ if __name__ == "__main__":
                 color=pattern_colors[i % len(pattern_colors)]
             )
         
+        # Add a secondary y-axis for percentage of simulation time
+        total_simulation_time_hr = n_periods * (orbital_period / 3600)  # in hours
+        ax1b = ax1.twinx()
+        # Set the secondary y-axis limits to match the left axis, but as percentage
+        left_min, left_max = ax1.get_ylim()
+        ax1b.set_ylim(left_min / total_simulation_time_hr * 100, left_max / total_simulation_time_hr * 100)
+        ax1b.set_ylabel("Total time visible [% of simulation]")
+        ax1b.grid(False)  # Don't show grid for secondary axis
+
         plt.tight_layout()
         
-        # Save the comparison plot
+        # Save the comparison plot with secondary axis
         filename = f"plots/visibility/PatternComparison/{n_periods}T/PatternComparison_{gs}_step{step}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         plt.savefig(filename, dpi=300, bbox_inches='tight')
