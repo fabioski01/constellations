@@ -25,8 +25,8 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 
 ### INPUTS ###
 ### SELECT TOTAL NUMBER OF SATELLITES ###
-# num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for P=4
-num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for P=3
+num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for P=4
+# num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for P=3
 # num_satellites_list = [4]
 # num_satellites_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,30,35,40,50,60,70,80,90,100] 
 
@@ -64,7 +64,7 @@ fovs = [170] # degrees, field of view of the sensor
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-step = 50 # Time step input
+step = 40 # Time step input
 
 # Swtiches for plotting
 PLOT_GROUND_TRACKS = False
@@ -72,7 +72,7 @@ PLOT_INERTIAL_GROUND_TRACKS = False # for debugging walker spaced by mean anomal
 PLOT_INERTIAL_3D = False
 PLOT_COVERAGE = False
 COMPUTE_VISIBILITY = True
-PLOT_VISIBILITY = False # needs COMPUTE_VISIBILITY to be True
+PLOT_VISIBILITY = True # needs COMPUTE_VISIBILITY to be True
 PLOT_DATA_COMPARISON = True # needs COMPUTE_VISIBILITY to be True
 PLOT_PATTERN_VISIBILITY_COMPARISON = True # needs COMPUTE_VISIBILITY to be True
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     for pattern in pattern_list:
         ### SELECT PARAMETERS FOR WALKER DELTA ###
         if pattern == 'Walker-Delta':
-            P=3
+            P=4
             F=1
             if num_satellites_list[0] < P:
                 raise ValueError(f"Walker-Delta pattern requires at least {P} satellites.")
@@ -560,7 +560,7 @@ if __name__ == "__main__":
                 #############################################
                 ### Compute and store visibility/overlap data for all satellites (NO plotting)
                 print(f"Computing visibility and overlap for {num_satellites} satellites in {pattern}...")
-                n_periods = 10
+                n_periods = 5
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
                 elevation_threshold = 10.0  # degrees
@@ -611,6 +611,13 @@ if __name__ == "__main__":
                 pattern_visibility_data[pattern]['overlap'].append(overlap_percentage) # this saves the overlap percentage for the pattern comparison
                 num_satellites_record.append(num_satellites) 
                 pattern_num_satellites[pattern].append(num_satellites) # this saves the number of satellites for the pattern comparison
+                # Precompute and store percentage of time with at least one visible satellite
+                percentage_visible = total_time_with_any_visible * 100 / (len(times) * step) if len(times) > 0 else 0
+                if 'percentage_visible_list' not in locals():
+                    percentage_visible_list = []
+                percentage_visible_list.append(percentage_visible)
+                # Prepare overlap_text for the title
+                overlap_text = f"overlap: {overlap_percentage:.2f}%" if total_time_with_any_visible > 0 else "no visibility"
                 pass
 
             if PLOT_VISIBILITY:
@@ -662,6 +669,25 @@ if __name__ == "__main__":
 
                 plt.tight_layout(rect=[0, 0.08, 1, 1])  # Leave space at the bottom for the legend
                 
+                # Save the plot
+                if pattern == 'Walker-Delta':
+                    ax1.set_title(f"Satellite Visibility from {gs} Ground Station a {pattern} constellation\n{orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})\nTotal time with at least one visible sat: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {percentage_visible:.2f}%; {overlap_text}", fontsize=10)
+                    filename = f"plots/visibility/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}-{P}-{F}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                elif pattern == 'Walker-Delta-SinglePlane':
+                    # Extract orbital parameters for the subtitle
+                    orbital_params_str = (
+                        f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                        f"e={orbital_parameters['eccentricity']}, "
+                        f"i={orbital_parameters['inclination']}°, "
+                        f"RAAN={orbital_parameters['RAAN']}°, "
+                        f"ω={orbital_parameters['argument_of_periapsis']}°"
+                    )
+                    ax1.set_title(f"Satellite Visibility from {gs} Ground Station a {pattern} constellation\nwith N{num_satellites} sat(s) at RAAN {orbital_parameters['RAAN']}°, during {n_periods} orbital period(s)\n({orbital_params_str})\nTotal time with at least one visible sat: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {percentage_visible:.2f}%; {overlap_text}", fontsize=10)
+                    filename = f"plots/visibility/{pattern}/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}_RAAN{orbital_parameters['RAAN']}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                else:
+                    ax1.set_title(f"Satellite Visibility from {gs} Ground Station a {pattern} constellation\nwith N{num_satellites} sat(s), during {n_periods} orbital period(s)\n({orbital_params_str})\nTotal time with at least one visible sat: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {percentage_visible:.2f}%; {overlap_text}", fontsize=10)
+                    filename = f"plots/visibility/{pattern}/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 plt.savefig(filename, bbox_inches='tight')
 
@@ -700,6 +726,15 @@ if __name__ == "__main__":
             ax2.set_ylabel("Overlap percentage [%]")
             # ax2.set_yscale('log') # There are important 0 values, so log scale is not appropriate
             ax2.grid(True)
+
+            # Add a secondary y-axis for percentage of simulation time
+            total_simulation_time_hr = n_periods * (orbital_period / 3600)  # in hours
+            ax1b = ax1.twinx()
+            # Set the secondary y-axis limits to match the left axis, but as percentage
+            left_min, left_max = ax1.get_ylim()
+            ax1b.set_ylim(left_min / total_simulation_time_hr * 100, left_max / total_simulation_time_hr * 100)
+            ax1b.set_ylabel("Total time with\nat least one visible sat [% of propagation time]")
+            ax1b.grid(False)  # Don't show grid for secondary axis
 
             plt.tight_layout()
 
@@ -829,7 +864,7 @@ if __name__ == "__main__":
         # Set the secondary y-axis limits to match the left axis, but as percentage
         left_min, left_max = ax1.get_ylim()
         ax1b.set_ylim(left_min / total_simulation_time_hr * 100, left_max / total_simulation_time_hr * 100)
-        ax1b.set_ylabel("Total time visible [% of simulation]")
+        ax1b.set_ylabel("Total time with\nat least one visible sat [% of propagation time]")
         ax1b.grid(False)  # Don't show grid for secondary axis
 
         plt.tight_layout()
