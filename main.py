@@ -1014,7 +1014,7 @@ if __name__ == "__main__":
             ax.tick_params(axis='both', which='major', labelsize=10)
         
         # Calculate extra space needed for legends based on number of patterns
-        legend_space = 0.02 if len(patterns_to_plot) <= 5 else 0.5
+        legend_space = 0.0 if len(patterns_to_plot) <= 5 else 0.0
         if special_lines and walker_delta_lines:
             legend_space += 0.01  # Add more space for two legend groups
             
