@@ -46,13 +46,16 @@ orbital_parameters = {
 epoch = datetime(2025,5,5,0,0,0)
 
 ### SELECT A PATTERN ###
-pattern_list = [("Walker-Delta", {"P": 2, "F": 1}), ("Walker-Delta", {"P": 3, "F": 1}), ("Walker-Delta", {"P": 4, "F": 1}), ("Walker-Delta", {"P": 5, "F": 1}), ("Walker-Delta", {"P": 6, "F": 1}), ("Walker-Delta", {"P": 7, "F": 1}), ("Walker-Delta", {"P": 8, "F": 1}), ("Walker-Delta", {"P": 9, "F": 1}), ("Walker-Delta", {"P": 10, "F": 1}),
-    "Walker-Delta-SinglePlane"
-]
+# Generate Walker-Delta patterns with P values and F values from 1 to P-1
+pattern_list = []
+for P in range(1, 10):  # P values from 1 to 10
+    for F in range(1, P):  # F values from 1 to P-1 (F must be less than P)
+        pattern_list.append(("Walker-Delta", {"P": P, "F": F}))
+
+# For P=1, there's no valid F value, so add this manually
+pattern_list.append(("Walker-Delta", {"P": 1, "F": 1}))
 # pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
-# pattern_list = ["Walker-Delta-SingleSatPerPlane"]
-# pattern_list = ["Walker-Delta-SinglePlane"]
-# pattern_list = [("Walker-Delta", {"P": 5, "F": 1})]
+# pattern_list = [("Walker-Delta", {"P": 1, "F": 1}), ("Walker-Delta", {"P": 2, "F": 1}), ("Walker-Delta", {"P": 3, "F": 1}), ("Walker-Delta", {"P": 4, "F": 1}), ("Walker-Delta", {"P": 5, "F": 1}), ("Walker-Delta", {"P": 6, "F": 1}), ("Walker-Delta", {"P": 7, "F": 1}), ("Walker-Delta", {"P": 8, "F": 1}), ("Walker-Delta", {"P": 9, "F": 1}), ("Walker-Delta", {"P": 10, "F": 1}),]
 pattern_params = {} # saving parameters for each pattern for plotting outside the pattern loop
 
 ### INPUT for visibility plots ###
@@ -67,7 +70,7 @@ fovs = [170] # degrees, field of view of the sensor
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-step =  102 # Time step input
+step =  105 # Time step input
 
 # Switches for plotting
 PLOT_GROUND_TRACKS = False
@@ -798,7 +801,7 @@ if __name__ == "__main__":
         pattern_colors = []
         
         # Add colors from a colormap - using tab20 for up to 20 distinct colors
-        if num_patterns <= 20:
+        if num_patterns <= 9:
             cmap = plt.colormaps['tab20']
             pattern_colors = [cmap(i/num_patterns) for i in range(num_patterns)]
         else:
@@ -973,7 +976,7 @@ if __name__ == "__main__":
         
         if special_lines:
             # Position the special patterns legend below the Walker-Delta legend
-            legend_y_pos = -0.05 if not walker_delta_lines else -0.12
+            legend_y_pos = -0.05 if not walker_delta_lines else -0.06
             second_legend = fig.legend(
                 handles=special_lines,
                 labels=special_labels,
@@ -1014,7 +1017,7 @@ if __name__ == "__main__":
             ax.tick_params(axis='both', which='major', labelsize=10)
         
         # Calculate extra space needed for legends based on number of patterns
-        legend_space = 0.0 if len(patterns_to_plot) <= 5 else 0.0
+        legend_space = 0.05 if len(patterns_to_plot) <= 5 else 0.07
         if special_lines and walker_delta_lines:
             legend_space += 0.01  # Add more space for two legend groups
             
