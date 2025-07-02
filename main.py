@@ -862,7 +862,20 @@ if __name__ == "__main__":
                 special_indices.append(i)
         
         # Plot the comparison using the pre-calculated data
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 10), gridspec_kw={'height_ratios': [2, 1]})
+        # Adjust figure size based on pattern count
+        fig_height = 10
+        fig_width = 10
+        
+        if len(patterns_to_plot) > 50:
+            fig_height = 14
+            fig_width = 14
+        elif len(patterns_to_plot) > 35:
+            fig_height = 12
+            fig_width = 12
+        elif len(patterns_to_plot) > 25:
+            fig_width = 11
+        
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(fig_width, fig_height), gridspec_kw={'height_ratios': [2, 1]})
         
         # Define only dashed/dotted line styles (no solid lines)
         dashed_styles = ['--', '-.', ':', (0, (3, 1, 1, 1)), (0, (5, 10)), (0, (3, 10, 1, 10)), (0, (1, 1))]
@@ -962,29 +975,51 @@ if __name__ == "__main__":
                 special_labels.append(pattern_labels[i])
         
         # Create legends outside the plot at the bottom
+        # Calculate optimal column counts based on pattern counts - limited to max 4 cols for readability
+        walker_cols = min(4, max(2, len(walker_delta_lines) // 10 + 2))  # At least 2 columns, at most 4
+        special_cols = min(4, max(2, len(special_lines) // 5 + 1))  # At least 2 columns, at most 4
+        
         if walker_delta_lines:
             # Remove legend from inside the plot and place it at the bottom
             first_legend = fig.legend(
                 handles=walker_delta_lines,
                 labels=walker_delta_labels,
                 title="Walker-Delta Patterns",
-                fontsize=9,
+                fontsize=9,  # Slightly larger for better readability with fewer columns
                 loc='lower center',
                 bbox_to_anchor=(0.5, 0),
-                ncol=3
+                ncol=walker_cols
             )
         
         if special_lines:
-            # Position the special patterns legend below the Walker-Delta legend
-            legend_y_pos = -0.05 if not walker_delta_lines else -0.06
+            # Calculate appropriate vertical position for second legend
+            # The more rows in the first legend, the lower the second legend needs to be
+            walker_rows = (len(walker_delta_lines) + walker_cols - 1) // walker_cols if walker_delta_lines else 0
+            legend_y_pos = -0.05
+            
+            # Adjust position based on rows in first legend - more space needed with fewer columns
+            if walker_rows > 0:
+                if walker_rows <= 2:
+                    legend_y_pos = -0.08
+                elif walker_rows <= 4:
+                    legend_y_pos = -0.11
+                elif walker_rows <= 6:
+                    legend_y_pos = -0.14
+                elif walker_rows <= 8:
+                    legend_y_pos = -0.17
+                elif walker_rows <= 10:
+                    legend_y_pos = -0.20
+                else:
+                    legend_y_pos = -0.23
+                
             second_legend = fig.legend(
                 handles=special_lines,
                 labels=special_labels,
                 title="Special Patterns",
-                fontsize=9,
+                fontsize=9,  # Slightly larger for better readability with fewer columns
                 loc='lower center',
                 bbox_to_anchor=(0.5, legend_y_pos),
-                ncol=2
+                ncol=special_cols
             )
         
         # Add labels and styling for bottom plot (overlap percentage)
@@ -1016,10 +1051,47 @@ if __name__ == "__main__":
         for ax in [ax1, ax2, ax1b]:
             ax.tick_params(axis='both', which='major', labelsize=10)
         
-        # Calculate extra space needed for legends based on number of patterns
-        legend_space = 0.05 if len(patterns_to_plot) <= 5 else 0.07
+        # Calculate extra space needed for legends based on number of patterns and columns
+        legend_space = 0.05  # Default space for legends
+        
+        # Determine total number of legend rows needed (based on number of patterns and columns)
+        total_patterns = len(patterns_to_plot)
+        wd_patterns = len(walker_delta_lines)
+        special_patterns = len(special_lines)
+        
+        # Calculate number of columns that will be used - limited to max 4 cols for readability
+        walker_cols = min(4, max(2, wd_patterns // 10 + 2))  # At least 2 columns, at most 4
+        special_cols = min(4, max(2, special_patterns // 5 + 1))  # At least 2 columns, at most 4
+        
+        # Calculate rows needed (ceiling division)
+        walker_rows = (wd_patterns + walker_cols - 1) // walker_cols if wd_patterns > 0 else 0
+        special_rows = (special_patterns + special_cols - 1) // special_cols if special_patterns > 0 else 0
+        
+        # Adjust legend space based on number of rows
+        total_rows = walker_rows + special_rows
+        
+        if total_rows > 15:
+            legend_space = 0.30  # Increased for more rows due to fewer columns
+        elif total_rows > 12:
+            legend_space = 0.25
+        elif total_rows > 9:
+            legend_space = 0.20
+        elif total_rows > 6:
+            legend_space = 0.15
+        elif total_rows > 4:
+            legend_space = 0.11
+        elif total_rows > 2:
+            legend_space = 0.07
+        elif total_rows > 0:
+            legend_space = 0.05
+        
+        # Add extra space for titles and padding between legend groups
         if special_lines and walker_delta_lines:
-            legend_space += 0.01  # Add more space for two legend groups
+            legend_space += 0.05
+            
+        print(f"Debug: Number of patterns: {total_patterns} (WD: {wd_patterns}, Special: {special_patterns})")
+        print(f"Debug: Legend rows: {total_rows} (WD: {walker_rows} in {walker_cols} cols, Special: {special_rows} in {special_cols} cols)")
+        print(f"Debug: Legend space: {legend_space}")
             
         # Adjust spacing between subplots - leave space at bottom for legends
         plt.tight_layout(rect=[0, legend_space, 1, 0.98])
@@ -1027,4 +1099,12 @@ if __name__ == "__main__":
         # Save the comparison plot with secondary axis
         filename = f"plots/visibility/PatternComparison/{n_periods}T/PatternComparison_{gs}_step{step}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        
+        # For large numbers of patterns, don't use bbox_inches='tight' to avoid cropping legends
+        if len(patterns_to_plot) > 25:
+            # Increase figure size for better legend accommodation
+            fig.set_size_inches(12, 12)
+            # Save without tight bbox to ensure legends are included
+            plt.savefig(filename, dpi=300)
+        else:
+            plt.savefig(filename, dpi=300, bbox_inches='tight')
