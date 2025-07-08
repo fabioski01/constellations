@@ -25,10 +25,10 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 
 ### INPUTS ###
 ### SELECT TOTAL NUMBER OF SATELLITES ###
-num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for P=4
+# num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for P=4
 # num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for P=3
 # num_satellites_list = [4]
-# num_satellites_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,30,35,40,50,60,70,80,90,100] 
+num_satellites_list = list(range(1, 101))
 
 ### SELECT ORBITAL PARAMETERS ###
 orbital_parameters = {
@@ -46,14 +46,20 @@ orbital_parameters = {
 epoch = datetime(2025,5,5,0,0,0)
 
 ### SELECT A PATTERN ###
-pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
-# pattern_list = ["Walker-Delta-SingleSatPerPlane"]
-# pattern_list = ["Walker-Delta-SinglePlane"]
-# pattern_list = ["Walker-Delta"]
+# Generate Walker-Delta patterns with P values and F values from 1 to P-1
+pattern_list = []
+for P in range(1, 10):  # P values from 1 to 10
+    for F in range(1, P):  # F values from 1 to P-1 (F must be less than P)
+        pattern_list.append(("Walker-Delta", {"P": P, "F": F}))
+
+# For P=1, there's no valid F value, so add this manually
+pattern_list.append(("Walker-Delta", {"P": 1, "F": 1}))
+# pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
+# pattern_list = [("Walker-Delta", {"P": 1, "F": 1}), ("Walker-Delta", {"P": 2, "F": 1}), ("Walker-Delta", {"P": 3, "F": 1}), ("Walker-Delta", {"P": 4, "F": 1}), ("Walker-Delta", {"P": 5, "F": 1}), ("Walker-Delta", {"P": 6, "F": 1}), ("Walker-Delta", {"P": 7, "F": 1}), ("Walker-Delta", {"P": 8, "F": 1}), ("Walker-Delta", {"P": 9, "F": 1}), ("Walker-Delta", {"P": 10, "F": 1}),]
 pattern_params = {} # saving parameters for each pattern for plotting outside the pattern loop
 
 ### INPUT for visibility plots ###
-gs = "AFB_Andersen"  # Ground station location
+gs = "Fucino"  # Ground station location
 
 ### INPUTS for coverage plots ###
 # masking_angles = [5.0,10.0,15.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold. Usually 10-15 deg min
@@ -64,16 +70,16 @@ fovs = [170] # degrees, field of view of the sensor
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-step = 40 # Time step input
+step =  105 # Time step input
 
-# Swtiches for plotting
+# Switches for plotting
 PLOT_GROUND_TRACKS = False
 PLOT_INERTIAL_GROUND_TRACKS = False # for debugging walker spaced by mean anomaly
 PLOT_INERTIAL_3D = False
 PLOT_COVERAGE = False
 COMPUTE_VISIBILITY = True
-PLOT_VISIBILITY = True # needs COMPUTE_VISIBILITY to be True
-PLOT_DATA_COMPARISON = True # needs COMPUTE_VISIBILITY to be True
+PLOT_VISIBILITY = False # needs COMPUTE_VISIBILITY to be True
+PLOT_DATA_COMPARISON = False # needs COMPUTE_VISIBILITY to be True
 PLOT_PATTERN_VISIBILITY_COMPARISON = True # needs COMPUTE_VISIBILITY to be True
 
 # Estimate one period index to stop ground track after one orbit
@@ -97,40 +103,58 @@ if __name__ == "__main__":
     if 'pattern_visibility_plotdata' not in locals():
         pattern_visibility_plotdata = {}
 
-    for pattern in pattern_list:
-        ### SELECT PARAMETERS FOR WALKER DELTA ###
-        if pattern == 'Walker-Delta':
-            P=4
-            F=1
-            if num_satellites_list[0] < P:
-                raise ValueError(f"Walker-Delta pattern requires at least {P} satellites.")
-            pattern_params[pattern] = {'P': P, 'F': F}
+    for pattern_item in pattern_list:
+        # Check if pattern is a tuple with parameters or just a string
+        if isinstance(pattern_item, tuple):
+            pattern = pattern_item[0]
+            pattern_params[pattern] = pattern_item[1]
+            # Create unique pattern key for Walker-Delta with parameters
+            if pattern == "Walker-Delta":
+                P = pattern_item[1].get('P', 1)
+                F = pattern_item[1].get('F', 1)
+                pattern_key = f"{pattern}_{P}_{F}"  # Create unique key with P and F values
+            else:
+                pattern_key = pattern
         else:
+            pattern = pattern_item
+            pattern_key = pattern
             pattern_params[pattern] = {}
+        
+        # Extract P and F for Walker-Delta pattern if they exist
+        P = pattern_params[pattern].get('P', 1)  # Default to 1 if not specified
+        F = pattern_params[pattern].get('F', 1)  # Default to 1 if not specified
+        
         if pattern == "Walker-Delta":
             print(f"========== Processing pattern: {pattern} {orbital_parameters['inclination']}:N/{P}/{F} ==========")
         else:
-            print(f'========== Processing pattern: {pattern} ==========')
+            print(f'========== Processing pattern: {pattern_key} ==========')
 
         # visibility data analysis
         total_time_with_any_visible_list = []
         overlap_percentage_list = []
         num_satellites_record = []
         # Initialize pattern data storage for this specific pattern
-        pattern_visibility_data[pattern] = {
+        pattern_visibility_data[pattern_key] = {
             'total_time': [],     # For storing total_time_with_any_visible values
             'overlap': []         # For storing overlap_percentage values
         }
-        pattern_num_satellites[pattern] = []  # For storing num_satellites values
+        pattern_num_satellites[pattern_key] = []  # For storing num_satellites values
         # New: store all visibilities, elevations, and times for plotting
-        pattern_visibility_plotdata[pattern] = {}
+        pattern_visibility_plotdata[pattern_key] = {}
 
         # loop through the number of satellites for this pattern
         for num_satellites in num_satellites_list:
             print(f"Processing constellation with {num_satellites} satellites...")
             # Build the constellation
             if pattern == "Walker-Delta":
-                const = Constellation(num_satellites, orbital_parameters, epoch, pattern, P=P, F=F)
+                if num_satellites < P:
+                    print(f"WARNING: Skipping Walker-Delta pattern with {num_satellites} satellites (requires at least {P} satellites).")
+                    continue  # Skip to the next iteration in the num_satellites loop
+                try:
+                    const = Constellation(num_satellites, orbital_parameters, epoch, pattern, P=P, F=F)
+                except ValueError as e:
+                    print(f"WARNING: Skipping Walker-Delta pattern with {num_satellites} satellites: {str(e)}")
+                    continue  # Skip to the next iteration in the num_satellites loop
             else:
                 const = Constellation(num_satellites, orbital_parameters, epoch, pattern)
 
@@ -433,7 +457,7 @@ if __name__ == "__main__":
 
                 if pattern == 'Walker-Delta':
                     ax.set_title(f"3D inertial visualization of {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    filename = f"plots/inertial_3D/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    filename = f"plots/inertial_3D/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/3D_ECI_Orbit_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                 elif pattern == 'Walker-Delta-SinglePlane':
                     # Dynamically include orbital parameters in the title and filename
                     orbital_params_str = (
@@ -444,10 +468,10 @@ if __name__ == "__main__":
                         f"ω={orbital_parameters['argument_of_periapsis']}°"
                     )     
                     ax.set_title(f"3D inertial visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    filename = f"plots/inertial_3D/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    filename = f"plots/inertial_3D/{pattern}/{n_periods}T/3D_ECI_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                 else:            
                     ax.set_title(f"3D inertial visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    filename = f"plots/inertial_3D/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    filename = f"plots/inertial_3D/{pattern}/{n_periods}T/3D_ECI_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                 
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 plt.savefig(filename)
@@ -480,6 +504,31 @@ if __name__ == "__main__":
                         ax.stock_img()
                         ax.coastlines()
                         ax.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
+
+                    PLOT_GROUND_STATION_MARKER = True
+                        
+                    if PLOT_GROUND_STATION_MARKER:
+                        # Plot the ground station position
+                        ax.plot(
+                            gs_lon,
+                            gs_lat,
+                            marker="*",  # Star marker for ground station
+                            markersize=12,
+                            markerfacecolor='yellow',
+                            markeredgecolor='black',
+                            linestyle='',
+                            transform=ccrs.PlateCarree(),
+                            label=f"GS: {gs}"
+                        )
+                        # Add a text label next to the marker
+                        ax.text(
+                            gs_lon + 2,  # Offset to the right of the marker
+                            gs_lat,
+                            f"{gs}",
+                            fontsize=9,
+                            color='black',
+                            transform=ccrs.PlateCarree()
+                    )
 
                         # Loop through all satellites
                         for satellite_index in range(num_satellites):
@@ -560,7 +609,7 @@ if __name__ == "__main__":
                 #############################################
                 ### Compute and store visibility/overlap data for all satellites (NO plotting)
                 print(f"Computing visibility and overlap for {num_satellites} satellites in {pattern}...")
-                n_periods = 5
+                n_periods = 1
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
                 elevation_threshold = 10.0  # degrees
@@ -591,7 +640,7 @@ if __name__ == "__main__":
                     all_elevations.append(elevations)
                     all_times.append(times)
                 # Store for plotting
-                pattern_visibility_plotdata[pattern][num_satellites] = {
+                pattern_visibility_plotdata[pattern_key][num_satellites] = {
                     'visibilities': all_visibilities,
                     'elevations': all_elevations,
                     'times': all_times
@@ -607,10 +656,10 @@ if __name__ == "__main__":
                 # Store results for later plotting
                 total_time_with_any_visible_list.append(total_time_with_any_visible / 3600)
                 overlap_percentage_list.append(overlap_percentage)
-                pattern_visibility_data[pattern]['total_time'].append(total_time_with_any_visible / 3600) # this saves the total visibility time for the pattern comparison
-                pattern_visibility_data[pattern]['overlap'].append(overlap_percentage) # this saves the overlap percentage for the pattern comparison
+                pattern_visibility_data[pattern_key]['total_time'].append(total_time_with_any_visible / 3600) # this saves the total visibility time for the pattern comparison
+                pattern_visibility_data[pattern_key]['overlap'].append(overlap_percentage) # this saves the overlap percentage for the pattern comparison
                 num_satellites_record.append(num_satellites) 
-                pattern_num_satellites[pattern].append(num_satellites) # this saves the number of satellites for the pattern comparison
+                pattern_num_satellites[pattern_key].append(num_satellites) # this saves the number of satellites for the pattern comparison
                 # Precompute and store percentage of time with at least one visible satellite
                 percentage_visible = total_time_with_any_visible * 100 / (len(times) * step) if len(times) > 0 else 0
                 if 'percentage_visible_list' not in locals():
@@ -624,7 +673,7 @@ if __name__ == "__main__":
                 #############################################
                 ### Only plot using precomputed data (NO computation)
                 print(f"Plotting visibility and elevation angle of {num_satellites} satellites in {pattern}...")
-                plotdata = pattern_visibility_plotdata[pattern][num_satellites]
+                plotdata = pattern_visibility_plotdata[pattern_key][num_satellites]
                 all_visibilities = np.array(plotdata['visibilities'])
                 all_elevations = plotdata['elevations']
                 all_times = plotdata['times']
@@ -698,7 +747,7 @@ if __name__ == "__main__":
 
         ### STILL IN THE PATTERN LOOP
         if PLOT_DATA_COMPARISON:
-            print(f"Plotting comaparison of visibility and elevation angle wrt to number of satellites in {pattern}...")
+            print(f"Plotting comparison of visibility and elevation angle wrt to number of satellites in {pattern_key}...")
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(8, 7), gridspec_kw={'height_ratios': [2, 1]})
 
             # Save the plot
@@ -745,118 +794,240 @@ if __name__ == "__main__":
 
     ### Pattern Comparison Plot ###
     if PLOT_PATTERN_VISIBILITY_COMPARISON:
-        print(f"Plotting comaparison of visibility and elevation angle wrt to number of satellites for different patterns: {pattern_list}...")
-        # Define pattern colors and styles
-        pattern_colors = ['blue', 'red', 'green']
-        pattern_styles = ['-', '--', '-.']
+        print(f"Plotting comparison of visibility and elevation angle wrt to number of satellites for different patterns: {pattern_list}...")
+        
+        # Define a richer set of colors using colormap
+        num_patterns = len([p for p in pattern_list if isinstance(p, tuple) and p[0] == "Walker-Delta"]) + 2  # Walker-Delta patterns + 2 special patterns
+        pattern_colors = []
+        
+        # Add colors from a colormap - using tab20 for up to 20 distinct colors
+        if num_patterns <= 9:
+            cmap = plt.colormaps['tab20']
+            pattern_colors = [cmap(i/num_patterns) for i in range(num_patterns)]
+        else:
+            # For more than 20 patterns, we'll use hsv which can generate more distinct colors
+            cmap = plt.colormaps['hsv']
+            pattern_colors = [cmap(i/num_patterns) for i in range(num_patterns)]
+        
+        # Enhanced line styles
+        pattern_styles = ['-', '--', '-.', ':', (0, (3, 1, 1, 1)), (0, (5, 10)), (0, (3, 10, 1, 10))]
         
         # Build pattern_labels dynamically from the patterns we've already processed
         patterns_to_plot = []
         pattern_labels = []
+
+        # Skip initializing the dictionaries here since they were already created in the main processing loop
         
         # Only use patterns that have data
-        for pat in pattern_list:
-            if pat in pattern_visibility_data and len(pattern_visibility_data[pat]['total_time']) > 0:
-                patterns_to_plot.append(pat)
+        for pattern_item in pattern_list:
+            # Extract pattern key properly
+            if isinstance(pattern_item, tuple):
+                base_pattern = pattern_item[0]
+                if base_pattern == "Walker-Delta":
+                    P = pattern_item[1].get('P', 1)
+                    F = pattern_item[1].get('F', 1)
+                    pattern_key = f"{base_pattern}_{P}_{F}"
+                else:
+                    pattern_key = base_pattern
+            else:
+                pattern_key = pattern_item
+                base_pattern = pattern_item
+            
+            if pattern_key in pattern_visibility_data and len(pattern_visibility_data[pattern_key]['total_time']) > 0:
+                patterns_to_plot.append(pattern_key)
                 
                 # Generate appropriate label based on pattern type
-                if pat == "Walker-Delta":
-                    P = pattern_params[pat].get('P', None)
-                    F = pattern_params[pat].get('F', None)
+                if pattern_key.startswith("Walker-Delta_"):
+                    # Extract P and F from pattern_key
+                    parts = pattern_key.split('_')
+                    P = int(parts[1])
+                    F = int(parts[2])
                     label = f"Walker-Delta i={orbital_parameters['inclination']}:N/{P}/{F}"
-                elif pat == "Walker-Delta-SingleSatPerPlane":
+                elif pattern_key == "Walker-Delta-SingleSatPerPlane":
                     label = f"Walker-Delta-SingleSatPerPlane i={orbital_parameters['inclination']}°"
-                elif pat == "Walker-Delta-SinglePlane":
+                elif pattern_key == "Walker-Delta-SinglePlane":
                     label = f"Walker-Delta-SinglePlane i={orbital_parameters['inclination']}° RAAN={orbital_parameters['RAAN']}°"
                 else:
-                    label = pat
+                    label = pattern_key
                 
                 pattern_labels.append(label)
         
-        # Plot the comparison using the pre-calculated data
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8), gridspec_kw={'height_ratios': [2, 1]})
-        
-        # Plot each pattern's data
+        # Group patterns by type for better color organization
+        walker_indices = []
+        special_indices = []
         for i, pat in enumerate(patterns_to_plot):
+            if pat.startswith("Walker-Delta_"):
+                walker_indices.append(i)
+            else:
+                special_indices.append(i)
+        
+        # Plot the comparison using the pre-calculated data
+        # Adjust figure size based on pattern count
+        fig_height = 10
+        fig_width = 10
+        
+        if len(patterns_to_plot) > 50:
+            fig_height = 14
+            fig_width = 14
+        elif len(patterns_to_plot) > 35:
+            fig_height = 12
+            fig_width = 12
+        elif len(patterns_to_plot) > 25:
+            fig_width = 11
+        
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(fig_width, fig_height), gridspec_kw={'height_ratios': [2, 1]})
+        
+        # Define only dashed/dotted line styles (no solid lines)
+        dashed_styles = ['--', '-.', ':', (0, (3, 1, 1, 1)), (0, (5, 10)), (0, (3, 10, 1, 10)), (0, (1, 1))]
+        
+        # Plot each pattern's data with organized colors
+        for idx, i in enumerate(walker_indices + special_indices):
+            pat = patterns_to_plot[i]
             # Use the pre-computed data
             time_data = pattern_visibility_data[pat]['total_time']
             overlap_data = pattern_visibility_data[pat]['overlap']
             satellites = pattern_num_satellites[pat]
             
+            # Determine style based on pattern type
+            style_idx = idx % len(dashed_styles)
+            
+            # Special styling for non-Walker-Delta patterns
+            if not pat.startswith("Walker-Delta_"):
+                # Use distinctive styles for special patterns
+                if pat == "Walker-Delta-SinglePlane":
+                    color = 'red'
+                    linestyle = '--'  # Changed to dashed
+                    marker = 's'  # square marker
+                    markersize = 4  # Reduced marker size
+                    zorder = 10  # bring to front
+                elif pat == "Walker-Delta-SingleSatPerPlane":
+                    color = 'blue'
+                    linestyle = '-.'  # Changed to dash-dot
+                    marker = 'd'  # diamond marker
+                    markersize = 4  # Reduced marker size
+                    zorder = 10  # bring to front
+                else:
+                    color = pattern_colors[idx]
+                    linestyle = dashed_styles[style_idx]
+                    marker = 'o'
+                    markersize = 3  # Reduced marker size
+                    zorder = 5
+            else:
+                # Walker-Delta patterns - get P value for color grading
+                parts = pat.split('_')
+                P = int(parts[1])
+                
+                # Use color based on P value
+                color = pattern_colors[idx]
+                linestyle = dashed_styles[style_idx]
+                marker = 'o'
+                markersize = 3  # Reduced marker size
+                zorder = 5
+            
             # Plot visibility time (top plot)
             ax1.plot(
                 satellites, 
                 time_data, 
-                linestyle=pattern_styles[i % len(pattern_styles)], 
-                color=pattern_colors[i % len(pattern_colors)], 
-                marker='o', 
+                linestyle=linestyle, 
+                color=color, 
+                marker=marker, 
                 label=pattern_labels[i],
-                markersize=5,
-                linewidth=2
+                markersize=markersize,
+                linewidth=2,
+                zorder=zorder
             )
             
             # Plot overlap percentage (bottom plot)
             ax2.plot(
                 satellites, 
                 overlap_data, 
-                linestyle=pattern_styles[i % len(pattern_styles)], 
-                color=pattern_colors[i % len(pattern_colors)], 
-                marker='o', 
+                linestyle=linestyle, 
+                color=color, 
+                marker=marker, 
                 label=pattern_labels[i],
-                markersize=5,
-                linewidth=2
+                markersize=markersize,
+                linewidth=2,
+                zorder=zorder
             )
         
         # Add labels and styling for top plot (visibility time)
-        ax1.set_ylabel("Total time with\nat least one visible sat [hr]")
+        ax1.set_ylabel("Total time with\nat least one visible sat [hr]", fontsize=11)
         ax1.grid(True, alpha=0.3)
         ax1.set_title(
             f"Pattern Comparison: Visibility and Overlap vs. N of Satellites\n"
             f"from {gs} Ground Station over {n_periods} orbital period(s)\n"
             f"(a={orbital_parameters['semi_major_axis']}km, e={orbital_parameters['eccentricity']}, i={orbital_parameters['inclination']}°)",
-            fontsize=11
+            fontsize=12
         )
-        ax1.legend(fontsize="small", loc='best')
+        
+        # Group legends by type
+        walker_delta_lines = []
+        walker_delta_labels = []
+        special_lines = []
+        special_labels = []
+        
+        for i, pat in enumerate(patterns_to_plot):
+            if pat.startswith("Walker-Delta_"):
+                walker_delta_lines.append(ax1.get_lines()[i])
+                walker_delta_labels.append(pattern_labels[i])
+            else:
+                special_lines.append(ax1.get_lines()[i])
+                special_labels.append(pattern_labels[i])
+        
+        # Create legends outside the plot at the bottom
+        # Calculate optimal column counts based on pattern counts - limited to max 4 cols for readability
+        walker_cols = min(4, max(2, len(walker_delta_lines) // 10 + 2))  # At least 2 columns, at most 4
+        special_cols = min(4, max(2, len(special_lines) // 5 + 1))  # At least 2 columns, at most 4
+        
+        if walker_delta_lines:
+            # Remove legend from inside the plot and place it at the bottom
+            first_legend = fig.legend(
+                handles=walker_delta_lines,
+                labels=walker_delta_labels,
+                title="Walker-Delta Patterns",
+                fontsize=9,  # Slightly larger for better readability with fewer columns
+                loc='lower center',
+                bbox_to_anchor=(0.5, 0),
+                ncol=walker_cols
+            )
+        
+        if special_lines:
+            # Calculate appropriate vertical position for second legend
+            # The more rows in the first legend, the lower the second legend needs to be
+            walker_rows = (len(walker_delta_lines) + walker_cols - 1) // walker_cols if walker_delta_lines else 0
+            legend_y_pos = -0.05
+            
+            # Adjust position based on rows in first legend - more space needed with fewer columns
+            if walker_rows > 0:
+                if walker_rows <= 2:
+                    legend_y_pos = -0.08
+                elif walker_rows <= 4:
+                    legend_y_pos = -0.11
+                elif walker_rows <= 6:
+                    legend_y_pos = -0.14
+                elif walker_rows <= 8:
+                    legend_y_pos = -0.17
+                elif walker_rows <= 10:
+                    legend_y_pos = -0.20
+                else:
+                    legend_y_pos = -0.23
+                
+            second_legend = fig.legend(
+                handles=special_lines,
+                labels=special_labels,
+                title="Special Patterns",
+                fontsize=9,  # Slightly larger for better readability with fewer columns
+                loc='lower center',
+                bbox_to_anchor=(0.5, legend_y_pos),
+                ncol=special_cols
+            )
         
         # Add labels and styling for bottom plot (overlap percentage)
-        ax2.set_xlabel("Number of satellites in constellation")
-        ax2.set_ylabel("Overlap percentage [%]")
+        ax2.set_xlabel("Number of satellites in constellation", fontsize=11)
+        ax2.set_ylabel("Overlap percentage [%]", fontsize=11)
         ax2.grid(True, alpha=0.3)
         
-        # Add annotations for highest values
-        for i, pat in enumerate(patterns_to_plot):
-            time_data = pattern_visibility_data[pat]['total_time']
-            overlap_data = pattern_visibility_data[pat]['overlap']
-            satellites = pattern_num_satellites[pat]
-            
-            # Find the maximum visibility time
-            max_time_idx = np.argmax(time_data)
-            max_time = time_data[max_time_idx]
-            max_time_sats = satellites[max_time_idx]
-            
-            # Find the maximum overlap percentage
-            max_overlap_idx = np.argmax(overlap_data)
-            max_overlap = overlap_data[max_overlap_idx]
-            max_overlap_sats = satellites[max_overlap_idx]
-            
-            # Annotate maximum points
-            ax1.annotate(
-                f"{max_time:.1f}hr",
-                xy=(max_time_sats, max_time),
-                xytext=(5, 5),
-                textcoords="offset points",
-                fontsize=8,
-                color=pattern_colors[i % len(pattern_colors)]
-            )
-            
-            ax2.annotate(
-                f"{max_overlap:.1f}%",
-                xy=(max_overlap_sats, max_overlap),
-                xytext=(5, 5),
-                textcoords="offset points",
-                fontsize=8,
-                color=pattern_colors[i % len(pattern_colors)]
-            )
+        # Removed annotations for highest values to avoid covering data points
         
         # Add a secondary y-axis for percentage of simulation time
         total_simulation_time_hr = n_periods * (orbital_period / 3600)  # in hours
@@ -864,12 +1035,76 @@ if __name__ == "__main__":
         # Set the secondary y-axis limits to match the left axis, but as percentage
         left_min, left_max = ax1.get_ylim()
         ax1b.set_ylim(left_min / total_simulation_time_hr * 100, left_max / total_simulation_time_hr * 100)
-        ax1b.set_ylabel("Total time with\nat least one visible sat [% of propagation time]")
+        ax1b.set_ylabel("Total time with\nat least one visible sat [% of propagation time]", fontsize=11)
         ax1b.grid(False)  # Don't show grid for secondary axis
 
-        plt.tight_layout()
+        # Add pattern count information to the plot
+        ax1.text(
+            0.02, 0.95, 
+            f"Total patterns: {len(patterns_to_plot)}", 
+            transform=ax1.transAxes,
+            ha='left', va='top', fontsize=9,
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7)
+        )
+        
+        # Improve tick label size
+        for ax in [ax1, ax2, ax1b]:
+            ax.tick_params(axis='both', which='major', labelsize=10)
+        
+        # Calculate extra space needed for legends based on number of patterns and columns
+        legend_space = 0.05  # Default space for legends
+        
+        # Determine total number of legend rows needed (based on number of patterns and columns)
+        total_patterns = len(patterns_to_plot)
+        wd_patterns = len(walker_delta_lines)
+        special_patterns = len(special_lines)
+        
+        # Calculate number of columns that will be used - limited to max 4 cols for readability
+        walker_cols = min(4, max(2, wd_patterns // 10 + 2))  # At least 2 columns, at most 4
+        special_cols = min(4, max(2, special_patterns // 5 + 1))  # At least 2 columns, at most 4
+        
+        # Calculate rows needed (ceiling division)
+        walker_rows = (wd_patterns + walker_cols - 1) // walker_cols if wd_patterns > 0 else 0
+        special_rows = (special_patterns + special_cols - 1) // special_cols if special_patterns > 0 else 0
+        
+        # Adjust legend space based on number of rows
+        total_rows = walker_rows + special_rows
+        
+        if total_rows > 15:
+            legend_space = 0.30  # Increased for more rows due to fewer columns
+        elif total_rows > 12:
+            legend_space = 0.25
+        elif total_rows > 9:
+            legend_space = 0.20
+        elif total_rows > 6:
+            legend_space = 0.15
+        elif total_rows > 4:
+            legend_space = 0.11
+        elif total_rows > 2:
+            legend_space = 0.07
+        elif total_rows > 0:
+            legend_space = 0.05
+        
+        # Add extra space for titles and padding between legend groups
+        if special_lines and walker_delta_lines:
+            legend_space += 0.05
+            
+        print(f"Debug: Number of patterns: {total_patterns} (WD: {wd_patterns}, Special: {special_patterns})")
+        print(f"Debug: Legend rows: {total_rows} (WD: {walker_rows} in {walker_cols} cols, Special: {special_rows} in {special_cols} cols)")
+        print(f"Debug: Legend space: {legend_space}")
+            
+        # Adjust spacing between subplots - leave space at bottom for legends
+        plt.tight_layout(rect=[0, legend_space, 1, 0.98])
         
         # Save the comparison plot with secondary axis
         filename = f"plots/visibility/PatternComparison/{n_periods}T/PatternComparison_{gs}_step{step}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        
+        # For large numbers of patterns, don't use bbox_inches='tight' to avoid cropping legends
+        if len(patterns_to_plot) > 25:
+            # Increase figure size for better legend accommodation
+            fig.set_size_inches(12, 12)
+            # Save without tight bbox to ensure legends are included
+            plt.savefig(filename, dpi=300)
+        else:
+            plt.savefig(filename, dpi=300, bbox_inches='tight')
