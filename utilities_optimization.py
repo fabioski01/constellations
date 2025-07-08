@@ -225,6 +225,9 @@ class ConstellationOptimizer:
         self.best_score = -np.inf
         self.optimization_history = []
         
+        # Initialize operational cost details storage for debugging
+        self._operational_cost_details = {}
+        
     def _create_orbital_parameters(self, params):
         """
         Create orbital parameters dictionary from optimization parameters.
@@ -270,6 +273,15 @@ class ConstellationOptimizer:
         if self.pattern_type == "Walker-Delta":
             pattern_params['P'] = int(round(params[6]))
             pattern_params['F'] = int(round(params[7]))
+            
+            # Ensure P and F are valid values
+            pattern_params['P'] = max(1, pattern_params['P'])
+            pattern_params['F'] = min(max(1, pattern_params['F']), pattern_params['P']-1)
+            
+            # Walker-Delta requires: 
+            # 1. T (total satellites) divisible by P (number of planes)
+            # 2. T (total satellites) divisible by F (phasing parameter)
+            # We'll check these constraints in the objective function
         
         return num_satellites, orbital_parameters, pattern_params
     
@@ -326,6 +338,10 @@ class ConstellationOptimizer:
                 # Check if number of satellites is compatible with P
                 if num_satellites < P or num_satellites % P != 0:
                     return 1e10
+                    
+                # Check if number of satellites (T) is divisible by F
+                if num_satellites % F != 0:
+                    return 1e10  # Total number of satellites (T) must be divisible by phasing (F)
                     
                 # Create constellation
                 const = Constellation(
@@ -410,11 +426,17 @@ class ConstellationOptimizer:
             else:
                 cost_score = 1.0  # No cost consideration
             
-            # Final combined score
-            total_weight = 1.0 + (self.science_weight if self.science_weight > 0 else 0)
+            # Final combined score - properly weighted average to ensure score between 0 and 1
+            coverage_weight = self.local_weight + self.regional_weight + self.global_weight
+            cost_weight = self.satellite_cost_weight + self.operational_cost_weight + self.launch_cost_weight
+            
+            # Calculate total weight to normalize the final score
+            total_weight = coverage_weight + cost_weight + (self.science_weight if self.science_weight > 0 else 0)
+            
+            # Weighted average of all component scores
             combined_score = (
-                coverage_score + 
-                cost_score + 
+                coverage_weight * coverage_score + 
+                cost_weight * cost_score + 
                 (self.science_weight * science_score if self.science_weight > 0 else 0)
             ) / total_weight
             
@@ -490,7 +512,9 @@ class ConstellationOptimizer:
         # Cap at 1.0 (full coverage)
         return min(coverage_estimate, 1.0)
         
-    def optimize(self, method='differential_evolution', max_iter=50, popsize=15):
+    def optimize(self, method='differential_evolution', max_iter=50, popsize=15, strategy='best1bin', 
+                 mutation=(0.5, 0.7), recombination=0.7, seed=None, early_stopping=True, patience=20, 
+                 improvement_threshold=0.001):
         """
         Run the optimization process.
         
@@ -502,6 +526,26 @@ class ConstellationOptimizer:
             Maximum number of iterations
         popsize : int
             Population size for evolutionary algorithms
+        strategy : str
+            Differential evolution strategy. Options:
+            - 'best1bin': Uses best solution as base with one difference vector (faster convergence, less exploration)
+            - 'rand1bin': Uses random solution as base with one difference vector (more exploration)
+            - 'rand2bin': Uses random solution as base with two difference vectors (most exploration)
+            - 'randtobest1bin': Combination of rand1bin and best1bin (balanced)
+        mutation : float or tuple(float, float)
+            Mutation constant. If specified as a tuple (min, max), adaptive mutation is used.
+            Larger values (0.8-1.0) give more exploration, smaller values more exploitation.
+        recombination : float
+            Recombination probability, between 0 and 1. Higher values mean more mixing.
+        seed : int, optional
+            Random seed for reproducibility. Set to a specific value for repeatable results,
+            or leave as None for different results each run.
+        early_stopping : bool, optional
+            Whether to use early stopping to terminate optimization when no improvement is detected.
+        patience : int, optional
+            Number of iterations to wait for improvement before early stopping.
+        improvement_threshold : float, optional
+            Minimum improvement required to reset early stopping counter.
         
         Returns:
         --------
@@ -517,7 +561,7 @@ class ConstellationOptimizer:
         # Define parameter bounds
         bounds = [
             (1, 100),             # num_satellites (integer between 1 and 100)
-            (6500, 8000),         # semi_major_axis (km)
+            (6500, 8500),         # semi_major_axis (km)
             (0, 0.01),            # eccentricity (close to circular)
             (0, 90),              # inclination (deg)
             (0, 360),             # RAAN (deg)
@@ -531,6 +575,38 @@ class ConstellationOptimizer:
         
         # Select optimization algorithm
         if method == 'differential_evolution':
+            # If early stopping is enabled, create a callback function to monitor progress
+            if early_stopping:
+                # Create local variables for tracking progress
+                best_score_so_far = float('-inf')
+                no_improvement_count = 0
+                
+                def callback(xk, convergence=0):
+                    nonlocal best_score_so_far, no_improvement_count
+                    # Get current best score (convert to positive since our objective returns negative)
+                    current_score = -self.objective_function(xk)
+                    
+                    # Check if we have an improvement
+                    if current_score > best_score_so_far + improvement_threshold:
+                        best_score_so_far = current_score
+                        no_improvement_count = 0
+                    else:
+                        no_improvement_count += 1
+                    
+                    # Print progress update every 10 iterations
+                    if len(self.optimization_history) % 10 == 0:
+                        print(f"Iteration: {len(self.optimization_history)}, Score: {current_score:.4f}")
+                    
+                    # Stop if no improvement for 'patience' iterations
+                    if no_improvement_count >= patience:
+                        print(f"\nEarly stopping triggered after {no_improvement_count} iterations without improvement.")
+                        print(f"Best score found: {best_score_so_far:.4f}")
+                        return True
+                    return False
+            else:
+                callback = None
+                
+            # Configure and run differential evolution
             result = optimize.differential_evolution(
                 self.objective_function,
                 bounds,
@@ -538,7 +614,13 @@ class ConstellationOptimizer:
                 popsize=popsize,
                 tol=0.01,
                 polish=True,
-                strategy='best1bin'  # Use best1bin strategy for better convergence
+                mutation=mutation,       # Control exploration vs exploitation
+                recombination=recombination,  # Control mixing
+                strategy=strategy,       # Strategy for creating new candidates
+                updating='deferred',     # Update the population after a complete iteration
+                init='random',          # Random initialization of population
+                seed=seed,             # Optional seed for reproducibility
+                callback=callback       # Early stopping callback
             )
         elif method == 'dual_annealing':
             result = optimize.dual_annealing(
@@ -560,17 +642,54 @@ class ConstellationOptimizer:
         if self.pattern_type == "Walker-Delta":
             pattern_params['P'] = int(round(pattern_params['P']))
             pattern_params['F'] = int(round(pattern_params['F']))
+            
+            # Ensure F is a valid value for the Walker-Delta pattern
+            # F must be between 0 and P-1, and T (number of satellites) must be divisible by F
+            if pattern_params['F'] == 0:
+                pattern_params['F'] = 1
+            
+            # Ensure P is at least 1
+            pattern_params['P'] = max(1, pattern_params['P'])
+            
+            # Ensure F is between 1 and P-1
+            pattern_params['F'] = min(max(1, pattern_params['F']), pattern_params['P'] - 1)
+            
+            # Adjust number of satellites to ensure it's divisible by both P and F
+            # First make it divisible by P
+            if num_satellites % pattern_params['P'] != 0:
+                # Round to the nearest multiple of P
+                num_satellites = pattern_params['P'] * round(num_satellites / pattern_params['P'])
+                num_satellites = max(pattern_params['P'], num_satellites)  # At least P satellites
+            
+            # Now ensure it's also divisible by F
+            # Find the least common multiple of P and F
+            def gcd(a, b):
+                while b:
+                    a, b = b, a % b
+                return a
+            
+            def lcm(a, b):
+                return a * b // gcd(a, b)
+            
+            lcm_value = lcm(pattern_params['P'], pattern_params['F'])
+            
+            # Make the number of satellites a multiple of the LCM
+            if num_satellites % lcm_value != 0:
+                num_satellites = lcm_value * ((num_satellites + lcm_value // 2) // lcm_value)
+                num_satellites = max(lcm_value, num_satellites)  # At least lcm(P,F) satellites
         
         print("\nOptimization Results:")
         print(f"Number of satellites: {num_satellites}")
         print(f"Orbital Parameters: {orbital_parameters}")
         if pattern_params:
             print(f"Pattern Parameters: {pattern_params}")
-        print(f"Best Score: {-result.fun}")
+        # Convert back to positive score for reporting (the original minimization is done on -combined_score)
+        best_score = -result.fun
+        print(f"Best Score: {best_score}")
         print(f"Success: {result.success}")
         print(f"Message: {result.message}")
         
-        return orbital_parameters, pattern_params, num_satellites, -result.fun
+        return orbital_parameters, pattern_params, num_satellites, best_score
     
     def plot_optimization_history(self):
         """Plot the optimization history to see convergence."""
@@ -579,12 +698,14 @@ class ConstellationOptimizer:
             return
         
         # Extract scores from history
-        scores = [-score for _, score in self.optimization_history]
+        # Each item in history is (params, combined_score, component_scores)
+        # Note: we use the original positive scores for plotting (before negation for minimization)
+        scores = [item[1] for item in self.optimization_history]
         
         plt.figure(figsize=(10, 6))
         plt.plot(scores, 'o-')
         plt.xlabel('Evaluation Number')
-        plt.ylabel('Objective Function (higher is better)')
+        plt.ylabel('Combined Score (higher is better)')
         plt.title('Optimization Progress')
         plt.grid(True)
         
@@ -592,7 +713,7 @@ class ConstellationOptimizer:
         filename = f"plots/optimization/optimization_history.png"
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         plt.savefig(filename)
-        plt.show()
+        # plt.show()
     
     def _calculate_local_coverage(self, positions, time_stamps, num_satellites, orbital_period):
         """
@@ -961,6 +1082,9 @@ class ConstellationOptimizer:
         Calculate operational cost score based on orbital parameters.
         Lower altitude = quicker deorbiting = lower operational cost = higher score.
         
+        Station keeping costs are weighted 3x more heavily than other operational cost components
+        to reflect their significant impact on mission operations.
+        
         Parameters:
         -----------
         orbital_parameters : dict
@@ -971,13 +1095,13 @@ class ConstellationOptimizer:
         operational_cost_score : float
             Score for operational cost (0-1, higher is better)
         """
-        # IMPROVED: More detailed operational cost model
+        # IMPROVED: More detailed operational cost model with weighted components
         
         # Main factors affecting operational costs:
-        # 1. Satellite lifetime (affected by altitude)
-        # 2. Station-keeping requirements (affected by altitude and eccentricity)
-        # 3. Ground station contact time (affected by altitude and inclination)
-        # 4. Deorbiting requirements (affected by altitude)
+        # 1. Station-keeping requirements (affected by altitude and eccentricity) - WEIGHTED 3X
+        # 2. Ground station contact time (affected by altitude and inclination)
+        # 3. Deorbiting requirements (affected by altitude)
+        # 4. Satellite lifetime (affected by altitude)
         
         # Calculate satellite lifetime based on altitude
         altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
@@ -1031,8 +1155,15 @@ class ConstellationOptimizer:
         else:
             deorbit_cost = 1.0  # Very expensive
             
-        # Annual operational cost
-        annual_cost = station_keeping_cost + contact_cost + (deorbit_cost / lifetime_years)
+        # Annual operational cost with weighted components
+        # Station keeping is weighted 3x more heavily than other components to reflect its importance
+        station_keeping_weight = 3.0
+        contact_weight = 1.0
+        deorbit_weight = 1.0
+        
+        annual_cost = (station_keeping_weight * station_keeping_cost + 
+                      contact_weight * contact_cost + 
+                      deorbit_weight * (deorbit_cost / lifetime_years)) / (station_keeping_weight + contact_weight + deorbit_weight)
         
         # Total cost over lifetime
         total_operational_cost = annual_cost * lifetime_years
@@ -1040,6 +1171,25 @@ class ConstellationOptimizer:
         # Normalize score (higher is better = lower operational cost)
         # Calibrated to give ~0.8 for 500km, ~0.5 for 1000km, ~0.2 for 2000km
         operational_cost_score = 1.0 / (1.0 + (total_operational_cost / 10.0))
+        
+        # Return score and detailed breakdown for debug purposes
+        operational_cost_details = {
+            'station_keeping_cost': station_keeping_cost,
+            'contact_cost': contact_cost,
+            'deorbit_cost': deorbit_cost,
+            'lifetime_years': lifetime_years,
+            'annual_cost': annual_cost,
+            'total_operational_cost': total_operational_cost,
+            'operational_cost_score': operational_cost_score,
+            'weights': {
+                'station_keeping_weight': 3.0,
+                'contact_weight': 1.0,
+                'deorbit_weight': 1.0
+            }
+        }
+        
+        # Store the details for access in analyze_component_scores
+        self._operational_cost_details = operational_cost_details
         
         return operational_cost_score
         
@@ -1236,7 +1386,7 @@ class ConstellationOptimizer:
         else:
             return 0.3
 
-    def analyze_component_scores(self, params=None, plot=True):
+    def analyze_component_scores(self, params=None, plot=True, verbose=True, debug=False):
         """
         Analyze the component scores of the objective function.
         If params is None, uses the best parameters found during optimization.
@@ -1249,6 +1399,10 @@ class ConstellationOptimizer:
             If None, uses the best parameters found during optimization.
         plot : bool, optional
             Whether to create visualization plots of the scores
+        verbose : bool, optional
+            Whether to print detailed analysis to console
+        debug : bool, optional
+            Whether to print extra debug information including operational cost breakdown
             
         Returns:
         --------
@@ -1332,9 +1486,31 @@ class ConstellationOptimizer:
             
         weighted_science = self.science_weight * science_score
         
-        # Calculate final score
-        total_weight = 1.0 + (self.science_weight if self.science_weight > 0 else 0)
-        final_score = (weighted_coverage + weighted_cost + (weighted_science if self.science_weight > 0 else 0)) / total_weight
+        # Calculate final score using the same formula as in objective_function for consistency
+        coverage_weight = self.local_weight + self.regional_weight + self.global_weight
+        cost_weight = self.satellite_cost_weight + self.operational_cost_weight + self.launch_cost_weight
+        total_weight = coverage_weight + cost_weight + (self.science_weight if self.science_weight > 0 else 0)
+        
+        # Need to recalculate the raw component groups with the right normalization
+        # This ensures we get the same score as calculated in the objective_function
+        coverage_score = (
+            self.local_weight * local_score * overlap_penalty +
+            self.regional_weight * regional_score +
+            self.global_weight * global_score
+        ) / coverage_weight if coverage_weight > 0 else 0
+        
+        cost_score = (
+            self.satellite_cost_weight * satellite_cost_score +
+            self.operational_cost_weight * operational_cost_score +
+            self.launch_cost_weight * launch_cost_score
+        ) / cost_weight if cost_weight > 0 else 1.0
+        
+        # Weighted average of component scores - exact same formula as in objective_function
+        final_score = (
+            coverage_weight * coverage_score + 
+            cost_weight * cost_score + 
+            (self.science_weight * science_score if self.science_weight > 0 else 0)
+        ) / total_weight
         
         # Create analysis dictionary
         analysis = {
@@ -1384,27 +1560,40 @@ class ConstellationOptimizer:
             analysis['parameters']['P'] = pattern_params['P']
             analysis['parameters']['F'] = pattern_params['F']
             
-        # Print detailed analysis
-        print("\n=== CONSTELLATION ANALYSIS ===")
-        print(f"Pattern Type: {self.pattern_type}")
-        print(f"Number of satellites: {num_satellites}")
-        if self.pattern_type == "Walker-Delta":
-            print(f"Pattern: {num_satellites}/{pattern_params['P']}/{pattern_params['F']}")
-        print(f"Altitude: {orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km")
-        print(f"Inclination: {orbital_parameters['inclination']:.1f}°")
-        
-        print("\n--- Raw Component Scores ---")
-        print(f"Local Coverage (Ground Station): {local_score:.3f}")
-        print(f"Overlap Penalty: {overlap_penalty:.3f}")
-        print(f"Regional Coverage: {regional_score:.3f}")
-        print(f"Global Coverage: {global_score:.3f}")
-        print(f"Satellite Cost: {satellite_cost_score:.3f}")
-        print(f"Operational Cost: {operational_cost_score:.3f}")
-        print(f"Launch Cost: {launch_cost_score:.3f}")
-        print(f"Science Requirements: {science_score:.3f}")
-        
-        print("\n--- Final Weighted Score ---")
-        print(f"Final Score: {final_score:.4f}")
+        # Print detailed analysis if verbose is enabled
+        if verbose:
+            print("\n=== CONSTELLATION ANALYSIS ===")
+            print(f"Pattern Type: {self.pattern_type}")
+            print(f"Number of satellites: {num_satellites}")
+            if self.pattern_type == "Walker-Delta":
+                print(f"Pattern: {num_satellites}/{pattern_params['P']}/{pattern_params['F']}")
+            print(f"Altitude: {orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km")
+            print(f"Inclination: {orbital_parameters['inclination']:.1f}°")
+            
+            print("\n--- Raw Component Scores ---")
+            print(f"Local Coverage (Ground Station): {local_score:.3f}")
+            print(f"Overlap Penalty: {overlap_penalty:.3f}")
+            print(f"Regional Coverage: {regional_score:.3f}")
+            print(f"Global Coverage: {global_score:.3f}")
+            print(f"Satellite Cost: {satellite_cost_score:.3f}")
+            print(f"Operational Cost: {operational_cost_score:.3f}")
+            print(f"Launch Cost: {launch_cost_score:.3f}")
+            print(f"Science Requirements: {science_score:.3f}")
+            
+            # Show detailed operational cost breakdown if debug is enabled
+            if debug and hasattr(self, '_operational_cost_details'):
+                print("\n--- Operational Cost Breakdown ---")
+                details = self._operational_cost_details
+                print(f"Station Keeping Cost: {details['station_keeping_cost']:.3f} (Weight: {details['weights']['station_keeping_weight']:.1f})")
+                print(f"Contact Cost: {details['contact_cost']:.3f} (Weight: {details['weights']['contact_weight']:.1f})")
+                print(f"Deorbit Cost: {details['deorbit_cost']:.3f} (Weight: {details['weights']['deorbit_weight']:.1f})")
+                print(f"Satellite Lifetime: {details['lifetime_years']:.1f} years")
+                print(f"Annual Operational Cost: {details['annual_cost']:.3f}")
+                print(f"Total Operational Cost: {details['total_operational_cost']:.3f}")
+                print(f"Final Operational Cost Score: {details['operational_cost_score']:.3f}")
+            
+            print("\n--- Final Weighted Score ---")
+            print(f"Final Score: {final_score:.4f}") # This should now match the objective function's score
         
         # Create visualization plots
         if plot:
@@ -1534,7 +1723,7 @@ class ConstellationOptimizer:
         filename = f"plots/optimization/component_scores.png"
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         plt.savefig(filename)
-        plt.show()
+        # plt.show()
         
 # Example usage
 if __name__ == "__main__":
@@ -1552,97 +1741,109 @@ if __name__ == "__main__":
         target_altitude=800.0,   # Target altitude for science requirements
     )
     
-    # Run optimization
+    # Run optimization with improved convergence settings
     orbital_params_global, pattern_params_global, num_satellites_global, best_score_global = optimizer_global.optimize(
         method='differential_evolution',
-        max_iter=30,
-        popsize=15
+        max_iter=200,                # Maximum iterations
+        popsize=15,                  # Balanced population size
+        strategy='best1bin',         # Focus on exploiting the best solution for better convergence
+        mutation=(0.5, 0.7),         # Lower mutation range for more controlled convergence
+        recombination=0.7,           # Moderate recombination for balanced exploration/exploitation
+        early_stopping=True,         # Enable early stopping
+        patience=20,                 # Stop after 20 iterations without improvement
+        improvement_threshold=0.001  # Minimum improvement to be considered significant
     )
     
     # Plot optimization history and analyze scores
     optimizer_global.plot_optimization_history()
-    optimizer_global.analyze_component_scores(plot=True)
     
-    # Example 2: Regional coverage optimization (Western US)
-    print("\n=== EXAMPLE 2: REGIONAL COVERAGE OPTIMIZATION ===")
-    # Define Western US region
-    western_us = [
-        (32.0, -125.0),  # Southwest corner
-        (32.0, -105.0),  # Southeast corner
-        (49.0, -105.0),  # Northeast corner
-        (49.0, -125.0)   # Northwest corner
-    ]
+    # Analyze component scores with detailed output to verify normalization fixes
+    print("\nVerifying score calculations:")
+    analysis = optimizer_global.analyze_component_scores(plot=True, verbose=True, debug=True)
+    print(f"Best score from optimize(): {best_score_global:.4f}")
+    print(f"Final score from analyze_component_scores(): {analysis['weighted_scores']['final_score']:.4f}")
+    print(f"These two scores should match to verify the fix worked.")
     
-    optimizer_regional = ConstellationOptimizer(
-        pattern_type="Walker-Delta",
-        local_weight=0.2,        # Some priority on ground station coverage
-        regional_weight=0.6,     # High priority on regional coverage
-        global_weight=0.2,       # Low priority on global coverage
-        satellite_cost_weight=0.5,
-        operational_cost_weight=0.2,
-        launch_cost_weight=0.3,
-        science_weight=0.0,      # No science requirements
-        regional_area=western_us
-    )
+    # # Example 2: Regional coverage optimization (Western US)
+    # print("\n=== EXAMPLE 2: REGIONAL COVERAGE OPTIMIZATION ===")
+    # # Define Western US region
+    # western_us = [
+    #     (32.0, -125.0),  # Southwest corner
+    #     (32.0, -105.0),  # Southeast corner
+    #     (49.0, -105.0),  # Northeast corner
+    #     (49.0, -125.0)   # Northwest corner
+    # ]
     
-    # Run optimization
-    orbital_params_regional, pattern_params_regional, num_satellites_regional, best_score_regional = optimizer_regional.optimize(
-        method='differential_evolution',
-        max_iter=30,
-        popsize=15
-    )
+    # optimizer_regional = ConstellationOptimizer(
+    #     pattern_type="Walker-Delta",
+    #     local_weight=0.2,        # Some priority on ground station coverage
+    #     regional_weight=0.6,     # High priority on regional coverage
+    #     global_weight=0.2,       # Low priority on global coverage
+    #     satellite_cost_weight=0.5,
+    #     operational_cost_weight=0.2,
+    #     launch_cost_weight=0.3,
+    #     science_weight=0.0,      # No science requirements
+    #     regional_area=western_us
+    # )
     
-    # Analyze regional optimization results
-    optimizer_regional.analyze_component_scores(plot=True)
+    # # Run optimization
+    # orbital_params_regional, pattern_params_regional, num_satellites_regional, best_score_regional = optimizer_regional.optimize(
+    #     method='differential_evolution',
+    #     max_iter=30,
+    #     popsize=15
+    # )
     
-    # Example 3: Custom regional area (Europe)
-    print("\n=== EXAMPLE 3: CUSTOM REGION OPTIMIZATION (EUROPE) ===")
-    # Define Europe region
-    europe_region = [
-        (35.0, -10.0),   # Southwest corner
-        (35.0, 40.0),    # Southeast corner
-        (70.0, 40.0),    # Northeast corner
-        (70.0, -10.0)    # Northwest corner
-    ]
+    # # Analyze regional optimization results
+    # optimizer_regional.analyze_component_scores(plot=True)
     
-    # Science-focused mission with specific altitude requirements
-    optimizer_custom = ConstellationOptimizer(
-        pattern_type="Walker-Delta",
-        local_weight=0.1,        # Low priority on ground station coverage
-        regional_weight=0.4,     # Medium priority on regional coverage
-        global_weight=0.2,       # Low priority on global coverage
-        satellite_cost_weight=0.1,
-        operational_cost_weight=0.0,  # Not concerned with operational costs
-        launch_cost_weight=0.1,
-        science_weight=0.5,      # High priority on science requirements
-        target_altitude=600.0,   # Lower target altitude for specific science instruments
-        target_altitude_tolerance=30.0,  # Tighter tolerance
-        regional_area=europe_region
-    )
+    # # Example 3: Custom regional area (Europe)
+    # print("\n=== EXAMPLE 3: CUSTOM REGION OPTIMIZATION (EUROPE) ===")
+    # # Define Europe region
+    # europe_region = [
+    #     (35.0, -10.0),   # Southwest corner
+    #     (35.0, 40.0),    # Southeast corner
+    #     (70.0, 40.0),    # Northeast corner
+    #     (70.0, -10.0)    # Northwest corner
+    # ]
     
-    # Run optimization
-    orbital_params_custom, pattern_params_custom, num_satellites_custom, best_score_custom = optimizer_custom.optimize(
-        method='differential_evolution',
-        max_iter=30,
-        popsize=15
-    )
+    # # Science-focused mission with specific altitude requirements
+    # optimizer_custom = ConstellationOptimizer(
+    #     pattern_type="Walker-Delta",
+    #     local_weight=0.1,        # Low priority on ground station coverage
+    #     regional_weight=0.4,     # Medium priority on regional coverage
+    #     global_weight=0.2,       # Low priority on global coverage
+    #     satellite_cost_weight=0.1,
+    #     operational_cost_weight=0.0,  # Not concerned with operational costs
+    #     launch_cost_weight=0.1,
+    #     science_weight=0.5,      # High priority on science requirements
+    #     target_altitude=600.0,   # Lower target altitude for specific science instruments
+    #     target_altitude_tolerance=30.0,  # Tighter tolerance
+    #     regional_area=europe_region
+    # )
     
-    # Analyze custom optimization results
-    optimizer_custom.analyze_component_scores(plot=True)
+    # # Run optimization
+    # orbital_params_custom, pattern_params_custom, num_satellites_custom, best_score_custom = optimizer_custom.optimize(
+    #     method='differential_evolution',
+    #     max_iter=30,
+    #     popsize=15
+    # )
     
-    # Compare all three optimized constellations
-    print("\n=== COMPARISON OF OPTIMIZED CONSTELLATIONS ===")
-    print(f"Global:   {num_satellites_global} satellites, " + 
-          f"altitude: {orbital_params_global['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
-          f"inclination: {orbital_params_global['inclination']:.1f}°, " +
-          f"score: {best_score_global:.4f}")
+    # # Analyze custom optimization results
+    # optimizer_custom.analyze_component_scores(plot=True)
+    
+    # # Compare all three optimized constellations
+    # print("\n=== COMPARISON OF OPTIMIZED CONSTELLATIONS ===")
+    # print(f"Global:   {num_satellites_global} satellites, " + 
+    #       f"altitude: {orbital_params_global['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
+    #       f"inclination: {orbital_params_global['inclination']:.1f}°, " +
+    #       f"score: {best_score_global:.4f}")
           
-    print(f"Regional: {num_satellites_regional} satellites, " + 
-          f"altitude: {orbital_params_regional['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
-          f"inclination: {orbital_params_regional['inclination']:.1f}°, " +
-          f"score: {best_score_regional:.4f}")
+    # print(f"Regional: {num_satellites_regional} satellites, " + 
+    #       f"altitude: {orbital_params_regional['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
+    #       f"inclination: {orbital_params_regional['inclination']:.1f}°, " +
+    #       f"score: {best_score_regional:.4f}")
           
-    print(f"Custom:   {num_satellites_custom} satellites, " + 
-          f"altitude: {orbital_params_custom['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
-          f"inclination: {orbital_params_custom['inclination']:.1f}°, " +
-          f"score: {best_score_custom:.4f}")
+    # print(f"Custom:   {num_satellites_custom} satellites, " + 
+    #       f"altitude: {orbital_params_custom['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
+    #       f"inclination: {orbital_params_custom['inclination']:.1f}°, " +
+    #       f"score: {best_score_custom:.4f}")
