@@ -1,6 +1,6 @@
 from utilities import CoordinateConversion, orbiter, TimeConversion
 from utilities_constellations import Constellation, create_label_from_satrec
-from utilities_coverage import Coverage, get_ground_station_coordinates
+from utilities_coverage import Coverage, get_ground_station_coordinates, get_available_regions
 import constants
 
 from datetime import datetime, timezone
@@ -25,16 +25,32 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 
 ### INPUTS ###
 ### SELECT TOTAL NUMBER OF SATELLITES ###
-# num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for P=4
-# num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for P=3
-# num_satellites_list = [4]
-num_satellites_list = list(range(1, 101))
+# Switches for plotting
+PLOT_GROUND_TRACKS = False
+PLOT_INERTIAL_GROUND_TRACKS = False # for debugging walker spaced by mean anomaly
+PLOT_INERTIAL_3D = False
+PLOT_COVERAGE = False
+COMPUTE_VISIBILITY = False
+PLOT_VISIBILITY = False # needs COMPUTE_VISIBILITY to be True
+PLOT_DATA_COMPARISON = False # needs COMPUTE_VISIBILITY to be True
+PLOT_PATTERN_VISIBILITY_COMPARISON = False # needs COMPUTE_VISIBILITY to be True
+COMPUTE_GLOBAL_COVERAGE = False # Calculate global coverage using grid-based approach
+COMPUTE_REGIONAL_COVERAGE = True
+
+if COMPUTE_GLOBAL_COVERAGE or COMPUTE_REGIONAL_COVERAGE:
+    # num_satellites_list = [4,8,16]
+    num_satellites_list = [1] # debug
+else:
+    # num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for P=4
+    # num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for P=3
+    # num_satellites_list = [4]
+    num_satellites_list = list(range(1, 101))
 
 ### SELECT ORBITAL PARAMETERS ###
 orbital_parameters = {
     'semi_major_axis':     6800.0,    # km
     'eccentricity':        0.00,    # unitless
-    'inclination':         50.0,     # deg
+    'inclination':         51.0,     # deg
     'RAAN':                0,     # deg
     'argument_of_periapsis': 250.0,  # deg     
     'true_anomaly':        0.0,      # deg
@@ -46,16 +62,26 @@ orbital_parameters = {
 epoch = datetime(2025,5,5,0,0,0)
 
 ### SELECT A PATTERN ###
-# Generate Walker-Delta patterns with P values and F values from 1 to P-1
-pattern_list = []
-for P in range(1, 10):  # P values from 1 to 10
-    for F in range(1, P):  # F values from 1 to P-1 (F must be less than P)
-        pattern_list.append(("Walker-Delta", {"P": P, "F": F}))
+if COMPUTE_GLOBAL_COVERAGE or COMPUTE_REGIONAL_COVERAGE:
+    pattern_list = [
+        ("Walker-Delta", {"P": 1, "F": 1}),
+        ("Walker-Delta", {"P": 2, "F": 1}),
+        ("Walker-Delta", {"P": 4, "F": 1}),
+        ("Walker-Delta", {"P": 8, "F": 1})
+    ]
+else:
+    # Generate Walker-Delta patterns with P values and F values from 1 to P-1
+    pattern_list = []
+    for P in range(1, 10):  # P values from 1 to 10
+        for F in range(1, P):  # F values from 1 to P-1 (F must be less than P)
+            pattern_list.append(("Walker-Delta", {"P": P, "F": F}))
 
-# For P=1, there's no valid F value, so add this manually
-pattern_list.append(("Walker-Delta", {"P": 1, "F": 1}))
-# pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
-# pattern_list = [("Walker-Delta", {"P": 1, "F": 1}), ("Walker-Delta", {"P": 2, "F": 1}), ("Walker-Delta", {"P": 3, "F": 1}), ("Walker-Delta", {"P": 4, "F": 1}), ("Walker-Delta", {"P": 5, "F": 1}), ("Walker-Delta", {"P": 6, "F": 1}), ("Walker-Delta", {"P": 7, "F": 1}), ("Walker-Delta", {"P": 8, "F": 1}), ("Walker-Delta", {"P": 9, "F": 1}), ("Walker-Delta", {"P": 10, "F": 1}),]
+    # For P=1, there's no valid F value, so add this manually
+    pattern_list.append(("Walker-Delta", {"P": 1, "F": 1}))
+
+    # pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
+    # pattern_list = [("Walker-Delta", {"P": 1, "F": 1}), ("Walker-Delta", {"P": 2, "F": 1}), ("Walker-Delta", {"P": 3, "F": 1}), ("Walker-Delta", {"P": 4, "F": 1}), ("Walker-Delta", {"P": 5, "F": 1}), ("Walker-Delta", {"P": 6, "F": 1}), ("Walker-Delta", {"P": 7, "F": 1}), ("Walker-Delta", {"P": 8, "F": 1}), ("Walker-Delta", {"P": 9, "F": 1}), ("Walker-Delta", {"P": 10, "F": 1}),]
+
 pattern_params = {} # saving parameters for each pattern for plotting outside the pattern loop
 
 ### INPUT for visibility plots ###
@@ -71,16 +97,6 @@ fovs = [170] # degrees, field of view of the sensor
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 step =  105 # Time step input
-
-# Switches for plotting
-PLOT_GROUND_TRACKS = False
-PLOT_INERTIAL_GROUND_TRACKS = False # for debugging walker spaced by mean anomaly
-PLOT_INERTIAL_3D = False
-PLOT_COVERAGE = False
-COMPUTE_VISIBILITY = True
-PLOT_VISIBILITY = False # needs COMPUTE_VISIBILITY to be True
-PLOT_DATA_COMPARISON = False # needs COMPUTE_VISIBILITY to be True
-PLOT_PATTERN_VISIBILITY_COMPARISON = True # needs COMPUTE_VISIBILITY to be True
 
 # Estimate one period index to stop ground track after one orbit
 a = orbital_parameters['semi_major_axis']  # km from Earth's center
@@ -477,6 +493,242 @@ if __name__ == "__main__":
                 plt.savefig(filename)
 
                 pass
+                
+            if COMPUTE_GLOBAL_COVERAGE:
+                #############################################
+                ### Compute global coverage using grid-based approach
+                print(f"Computing global coverage for {num_satellites} satellites...")
+                
+                n_periods = 1  # Number of periods to consider for coverage computation
+
+                SHOW_GROUND_TRACKS_ON_COVERAGE = True # Show satellite ground tracks on coverage plots (for debugging)
+
+                # Create a Coverage object
+                coverage_obj = Coverage(orbital_parameters, positions=positions, times=time_stamps)
+
+                # Extract orbital parameters for the subtitle
+                orbital_params_str = (
+                    f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                    f"e={orbital_parameters['eccentricity']}, "
+                    f"i={orbital_parameters['inclination']}°, "
+                    f"RAAN varies, "
+                    f"ω={orbital_parameters['argument_of_periapsis']}°"
+                )
+                # Define coverage parameters for computation
+                for masking_angle in masking_angles:
+                    for fov in fovs:
+                        print(f"\nComputing global coverage with masking angle: {masking_angle}° and FOV: {fov}°")
+                        
+                        # Compute global coverage
+                        global_coverage = coverage_obj.compute_global_coverage(
+                            positions, 
+                            time_stamps, 
+                            orbital_periods=n_periods,  # Consider one orbital period
+                            masking_angle=masking_angle, 
+                            fov=fov
+                        )
+                        
+                        # Print coverage statistics
+                        constellation_coverage = global_coverage['constellation_coverage']
+                        print(f"Global constellation coverage: {constellation_coverage:.2f}%")
+                        
+                        # Print individual satellite coverage
+                        if len(global_coverage['single_sat_coverage']) > 1:
+                            print(f"Individual satellite coverages:")
+                            for sat_idx, sat_coverage in enumerate(global_coverage['single_sat_coverage']):
+                                print(f"  Satellite {sat_idx+1}: {sat_coverage:.2f}%")
+                            
+                            # Calculate and print statistical measures
+                            mean_coverage = np.mean(global_coverage['single_sat_coverage'])
+                            median_coverage = np.median(global_coverage['single_sat_coverage'])
+                            min_coverage = np.min(global_coverage['single_sat_coverage'])
+                            max_coverage = np.max(global_coverage['single_sat_coverage'])
+                            std_coverage = np.std(global_coverage['single_sat_coverage'])
+                            
+                            print(f"Coverage statistics:")
+                            print(f"  Mean: {mean_coverage:.2f}%")
+                            print(f"  Median: {median_coverage:.2f}%")
+                            print(f"  Min: {min_coverage:.2f}%")
+                            print(f"  Max: {max_coverage:.2f}%")
+                            print(f"  Std dev: {std_coverage:.2f}%")
+                        
+                        # Compute grid metrics
+                        grid = global_coverage['grid']
+                        grid_density = grid['density']
+                        num_lat_cells = len(grid['lat'])
+                        num_lon_cells = len(grid['lon'])
+                        total_cells = num_lat_cells * num_lon_cells
+                        covered_cells = np.sum(global_coverage['coverage_map'])
+                        
+                        print(f"Grid information:")
+                        print(f"  Density: {grid_density:.2f}°")
+                        print(f"  Grid size: {num_lat_cells} × {num_lon_cells} = {total_cells} cells")
+                        print(f"  Covered cells: {covered_cells} ({covered_cells/total_cells*100:.2f}%)")
+                        
+                        if pattern == 'Walker-Delta':
+                            title = f"Grid-based global coverage of a {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {constellation_coverage:.2f}%"
+                        elif pattern == 'Walker-Delta-SinglePlane':
+                            orbital_params_str = (
+                                f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                                f"e={orbital_parameters['eccentricity']}, "
+                                f"i={orbital_parameters['inclination']}°, "
+                                f"RAAN={orbital_parameters['RAAN']}°, "
+                                f"ω={orbital_parameters['argument_of_periapsis']}°"
+                            )     
+                            title = f"Grid-based global coverage of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {constellation_coverage:.2f}%"
+                        else:
+                            title = f"Grid-based global coverage of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {constellation_coverage:.2f}%"
+
+                        # Plot the coverage map with binary colormap (covered or not covered)
+                        fig = Coverage.plot_coverage_map(global_coverage, title=title)
+                        
+                        # Add ground tracks if enabled
+                        if SHOW_GROUND_TRACKS_ON_COVERAGE:
+                            ax = fig.axes[0]  # Get the main plot axis
+                            print("Adding ground tracks to coverage plot for debugging...")
+                            
+                            # Determine how many time steps to include
+                            idx_oneperiod = np.searchsorted(time_stamps, orbital_period)
+                            idx_max = idx_oneperiod  # One orbital period
+                            
+                            for satellite in range(num_satellites):
+                                # Convert to ECEF and then to geodetic coordinates
+                                ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(
+                                    positions[satellite, :idx_max, :]*1000, time_stamps[:idx_max])
+                                ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) 
+                                                     for x, y, z in ECEF_cartesian_orbit]
+                                
+                                # Extract coordinates
+                                latitudes, longitudes, altitudes = zip(*ECEF_geodetic_orbit)
+                                
+                                # Handle longitude discontinuities
+                                unwrapped_longitudes = np.unwrap(np.radians(longitudes))
+                                normalized_longitudes = np.degrees(unwrapped_longitudes)
+                                
+                                # Plot the ground track with dotted line
+                                ax.plot(
+                                    normalized_longitudes,
+                                    latitudes,
+                                    linestyle=':', 
+                                    linewidth=1,
+                                    color='red',  # Use a visible color
+                                    transform=ccrs.PlateCarree(),
+                                    alpha=0.7,  # Slightly transparent
+                                    zorder=5  # To ensure it's drawn on top
+                                )
+                        
+                        # Create directory and save the plot
+                        if pattern == 'Walker-Delta':
+                            filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/global/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/1T/constellation_coverage_step{step}_N{num_satellites}.png"
+                        else:
+                            filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/global/{pattern}/1T/constellation_coverage_step{step}_N{num_satellites}.png"
+
+                        os.makedirs(os.path.dirname(filename), exist_ok=True)
+                        fig.savefig(filename)
+                        plt.close(fig)
+
+            if COMPUTE_REGIONAL_COVERAGE:
+                #############################################
+                ### Compute regional coverage using grid-based approach
+                
+                n_periods = 1  # Number of periods to consider for coverage computation
+
+                SHOW_GROUND_TRACKS_ON_COVERAGE = True # Show satellite ground tracks on coverage plots (for debugging)
+
+                # Create a Coverage object
+                coverage_obj = Coverage(orbital_parameters, positions=positions, times=time_stamps)
+                
+                # Compute and plot regional coverage for specific regions
+                # regions_to_analyze = ["Western_US", "Europe", "Japan"]
+                regions_to_analyze = ["Western_US", "Eastern_US", "Continental_US", "Europe", "East_Asia", "South_America", "Africa", "Australia", "Arctic", "Antarctica", "Japan", "Italy", "United_Kingdom", "India", "Brazil", "Turkey", "Central_Mexico", "Alaska", "Hawaii", "Iran", "Nepal", "Philippines", "New_Zealand", "Chile", "Indonesia", "Greece", "Central_China", "Kamchatka", "Caribbean", "Eastern_Europe", "Central_Asia_Eastern_China", "Western_South_America_Coast", "West_Coast_US", "California", "Mediterranean", "Iberian_Peninsula", "Southeast_Asia", "Middle_East", "North_Africa", "Great_Lakes"]
+
+                print(f"\nComputing regional coverage for {num_satellites} satellites for regions: {regions_to_analyze}")
+
+                # Extract orbital parameters for the subtitle
+                orbital_params_str = (
+                    f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                    f"e={orbital_parameters['eccentricity']}, "
+                    f"i={orbital_parameters['inclination']}°, "
+                    f"RAAN varies, "
+                    f"ω={orbital_parameters['argument_of_periapsis']}°"
+                )
+                
+                for masking_angle in masking_angles:
+                    for fov in fovs:
+                        for region in regions_to_analyze:
+                            print(f"  Analyzing {region}...")
+                            regional_result = coverage_obj.compute_regional_coverage(
+                                positions, 
+                                time_stamps, 
+                                region, 
+                                orbital_periods=1, 
+                                masking_angle=masking_angle, 
+                                fov=fov
+                            )
+                    
+                            regional_coverage = regional_result['constellation_coverage']
+                            print(f"    {region} coverage: {regional_coverage:.2f}%")
+                            
+                            if pattern == 'Walker-Delta':
+                                title = f"Grid-based regional coverage over the region of {region} of a\n{pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {regional_coverage:.2f}%"
+                            elif pattern == 'Walker-Delta-SinglePlane':
+                                orbital_params_str = (
+                                    f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                                    f"e={orbital_parameters['eccentricity']}, "
+                                    f"i={orbital_parameters['inclination']}°, "
+                                    f"RAAN={orbital_parameters['RAAN']}°, "
+                                    f"ω={orbital_parameters['argument_of_periapsis']}°"
+                                )     
+                                title = f"Grid-based regional coverage over the region of {region} of a\n{pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {regional_coverage:.2f}%"
+                            else:
+                                title = f"Grid-based regional coverage over the region of {region} of a\n{pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {regional_coverage:.2f}%"
+
+                            # Plot the regional coverage
+                            fig = Coverage.plot_coverage_map(regional_result, title=title)
+                            
+                            # Add ground tracks if enabled
+                            if SHOW_GROUND_TRACKS_ON_COVERAGE:
+                                ax = fig.axes[0]  # Get the main plot axis
+                                
+                                # Determine how many time steps to include
+                                idx_oneperiod = np.searchsorted(time_stamps, orbital_period)
+                                idx_max = idx_oneperiod  # One orbital period
+                                
+                                for satellite in range(num_satellites):
+                                    # Convert to ECEF and then to geodetic coordinates
+                                    ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(
+                                        positions[satellite, :idx_max, :]*1000, time_stamps[:idx_max])
+                                    ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) 
+                                                            for x, y, z in ECEF_cartesian_orbit]
+                                    
+                                    # Extract coordinates
+                                    latitudes, longitudes, altitudes = zip(*ECEF_geodetic_orbit)
+                                    
+                                    # Handle longitude discontinuities
+                                    unwrapped_longitudes = np.unwrap(np.radians(longitudes))
+                                    normalized_longitudes = np.degrees(unwrapped_longitudes)
+                                    
+                                    # Plot the ground track with dotted line
+                                    ax.plot(
+                                        normalized_longitudes,
+                                        latitudes,
+                                        linestyle=':', 
+                                        linewidth=1,
+                                        color='red',  # Use a visible color
+                                        transform=ccrs.PlateCarree(),
+                                        alpha=0.7,  # Slightly transparent
+                                        zorder=5  # To ensure it's drawn on top
+                                    )
+                            
+                            # Create directory and save the plot
+                            if pattern == 'Walker-Delta':
+                                filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/regional/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/1T/region_{region}_coverage_step{step}_N{num_satellites}.png"
+                            else:
+                                filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/regional/{pattern}/1T/region_{region}_coverage_step{step}_N{num_satellites}.png"
+
+                            os.makedirs(os.path.dirname(filename), exist_ok=True)
+                            fig.savefig(filename)
+                            plt.close(fig)
 
             if PLOT_COVERAGE:
                 #############################################
@@ -505,7 +757,7 @@ if __name__ == "__main__":
                         ax.coastlines()
                         ax.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
 
-                    PLOT_GROUND_STATION_MARKER = True
+                        PLOT_GROUND_STATION_MARKER = True
                         
                     if PLOT_GROUND_STATION_MARKER:
                         # Plot the ground station position
