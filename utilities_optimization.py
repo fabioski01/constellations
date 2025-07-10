@@ -53,21 +53,11 @@ optimizer.analyze_component_scores(plot=True)
 
 ## References
 - Walker, J.G. "Satellite Constellations" Journal of the British Interplanetary Society, 1984
-- Wertz, J.R. "Mission Geometry: Orbit and Constellation Design and Management", 2001
+- Wertz, J.R. "Orbit and Constellation Design and Management", 2001
 - Larson, W. and Wertz, J. "Space Mission Analysis and Design", 1999
-- Ballard, A.H. "Rosette Constellations of Earth Satellites", 1980
 
 ## Author
 Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
-
-## Copyright
-Copyright © 2025 Fabio Meloni, TU Delft, and NASA Jet Propulsion Laboratory
-All rights reserved. This software is the property of the author and the organizations listed above.
-This software may not be copied, distributed, or modified without express written permission.
-For research and educational purposes only.
-
-## Version
-2.0.0 - June 2025 - Comprehensive modular optimization framework
 """
 
 import numpy as np
