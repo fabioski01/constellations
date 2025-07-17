@@ -26,10 +26,12 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 ### INPUTS ###
 ### SELECT TOTAL NUMBER OF SATELLITES ###
 # Switches for plotting
-PLOT_GROUND_TRACKS = True
-PLOT_INERTIAL_GROUND_TRACKS = True
-PLOT_INERTIAL_3D = True
+PLOT_GROUND_TRACKS = False
+PLOT_INERTIAL_GROUND_TRACKS = False
+PLOT_INERTIAL_3D = False
 PLOT_ECEF_3D = True
+n_periods_ecef3d = 6
+ANIMATE_CONSTELLATION = True
 PLOT_COVERAGE = False
 COMPUTE_VISIBILITY = False
 PLOT_VISIBILITY = False # needs COMPUTE_VISIBILITY to be True
@@ -44,7 +46,7 @@ if COMPUTE_GLOBAL_COVERAGE or COMPUTE_REGIONAL_COVERAGE:
 else:
     # num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for walker P=4
     # num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for walker P=3
-    num_satellites_list = [1,4,8] # Flower
+    num_satellites_list = [30] # Flower
     # num_satellites_list = list(range(1, 101))
 
 
@@ -60,10 +62,23 @@ else:
 #     'nddot':               1e-12,    # rev/day³
 #     'bstar':               2e-5      # 1/er
 # }
+### FLOWERS: BASIC FLOWERS ###
+# orbital_parameters = {
+#     'semi_major_axis':     20270.418,    # km
+#     'eccentricity':        0.6557478,    # unitless
+#     'inclination':         63.4,     # deg
+#     'RAAN':                0,     # deg
+#     'argument_of_periapsis': 270.0,  # deg     
+#     'true_anomaly':        0.0,      # deg
+#     'ndot':                1e-8,     # rev/day² # Includes derivatives
+#     'nddot':               1e-12,    # rev/day³
+#     'bstar':               2e-5      # 1/er
+# }
+### FLOWERS: TRE LACCI ###
 orbital_parameters = {
-    'semi_major_axis':     20270.418,    # km
-    'eccentricity':        0.6557478,    # unitless
-    'inclination':         63.4,     # deg
+    'semi_major_axis':     21133.149,    # km
+    'eccentricity':        0.2723216,    # unitless
+    'inclination':         180.0,     # deg
     'RAAN':                0,     # deg
     'argument_of_periapsis': 270.0,  # deg     
     'true_anomaly':        0.0,      # deg
@@ -71,7 +86,7 @@ orbital_parameters = {
     'nddot':               1e-12,    # rev/day³
     'bstar':               2e-5      # 1/er
 }
-h_perigee = 600  # km
+h_perigee = 9000  # km
 # compute e given hp and a
 print(f'Target e given hp of {h_perigee} km and a of {orbital_parameters["semi_major_axis"]} km', {1-((constants.EARTH_RADIUS + h_perigee) / orbital_parameters["semi_major_axis"])})
 ### SELECT EPOCH ###
@@ -85,12 +100,12 @@ pattern_list = []
 # pattern_list.append(("Flower", {"Np": 12, "Nd": 1, "Fn": 1, "Fd": 13, "Fh": 0}))    # Basic figure 8: 12-1-13-1-13, i=116.6°, ω=270°, hp=1666 km (a=8044.321 km, e=0.0000)
 # pattern_list.append(("Flower", {"Np": 4, "Nd": 1, "Fn": 1, "Fd": 5, "Fh": 0}))      # Straight line:  4-1-5-1-5, i=174.8°, ω=270°, hp=10354 km (a=16732.862 km, e=0.0000434)
 # pattern_list.append(("Flower", {"Np": 8, "Nd": 1, "Fn": 1, "Fd": 90, "Fh": 0}))     # Rings: 8-1-90-1-90, i=165°, ω=270°, hp=3000 km
-# pattern_list.append(("Flower", {"Np": 1, "Nd": 11, "Fn": 7, "Fd": 10, "Fh": 0}))    # Planar (Tre Lacci): 1-11-30-7-10, i=180°, ω=270° (a=21133.149 km, e=0.2723216, hp=9000 km)
-# Basic flower: 3-1-4-1-4 (full), 3-1-4-1-2 (not enough slots), 3-2-4-1-2 (full), 3-2-4-1-4 (empty slots), a=20270.418 km, e=0.6557478, hp=600 km
-pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 4, "Fh": 0}))      # Basic flower (full)
-pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 2, "Fh": 0}))      # Basic flower (not enough slots)
-pattern_list.append(("Flower", {"Np": 3, "Nd": 2, "Fn": 1, "Fd": 2, "Fh": 0}))      # Basic flower (full)
-pattern_list.append(("Flower", {"Np": 3, "Nd": 2, "Fn": 1, "Fd": 4, "Fh": 0}))      # Basic flower (empty slots)
+pattern_list.append(("Flower", {"Np": 1, "Nd": 11, "Fn": 7, "Fd": 10, "Fh": 0}))    # Planar (Tre Lacci): 1-11-30-7-10, i=180°, ω=270° (a=21133.149 km, e=0.2723216, hp=9000 km)
+# # Basic flower: 3-1-4-1-4 (full), 3-1-4-1-2 (not enough slots), 3-2-4-1-2 (full), 3-2-4-1-4 (empty slots), a=20270.418 km, e=0.6557478, hp=600 km
+# pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 4, "Fh": 0}))      # Basic flower (full)
+# pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 2, "Fh": 0}))      # Basic flower (not enough slots)
+# pattern_list.append(("Flower", {"Np": 3, "Nd": 2, "Fn": 1, "Fd": 2, "Fh": 0}))      # Basic flower (full)
+# pattern_list.append(("Flower", {"Np": 3, "Nd": 2, "Fn": 1, "Fd": 4, "Fh": 0}))      # Basic flower (empty slots)
 
 # pattern_list.append(("Walker-Delta", {"P": 1, "F": 1}))
 # if COMPUTE_GLOBAL_COVERAGE or COMPUTE_REGIONAL_COVERAGE:
@@ -215,16 +230,19 @@ if __name__ == "__main__":
                     continue  # Skip to the next iteration in the num_satellites loop
             
             elif pattern == "Flower":
-                try:
-                    # Create a copy of orbital_parameters to avoid modifying the original
-                    flower_orbital_params = orbital_parameters.copy()
-                    # Add Flower parameters to the orbital_parameters dictionary
-                    flower_orbital_params['Np'] = Np
-                    flower_orbital_params['Nd'] = Nd
-                    flower_orbital_params['Fn'] = Fn
-                    flower_orbital_params['Fd'] = Fd
-                    flower_orbital_params['Fh'] = Fh
-                    
+                # Create a copy of orbital_parameters to avoid modifying the original
+                flower_orbital_params = orbital_parameters.copy()
+                # Add Flower parameters to the orbital_parameters dictionary
+                flower_orbital_params['Np'] = Np # N petals
+                flower_orbital_params['Nd'] = Nd # Slots per orbit
+                flower_orbital_params['Fn'] = Fn
+                flower_orbital_params['Fd'] = Fd # N of orbits (Fn=1)
+                flower_orbital_params['Fh'] = Fh
+                tau = Np/Nd
+                if num_satellites > Nd * Fd:
+                    print(f"WARNING: Skipping Flower pattern with {num_satellites} satellites (only {Nd * Fd} slots allowed).")
+                    continue
+                try:    
                     const = Constellation(num_satellites, flower_orbital_params, epoch, pattern)
                 except ValueError as e:
                     print(f"WARNING: Skipping Flower pattern with {num_satellites} satellites: {str(e)}")
@@ -347,11 +365,12 @@ if __name__ == "__main__":
 
                 # Dynamically include orbital parameters in the title and filename
                 orbital_params_str = (
-                    f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                    f"a={orbital_parameters['semi_major_axis']:.0f}km / h_p={((1-orbital_parameters['eccentricity'])*orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS):.0f} km, "
                     f"e={orbital_parameters['eccentricity']}, "
                     f"i={orbital_parameters['inclination']}°, "
-                    f"RAAN varies by satellite, "
-                    f"ω={orbital_parameters['argument_of_periapsis']}°"
+                    f"RAAN varies, "
+                    f"ω={orbital_parameters['argument_of_periapsis']}°, \n"
+                    f'T_sidereal={orbital_period_hours} hr {orbital_period_minutes} min {orbital_period_seconds} s'
                 )
 
                 if pattern == 'Walker-Delta':
@@ -369,16 +388,17 @@ if __name__ == "__main__":
                     ax.set_title(f"Ground tracks of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
                     filename = f"plots/ground_tracks/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_RAAN{orbital_parameters['RAAN']}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                 elif pattern == "Flower":
-                    ax.set_title(
-                        f"Ground tracks of a {pattern} constellation with N={num_satellites}, Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}, during {n_periods} orbital period(s)\n{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}\n({orbital_params_str})"
-                    )
+                    ax.set_title(f"Ground tracks of a {pattern} constellation with N={num_satellites}, Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}, during {n_periods} orbital period(s)\n{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}\n({orbital_params_str})")
                     filename = (f"plots/ground_tracks/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}-{Np}-{Nd}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png")                
+                    # Add extra padding at the top specifically for Flower constellation plots
+                    plt.subplots_adjust(top=0.80)  # Increase top margin to make room for title
                 else:
                     ax.set_title(f"Ground tracks of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
                     filename = f"plots/ground_tracks/{pattern}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                 
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 plt.savefig(filename)
+                plt.close(fig)
 
                 pass
 
@@ -439,15 +459,16 @@ if __name__ == "__main__":
                 elif num_satellites > 49:
                     plt.tight_layout(rect=[0, -0.03, 1, 0.95])
                 else:
-                    plt.tight_layout(rect=[0, 0.00, 1, 0.95])
+                    plt.tight_layout(rect=[0, 0.00, 1, 0.87])
 
-                # Create title and filename
+                # Dynamically include orbital parameters in the title and filename
                 orbital_params_str = (
-                    f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                    f"a={orbital_parameters['semi_major_axis']:.0f}km / h_p={((1-orbital_parameters['eccentricity'])*orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS):.0f} km, "
                     f"e={orbital_parameters['eccentricity']}, "
                     f"i={orbital_parameters['inclination']}°, "
-                    f"RAAN={orbital_parameters['RAAN']}°, "
-                    f"ω={orbital_parameters['argument_of_periapsis']}°"
+                    f"RAAN varies, "
+                    f"ω={orbital_parameters['argument_of_periapsis']}°, \n"
+                    f'T_sidereal={orbital_period_hours} hr {orbital_period_minutes} min {orbital_period_seconds} s'
                 )
                 
                 if pattern == "Walker-Delta":
@@ -470,13 +491,14 @@ if __name__ == "__main__":
                 
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 plt.savefig(filename)
+                plt.close(fig)
 
             if PLOT_INERTIAL_3D:
                 #############################################
                 # Plot inertial orbit of satellite in 3D (in loop)
                 print(f"Plotting inertial 3D orbits of {num_satellites} satellites...")
                 
-                n_periods = 3  # Number of periods to plot
+                n_periods = 1  # Number of periods to plot
 
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
@@ -549,13 +571,14 @@ if __name__ == "__main__":
                 else:
                     plt.tight_layout(rect=[0, 0.00, 1, 0.95])  # Does not leave space at the bottom for the legend
 
-                # Dynamically include orbital parameters in the title and filename
+                # Set title and filename based on pattern type
                 orbital_params_str = (
-                    f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                    f"a={orbital_parameters['semi_major_axis']:.0f}km / h_p={((1-orbital_parameters['eccentricity'])*orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS):.0f} km, "
                     f"e={orbital_parameters['eccentricity']}, "
                     f"i={orbital_parameters['inclination']}°, "
                     f"RAAN varies, "
-                    f"ω={orbital_parameters['argument_of_periapsis']}°"
+                    f"ω={orbital_parameters['argument_of_periapsis']}°, \n"
+                    f'T_sidereal={orbital_period_hours} hr {orbital_period_minutes} min {orbital_period_seconds} s'
                 )
 
                 if pattern == 'Walker-Delta':
@@ -573,14 +596,25 @@ if __name__ == "__main__":
                     ax.set_title(f"3D inertial visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
                     filename = f"plots/inertial_3D/{pattern}/{n_periods}T/3D_ECI_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                 elif pattern == "Flower":
+                    orbital_params_str = (
+                        f"a={orbital_parameters['semi_major_axis']:.0f}km / h_p={((1-orbital_parameters['eccentricity'])*orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS):.0f} km, "
+                        f"e={orbital_parameters['eccentricity']}, "
+                        f"i={orbital_parameters['inclination']}°, "
+                        f"RAAN varies, "
+                        f"ω={orbital_parameters['argument_of_periapsis']}°, \n"
+                        f'T_sidereal={orbital_period_hours} hr {orbital_period_minutes} min {orbital_period_seconds} s, '
+                        f'T_flower={tau:.4f}*T_sidereal'
+                    )
                     ax.set_title(f"3D inertial visualization of {pattern} constellation with {num_satellites} sat(s), Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}\n{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh},during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    filename = f"plots/inertial_3D/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/3D_ECI_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    filename = f"plots/inertial_3D/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/3D_ECI_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                    
+                    plt.subplots_adjust(top=0.85)  # Increase top margin to make room for title
                 else:
                     ax.set_title(f"3D inertial visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
                     filename = f"plots/inertial_3D/{pattern}/{n_periods}T/3D_ECI_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                 
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 plt.savefig(filename)
+                plt.close(fig)     
 
                 pass
 
@@ -589,7 +623,7 @@ if __name__ == "__main__":
                 # Plot ECEF (Earth-Centered Earth-Fixed) orbit of satellite in 3D
                 print(f"Plotting ECEF 3D orbits of {num_satellites} satellites...")
                 
-                n_periods = 3  # Number of periods to plot (reduced from 3 to avoid too much rotation)
+                n_periods = n_periods_ecef3d  # Number of periods to plot (reduced from 3 to avoid too much rotation)
                 
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
@@ -597,9 +631,11 @@ if __name__ == "__main__":
                 # Create two figures - one for standard 3D view and one for top-down view
                 fig = plt.figure(figsize=(10, 10))
                 ax = fig.add_subplot(111, projection='3d')
-                
                 fig_topdown = plt.figure(figsize=(10, 10))
                 ax_topdown = fig_topdown.add_subplot(111, projection='3d')
+                # Create a new figure for top-down snapshot (final positions only)
+                fig_snapshot = plt.figure(figsize=(10, 10))
+                ax_snapshot = fig_snapshot.add_subplot(111, projection='3d')
                 
                 # Plot the Earth
                 earth_radius = constants.EARTH_RADIUS  # km
@@ -613,7 +649,8 @@ if __name__ == "__main__":
                 
                 # Top-down plot Earth
                 ax_topdown.plot_surface(x, y, z, color='b', alpha=0.1, edgecolor='k', linewidth=0.25)
-                
+                ax_snapshot.plot_surface(x, y, z, color='b', alpha=0.1, edgecolor='k', linewidth=0.25)
+
                 # Add continents as wireframe to show Earth's rotation
                 # Simplified continent markers at key longitudes (0°, 90°, 180°, 270°)
                 continent_radius = earth_radius * 1.01  # Slightly larger than Earth
@@ -686,7 +723,18 @@ if __name__ == "__main__":
                         linewidth=1,
                         alpha=0.6,
                         linestyle='-'
-                    )                    
+                    )        
+
+                    # Plot the final position
+                    ax_snapshot.scatter(
+                        ecef_positions_km[-1,0],  # X-coordinate
+                        ecef_positions_km[-1,1],  # Y-coordinate
+                        ecef_positions_km[-1,2],  # Z-coordinate
+                        label=label,
+                        color=colors[satellite],
+                        s=30,  # Larger size for better visibility
+                        alpha=1.0  # Full opacity
+                    )                                
                 
                 # Set plot limits for better visualization
                 max_range = np.max(np.abs(positions)) * 1.1  # 10% larger than max ECI positions
@@ -696,8 +744,12 @@ if __name__ == "__main__":
 
                 ax_topdown.set_xlim([-max_range, max_range])
                 ax_topdown.set_ylim([-max_range, max_range])
-                ax_topdown.set_zlim([-max_range, max_range])                
-                            
+                ax_topdown.set_zlim([-max_range, max_range])
+
+                ax_snapshot.set_xlim([-max_range, max_range])
+                ax_snapshot.set_ylim([-max_range, max_range])
+                ax_snapshot.set_zlim([-max_range, max_range])
+                                
                 # Add labels and legend
                 ax.set_xlabel("X [km]")
                 ax.set_ylabel("Y [km]")
@@ -711,12 +763,22 @@ if __name__ == "__main__":
                 ax_topdown.zaxis.line.set_visible(False)  # Hide Z axis line
                 ax_topdown.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))  # Make Z pane transparent
 
+                ax_snapshot.set_xlabel("X [km]")
+                ax_snapshot.set_ylabel("Y [km]")
+                ax_snapshot.set_zlabel("Z [km]") 
+                ax_snapshot.tick_params(axis='y', pad=15, labelright=False, labelleft=True) # Move y-axis tick labels to the left, Increase pad value to move further left
+                ax_snapshot.zaxis.set_ticklabels([]) # Remove Z tick labels
+                ax_snapshot.zaxis.line.set_visible(False) # Hide Z axis line
+                ax_snapshot.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0)) # Make Z pane transparent
+
                 # Set the view angle for top-down plot
                 ax_topdown.view_init(elev=90, azim=-90)  # Look directly down the z-axis (from North pole)            
-                
+                ax_snapshot.view_init(elev=90, azim=-90)    
+
                 # Add legends to both plots
-                ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.05), fontsize="small", ncol=4)
-                ax_topdown.legend(loc="upper center", bbox_to_anchor=(0.5, 0.01), fontsize="small", ncol=4)
+                ax.legend(loc="upper center", bbox_to_anchor=(0.5, 0.00), fontsize="small", ncol=4)
+                ax_topdown.legend(loc="upper center", bbox_to_anchor=(0.5, 0.12), fontsize="small", ncol=4) # moving legend box upwards. lot of vertical space from plot
+                ax_snapshot.legend(loc="upper center", bbox_to_anchor=(0.5, 0.12), fontsize="small", ncol=4)
                 
                 # Handle layout based on number of satellites
                 if num_satellites > 90:
@@ -728,8 +790,9 @@ if __name__ == "__main__":
                     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize="x-small", ncol=4)
                     ax_topdown.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize="x-small", ncol=4)
                 else:
-                    plt.tight_layout(rect=[0, 0.00, 1, 0.92])
-                
+                    fig.subplots_adjust(left=0.12, right=0.88, bottom=0.2, top=0.9)
+                    fig_snapshot.subplots_adjust(left=0.12, right=0.88, bottom=0.2, top=0.9)   
+
                 # Set title and filename based on pattern type
                 orbital_params_str = (
                     f"a={orbital_parameters['semi_major_axis']:.0f}km / h_p={((1-orbital_parameters['eccentricity'])*orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS):.0f} km, "
@@ -737,13 +800,18 @@ if __name__ == "__main__":
                     f"i={orbital_parameters['inclination']}°, "
                     f"RAAN varies, "
                     f"ω={orbital_parameters['argument_of_periapsis']}°, \n"
-                    f'T_sidereal={orbital_period_hours} hr {orbital_period_minutes} min {orbital_period_seconds} s, '
-                    f'T_anomalistic={anomal_period_hours} hr {anomal_period_minutes} min {anomal_period_seconds} s'
+                    f'T_sidereal={orbital_period_hours} hr {orbital_period_minutes} min {orbital_period_seconds} s'
                 )
                 
                 if pattern == 'Walker-Delta':
                     ax.set_title(f"3D ECEF visualization of {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})")
                     filename = f"plots/ecef_3D/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/3D_ECEF_Orbit_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                
+                    ax_topdown.set_title(f"Top-down ECEF view of {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})")
+                    topdown_filename = f"plots/ecef_topdown/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/Topdown_ECEF_Orbit_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"   
+
+                    ax_snapshot.set_title(f"Final positions (top-down view) of {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}\n({orbital_params_str})\n after {n_periods} orbital period(s)")
+                    snapshot_filename = f"plots/ecef_topdown/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/Snapshot_ECEF_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                     
                 elif pattern == 'Walker-Delta-SinglePlane':
                     orbital_params_str = (
                         f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
@@ -752,26 +820,40 @@ if __name__ == "__main__":
                         f"RAAN={orbital_parameters['RAAN']}°, "
                         f"ω={orbital_parameters['argument_of_periapsis']}°"
                     )
+                    
                     ax.set_title(f"3D ECEF visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
                     filename = f"plots/ecef_3D/{pattern}/{n_periods}T/3D_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-                elif pattern == "Flower":
-                    ax.set_title(f"3D ECEF visualization of {pattern} constellation with {num_satellites} sat(s), Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}\n{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}, during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    filename = f"plots/ecef_3D/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/3D_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}_omega{orbital_parameters['argument_of_periapsis']}.png"
-                else:
-                    ax.set_title(f"3D ECEF visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    filename = f"plots/ecef_3D/{pattern}/{n_periods}T/3D_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-                
-                # Top-down plot title and saving
-                if pattern == 'Walker-Delta':
-                    ax_topdown.set_title(f"Top-down ECEF view of {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    topdown_filename = f"plots/ecef_topdown/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/Topdown_ECEF_Orbit_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-                elif pattern == "Flower":
-                    ax_topdown.set_title(f"Top-down ECEF view of {pattern} constellation with {num_satellites} sat(s), Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}\n{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}, during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    topdown_filename = f"plots/ecef_topdown/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/Topdown_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}_omega{orbital_parameters['argument_of_periapsis']}.png"
-                else:
+
                     ax_topdown.set_title(f"Top-down ECEF view of {pattern} constellation with {num_satellites} sat(s), during {n_periods} orbital period(s)\n({orbital_params_str})")
                     topdown_filename = f"plots/ecef_topdown/{pattern}/{n_periods}T/Topdown_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-                
+                elif pattern == "Flower":
+                    orbital_params_str = (
+                        f"a={orbital_parameters['semi_major_axis']:.0f}km / h_p={((1-orbital_parameters['eccentricity'])*orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS):.0f} km, "
+                        f"e={orbital_parameters['eccentricity']}, "
+                        f"i={orbital_parameters['inclination']}°, "
+                        f"RAAN varies, "
+                        f"ω={orbital_parameters['argument_of_periapsis']}°, \n"
+                        f'T_sidereal={orbital_period_hours} hr {orbital_period_minutes} min {orbital_period_seconds} s, '
+                        f'T_flower={tau:.4f}*T_sidereal'
+                    )                    
+                    ax.set_title(f"3D ECEF visualization of {pattern} constellation with {num_satellites} sat(s), Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}\n{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}, during {n_periods} orbital period(s)\n({orbital_params_str})")
+                    filename = f"plots/ecef_3D/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/3D_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}_omega{orbital_parameters['argument_of_periapsis']}.png"
+
+                    ax_topdown.set_title(f"Top-down ECEF view of {pattern} constellation with {num_satellites} sat(s), Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}\n{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}, during {n_periods} orbital period(s)\n({orbital_params_str})")
+                    topdown_filename = f"plots/ecef_topdown/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/Topdown_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}_omega{orbital_parameters['argument_of_periapsis']}.png"
+
+                    ax_snapshot.set_title(f"Final positions (top-down view) of {pattern} constellation with {num_satellites} sat(s), {Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}\n({orbital_params_str})\n after {n_periods} orbital period(s)")
+                    snapshot_filename = f"plots/ecef_topdown/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/Snapshot_ECEF_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"       
+                else:
+                    ax.set_title(f"3D ECEF visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
+                    filename = f"plots/ecef_3D/{pattern}/{n_periods}T/3D_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+
+                    ax_topdown.set_title(f"Top-down ECEF view of {pattern} constellation with {num_satellites} sat(s), during {n_periods} orbital period(s)\n({orbital_params_str})")
+                    topdown_filename = f"plots/ecef_topdown/{pattern}/{n_periods}T/Topdown_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+
+                    ax_snapshot.set_title(f"Final positions (top-down view) of {pattern} constellation with {num_satellites} sat(s)\n({orbital_params_str}\nafter {n_periods} orbital period(s))")
+                    snapshot_filename = f"plots/ecef_topdown/{pattern}/{n_periods}T/Snapshot_ECEF_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                                
                 # Create directories if they don't exist and save figures
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 plt.figure(fig.number)
@@ -780,9 +862,28 @@ if __name__ == "__main__":
                 os.makedirs(os.path.dirname(topdown_filename), exist_ok=True)
                 plt.figure(fig_topdown.number)
                 plt.savefig(topdown_filename)
+
+                os.makedirs(os.path.dirname(snapshot_filename), exist_ok=True)
+                plt.figure(fig_snapshot.number)
+                plt.savefig(snapshot_filename)
                 
                 plt.close(fig)
                 plt.close(fig_topdown)
+                plt.close(fig_snapshot)
+
+            if PLOT_ECEF_3D and ANIMATE_CONSTELLATION:
+                # Generate the animation using the already computed positions
+                fps_anim = 60
+                const.create_animation(
+                    time_stamps=time_stamps,
+                    positions=positions,
+                    start_time_datetime=start_time_datetime,
+                    n_periods=n_periods_ecef3d,
+                    filename=f"plots/animations/{pattern}/topdown_animation_step{step}_{fps_anim}fps/{n_periods}T/N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.mp4",
+                    view="topdown",
+                    fps=fps_anim,
+                    tail_length=5 # number of previous positions to show in tail
+                )
 
             if COMPUTE_GLOBAL_COVERAGE:
                 #############################################
@@ -1148,6 +1249,7 @@ if __name__ == "__main__":
                         # filename = f"plots/coverage/{pattern}/{n_periods}T/constellation_coverage_step{step}_N{num_satellites}-{P}-{F}_mask{masking_angle}_fov{fov}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                         os.makedirs(os.path.dirname(filename), exist_ok=True)
                         plt.savefig(filename)
+                        plt.close(fig)
                         
                         pass
 
@@ -1288,6 +1390,7 @@ if __name__ == "__main__":
                 
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 plt.savefig(filename, bbox_inches='tight')
+                plt.close(fig)
 
                 pass
             
@@ -1341,6 +1444,7 @@ if __name__ == "__main__":
 
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             plt.savefig(filename)
+            plt.close(fig)
         
             pass
 
@@ -1665,3 +1769,5 @@ if __name__ == "__main__":
             plt.savefig(filename, dpi=300)
         else:
             plt.savefig(filename, dpi=300, bbox_inches='tight')
+        plt.close(fig)
+        

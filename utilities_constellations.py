@@ -558,7 +558,169 @@ class Constellation:
         # Anomalistic period accounting for precession
         T_anomalistic = 2 * np.pi / (n + d_omega_dt)
         
-        return T_anomalistic        
+        return T_anomalistic   
+
+    def create_animation(self, time_stamps, positions, start_time_datetime, n_periods=3, filename=None, view="topdown", fps=30, tail_length=20):
+        """
+        Create animation of satellite constellation movement with fading tails.
+        
+        Args:
+            time_stamps (array): Array of time stamps for the animation
+            positions (array): 3D array of ECI positions [num_satellites, num_time_steps, 3]
+            start_time_datetime (datetime): Start time for ECI to ECEF conversion
+            n_periods (int): Number of orbital periods to include in animation
+            filename (str): Path to save animation (defaults to pattern-based name)
+            view (str): "topdown" or "3d" view perspective
+            fps (int): Frames per second
+            tail_length (int): Number of previous positions to show in the tail
+            
+        Returns:
+            matplotlib.animation.Animation: The animation object
+        """
+        import matplotlib.pyplot as plt
+        import matplotlib.animation as animation
+        import os
+        from mpl_toolkits.mplot3d import Axes3D
+        import numpy as np
+        from collections import deque
+        import matplotlib.colors as mcolors
+        
+        print(f"Creating animation for constellation pattern '{self.pattern}' with {self.num_satellites} satellites.")
+        # Create figure with Earth
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        # Plot the Earth
+        earth_radius = constants.EARTH_RADIUS
+        u = np.linspace(0, 2 * np.pi, 100)
+        v = np.linspace(0, np.pi, 100)
+        x = earth_radius * np.outer(np.cos(u), np.sin(v))
+        y = earth_radius * np.outer(np.sin(u), np.sin(v))
+        z = earth_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+        ax.plot_surface(x, y, z, color='b', alpha=0.1, edgecolor='k', linewidth=0.25)
+        
+        # Set the view
+        if view.lower() == "topdown":
+            ax.view_init(elev=90, azim=-90)  # Top-down view
+            if self.pattern == "Flower":
+                ax.set_title(f"Top-down view of {self.pattern} constellation with {self.num_satellites} satellites\n{self.Np}-{self.Nd}-{self.num_satellites}-{self.Fn}-{self.Fd}-{self.Fh} (ECEF frame), T_anomal={self.estimate_anomalistic_period():.2f} s")
+            else:
+                ax.set_title(f"Top-down view of {self.pattern} constellation with {self.num_satellites} satellites (ECEF frame), T_anomal={self.estimate_anomalistic_period():.2f} s")
+        else:
+            ax.view_init(elev=30, azim=-60)  # 3D perspective
+            ax.set_title(f"3D view of {self.pattern} constellation with {self.num_satellites} satellites (ECEF frame), T_anomal={self.estimate_anomalistic_period():.2f} s")
+        
+        # Configure the plot
+        max_range = np.max(np.abs(positions)) * 1.1
+        ax.set_xlim([-max_range, max_range])
+        ax.set_ylim([-max_range, max_range])
+        ax.set_zlim([-max_range, max_range])
+        ax.set_xlabel("X [km]")
+        ax.set_ylabel("Y [km]")
+        ax.set_zlabel("Z [km]")
+
+        if view.lower() == "topdown":
+            ax.zaxis.set_ticklabels([])  # Remove Z tick labels
+            ax.zaxis.line.set_visible(False)  # Hide Z axis line
+            ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))  # Make Z pane transparent
+            ax.tick_params(axis='y', pad=15, labelright=False, labelleft=True)  # Move y-axis tick labels to the left, Increase pad value to move further left
+
+        
+        # Set up scatter plots for each satellite
+        scatters = []
+        # Initialize tail lines and tail position storage for each satellite
+        tails = []
+        tail_positions = [deque(maxlen=tail_length) for _ in range(self.num_satellites)]
+        
+        for satellite in range(self.num_satellites):
+            # Set up scatter for current position
+            scatter = ax.scatter([], [], [], s=30, color=f'C{satellite % 10}')
+            scatters.append(scatter)
+            
+            # Set up line for the tail (empty initially)
+            tail_line, = ax.plot([], [], [], linewidth=2, color=f'C{satellite % 10}', alpha=0.5)
+            tails.append(tail_line)
+        
+        # Text for showing simulation time
+        time_text = ax.text2D(0.05, 0.95, "", transform=ax.transAxes)
+        
+        # Calculate frames based on orbital period
+        orbital_period = self.estimate_anomalistic_period()
+        orbital_period_idx = int(orbital_period / (time_stamps[1] - time_stamps[0]))
+        total_frames = min(orbital_period_idx * n_periods, len(time_stamps)-1)
+        
+        # Define update function inside create_animation
+        def update(frame):
+            # Calculate time index based on the frame number and number of orbital periods
+            orbital_period = self.estimate_anomalistic_period()
+            orbital_period_idx = np.searchsorted(time_stamps, orbital_period)
+            # Limit to n_periods of orbit
+            max_idx = min(orbital_period_idx * n_periods, len(time_stamps) - 1)
+            idx = int(frame * max_idx / total_frames)
+            
+            if idx >= len(time_stamps):
+                idx = len(time_stamps) - 1
+                       
+            # Update time display
+            elapsed_time = time_stamps[idx]
+            hours = int(elapsed_time // 3600)
+            minutes = int((elapsed_time % 3600) // 60)
+            seconds = int(elapsed_time % 60)
+            time_text.set_text(f"Time: {hours:02d}:{minutes:02d}:{seconds:02d}")
+
+            # Update each satellite's position and trail
+            for satellite in range(self.num_satellites):
+                # Convert ECI to ECEF
+                eci_pos = positions[satellite, idx, :] * 1000  # km to m
+                ecef_pos = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(
+                    np.array([eci_pos]), 
+                    np.array([time_stamps[idx]]),
+                    reference_time=start_time_datetime
+                )[0] / 1000  # back to km
+                
+                # Update the scatter position
+                scatters[satellite]._offsets3d = ([ecef_pos[0]], [ecef_pos[1]], [ecef_pos[2]])
+                
+                # Add current position to tail history
+                tail_positions[satellite].append(ecef_pos)
+                
+                # Update the tail line if we have positions
+                if len(tail_positions[satellite]) > 1:
+                    # Convert deque to arrays for plotting
+                    tail_array = np.array(tail_positions[satellite])
+                    x_data = tail_array[:, 0]
+                    y_data = tail_array[:, 1]
+                    z_data = tail_array[:, 2]
+                    
+                    # Update the line data
+                    tails[satellite].set_data_3d(x_data, y_data, z_data)     
+
+            return scatters + tails + [time_text]
+        
+        # Create animation
+        anim = animation.FuncAnimation(
+            fig, update, frames=total_frames,
+            interval=1000/fps,  # milliseconds between frames
+            blit=False
+        )
+        
+        # Generate default filename if none provided
+        if filename is None:
+            if self.pattern == "Flower":
+                filename = f"plots/animations/{self.pattern}/{self.orbital_parameters['Np']}-{self.orbital_parameters['Nd']}-"\
+                        f"{self.num_satellites}-{self.orbital_parameters['Fn']}-"\
+                        f"{self.orbital_parameters['Fd']}/{n_periods}T/animation_{view}.mp4"
+            else:
+                filename = f"plots/animations/{self.pattern}/{n_periods}T/animation_{view}_N{self.num_satellites}.mp4"
+        
+        # Save animation
+        if filename:
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            anim.save(filename, writer='ffmpeg', fps=fps, dpi=100)
+            print(f"Animation saved to {filename}")
+        
+        plt.close(fig)
+        return anim             
     
 def create_label_from_satrec(satellite_index, satrec, pattern, num_satellites, P=None):
     """
