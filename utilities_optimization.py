@@ -96,8 +96,8 @@ class ConstellationOptimizer:
     """
     
     def __init__(self, pattern_type="Walker-Delta", 
-                 start_time=None, end_time=None, step=105,
-                 gs="Fucino", elevation_threshold=10.0,
+                 start_time=None, end_time=None, step=500,
+                 gs=None, elevation_threshold=10.0,
                  # Coverage weights
                  local_weight=0.4,      # Ground station visibility weight
                  regional_weight=0.3,   # Regional coverage weight
@@ -108,7 +108,7 @@ class ConstellationOptimizer:
                  launch_cost_weight=0.1,         # Launch costs (higher for higher orbits)
                  # Science requirements
                  science_weight=0.2,             # Science requirements weight
-                 target_altitude=600.0,          # Target altitude for science instruments (km)
+                 target_altitude=500.0,          # Target altitude for science instruments (km)
                  target_altitude_tolerance=50.0, # Tolerance for target altitude (km)
                  # Regional coverage area (Western US as default)
                  regional_area=None              # List of (lat, lon) coordinates defining region
@@ -183,16 +183,34 @@ class ConstellationOptimizer:
         self.target_altitude = target_altitude
         self.target_altitude_tolerance = target_altitude_tolerance
         
-        # Set default regional area (Western US) if none provided
+        from utilities_coverage import get_region_coordinates, get_available_regions
+
         if regional_area is None:
-            # Simple bounding box for Western US
+            # Default region (Western US)
             self.regional_area = [
                 (32.0, -125.0),  # Southwest corner
                 (32.0, -105.0),  # Southeast corner
                 (49.0, -105.0),  # Northeast corner
                 (49.0, -125.0)   # Northwest corner
             ]
+        elif isinstance(regional_area, str):
+            # If regional_area is a string, look up the coordinates
+            try:
+                self.regional_area = get_region_coordinates(regional_area)
+                print(f"Using predefined region: {regional_area}")
+            except Exception as e:
+                available_regions = get_available_regions()
+                print(f"Error: Region '{regional_area}' not found. Available regions: {available_regions}")
+                # Fall back to default
+                self.regional_area = [
+                    (32.0, -125.0),  # Southwest corner
+                    (32.0, -105.0),  # Southeast corner
+                    (49.0, -105.0),  # Northeast corner
+                    (49.0, -125.0)   # Northwest corner
+                ]
+                print("Using default Western US region instead.")
         else:
+            # Assume it's already a list of coordinates
             self.regional_area = regional_area
         
         # Set default times if not provided
@@ -305,12 +323,15 @@ class ConstellationOptimizer:
             
             # Check parameter validity
             if num_satellites < 1 or num_satellites > 200:  # Set reasonable satellite count bounds
+                print(f"Warning: Invalid number of satellites {num_satellites}, must be between 1 and 200.")
                 return 1e10  # Invalid number of satellites
                 
             if orbital_parameters['eccentricity'] < 0 or orbital_parameters['eccentricity'] >= 1:
+                print(f"Warning: Invalid eccentricity {orbital_parameters['eccentricity']}, must be in [0, 1).")
                 return 1e10  # Invalid eccentricity
                 
             if orbital_parameters['semi_major_axis'] < constants.EARTH_RADIUS + 200:
+                print(f"Warning: Semi-major axis {orbital_parameters['semi_major_axis']} too low, may not be a valid orbit.")
                 return 1e10  # Too low orbit
             
             # Create the constellation
@@ -323,14 +344,17 @@ class ConstellationOptimizer:
                 
                 # Validate P and F
                 if P < 1 or F < 1 or F >= P:
+                    print(f"Warning: Invalid Walker-Delta parameters P={P}, F={F}.")
                     return 1e10
                 
                 # Check if number of satellites is compatible with P
                 if num_satellites < P or num_satellites % P != 0:
+                    print(f"Warning: Number of satellites {num_satellites} must be divisible by number of planes (P={P}).")
                     return 1e10
                     
                 # Check if number of satellites (T) is divisible by F
                 if num_satellites % F != 0:
+                    print(f"Warning: Number of satellites {num_satellites} must be divisible by phasing (F={F}).")
                     return 1e10  # Total number of satellites (T) must be divisible by phasing (F)
                     
                 # Create constellation
@@ -368,12 +392,12 @@ class ConstellationOptimizer:
             
             # Regional coverage (specified area)
             regional_score = self._calculate_regional_coverage(
-                const, orbital_parameters, num_satellites, epoch, orbital_period
+                const, orbital_parameters, num_satellites, epoch, orbital_period, positions=positions, time_stamps=time_stamps
             )
             
             # Global coverage
             global_score = self._calculate_global_coverage(
-                num_satellites, orbital_parameters
+                num_satellites, orbital_parameters, positions=positions, time_stamps=time_stamps
             )
             
             # 2. Cost scores
@@ -680,27 +704,29 @@ class ConstellationOptimizer:
         print(f"Message: {result.message}")
         
         return orbital_parameters, pattern_params, num_satellites, best_score
-    
-    def plot_optimization_history(self):
+        
+    def plot_optimization_history(self, extra_params=None):
         """Plot the optimization history to see convergence."""
         if not self.optimization_history:
             print("No optimization history to plot.")
             return
-        
-        # Extract scores from history
-        # Each item in history is (params, combined_score, component_scores)
-        # Note: we use the original positive scores for plotting (before negation for minimization)
+
         scores = [item[1] for item in self.optimization_history]
-        
         plt.figure(figsize=(10, 6))
         plt.plot(scores, 'o-')
         plt.xlabel('Evaluation Number')
         plt.ylabel('Combined Score (higher is better)')
-        plt.title('Optimization Progress')
+        plt.title(
+            f'Optimization Progress\n'
+            f'Pattern: {self.pattern_type}, Step: {self.step}, '
+            f'Weights: L={self.local_weight}, R={self.regional_weight}, G={self.global_weight}, '
+            f'SatCost={self.satellite_cost_weight}, OpCost={self.operational_cost_weight}, '
+            f'LaunchCost={self.launch_cost_weight}, Sci={self.science_weight}\n'
+            f'Target Altitude: {self.target_altitude}'
+        )
         plt.grid(True)
-        
-        # Save the plot
-        filename = f"plots/optimization/optimization_history.png"
+
+        filename = self._generate_plot_filename("optimization_history", extra_params)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         plt.savefig(filename)
         # plt.show()
@@ -763,7 +789,69 @@ class ConstellationOptimizer:
             
         return local_score, overlap_penalty
     
-    def _calculate_regional_coverage(self, constellation, orbital_parameters, num_satellites, epoch, orbital_period):
+    def _calculate_regional_coverage(self, const, orbital_parameters, num_satellites, epoch, orbital_period, 
+                                    positions=None, time_stamps=None):
+        """
+        Calculate coverage metrics for a regional area using Coverage utilities.
+        
+        Parameters:
+        -----------
+        const : Constellation object
+            Constellation object
+        orbital_parameters : dict
+            Orbital parameters
+        num_satellites : int
+            Number of satellites
+        epoch : datetime
+            Epoch for constellation
+        orbital_period : float
+            Orbital period in seconds
+        positions : numpy.ndarray, optional
+            Pre-computed satellite positions from the optimizer
+        time_stamps : numpy.ndarray, optional
+            Pre-computed timestamps from the optimizer
+                
+        Returns:
+        --------
+        regional_score : float
+            Score for regional coverage (0-1)
+        """
+        # If positions weren't passed, use the existing grid-based approach
+        if positions is None or time_stamps is None:
+            # Fall back to original grid-based approach
+            print("Warning: Using simplified grid-based regional coverage calculation due to missing positions/timestamps.")
+            return self._calculate_regional_coverage_simplified(const, orbital_parameters, num_satellites, 
+                                                        epoch, orbital_period)
+        
+        try:
+            # Create Coverage object with existing positions and timestamps
+            coverage_obj = Coverage(orbital_parameters, positions=positions, times=time_stamps)
+            
+            # Get region from self.regional_area
+            region = self.regional_area
+            
+            # Compute regional coverage with appropriate parameters
+            regional_result = coverage_obj.compute_regional_coverage(
+                positions, time_stamps,
+                region,
+                orbital_periods=1,
+                masking_angle=15.0,  # Default masking angle
+                fov=120.0,          # Default FOV
+                grid_density=5.0    # Coarser grid for optimization speed
+            )
+            
+            # Extract the coverage percentage and normalize to 0-1
+            coverage_percentage = regional_result['constellation_coverage'] / 100.0
+            
+            return min(coverage_percentage, 1.0)  # Ensure the score is between 0 and 1
+        
+        except Exception as e:
+            print(f"Warning: Error in regional coverage calculation: {str(e)}")
+            # Fall back to original grid-based approach
+            return self._calculate_regional_coverage_simplified(const, orbital_parameters, num_satellites, 
+                                                        epoch, orbital_period)
+
+    def _calculate_regional_coverage_simplified(self, constellation, orbital_parameters, num_satellites, epoch, orbital_period):
         """
         Calculate coverage metrics for a regional area.
         
@@ -936,11 +1024,9 @@ class ConstellationOptimizer:
         
         return area
         
-    def _calculate_global_coverage(self, num_satellites, orbital_parameters):
+    def _calculate_global_coverage(self, num_satellites, orbital_parameters, positions=None, time_stamps=None):
         """
-        Estimate global coverage based on constellation parameters.
-        This is a simplified model - for a real application you'd want to 
-        calculate actual global coverage using a grid-based approach.
+        Estimate global coverage based on constellation parameters using the Coverage utilities.
         
         Parameters:
         -----------
@@ -948,74 +1034,43 @@ class ConstellationOptimizer:
             Number of satellites
         orbital_parameters : dict
             Orbital parameters
+        positions : numpy.ndarray, optional
+            Pre-computed satellite positions from the optimizer
+        time_stamps : numpy.ndarray, optional
+            Pre-computed timestamps from the optimizer
             
         Returns:
         --------
         global_score : float
             Score for global coverage (0-1)
         """
-        # IMPROVED: Grid-based global coverage calculation
-        # If computational time is a concern, use the simplified estimate
-        # return self._estimate_global_coverage(num_satellites, orbital_parameters)
+        # If positions weren't passed, fall back to the simplified estimate
+        if positions is None or time_stamps is None:
+            return self._estimate_global_coverage(num_satellites, orbital_parameters)
         
-        # Create a grid of points across Earth's surface
-        # Grid resolution (higher = more accurate but slower)
-        grid_resolution = 10  # degrees
+        try:
+            # Create Coverage object with existing positions and timestamps
+            coverage_obj = Coverage(orbital_parameters, positions=positions, times=time_stamps)
+            
+            # Compute global coverage with appropriate parameters
+            # Use lower grid resolution for optimization (faster)
+            global_coverage_result = coverage_obj.compute_global_coverage(
+                positions, time_stamps,
+                orbital_periods=1,
+                masking_angle=15.0,  # Default masking angle
+                fov=120.0,          # Default FOV
+                grid_density=15.0   # Coarser grid for optimization speed
+            )
+            
+            # Extract the coverage percentage and normalize to 0-1
+            coverage_percentage = global_coverage_result['constellation_coverage'] / 100.0
+            
+            return min(coverage_percentage, 1.0)  # Ensure the score is between 0 and 1
         
-        # Generate a grid of lat/lon points
-        lats = np.arange(-90, 91, grid_resolution)
-        lons = np.arange(-180, 181, grid_resolution)
-        
-        # Count how many grid points would be covered
-        inclination = orbital_parameters['inclination']
-        altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
-        
-        # Calculate swath width (simplified)
-        earth_radius = constants.EARTH_RADIUS
-        max_earth_central_angle = np.arccos(earth_radius / (earth_radius + altitude))
-        swath_half_angle_deg = np.degrees(max_earth_central_angle)
-        
-        # Estimate coverage percentage
-        covered_points = 0
-        total_points = 0
-        
-        for lat in lats:
-            # Weight by cosine of latitude (account for smaller area at high latitudes)
-            weight = np.cos(np.radians(lat))
-            if weight < 0.01:  # Avoid division by very small numbers
-                weight = 0.01
-                
-            # Skip if satellite can't reach this latitude (based on inclination)
-            if abs(lat) > inclination + swath_half_angle_deg:
-                continue
-                
-            for lon in lons:
-                total_points += weight
-                
-                # Simple coverage model: if a point is within the inclination range plus swath,
-                # consider it potentially covered
-                if abs(lat) <= inclination + swath_half_angle_deg:
-                    # Calculate expected revisit frequency based on num_satellites
-                    # More satellites = better coverage
-                    satellite_density_factor = min(num_satellites / 50.0, 1.0)
-                    
-                    # Adjust by latitude - points near inclination get more passes
-                    lat_coverage_factor = 1.0
-                    if abs(abs(lat) - inclination) < 20:
-                        # Areas near the inclination get better coverage
-                        lat_coverage_factor = 1.2
-                    
-                    coverage_probability = satellite_density_factor * lat_coverage_factor
-                    
-                    # Limit maximum probability
-                    coverage_probability = min(coverage_probability, 1.0)
-                    covered_points += weight * coverage_probability
-        
-        # Calculate global coverage percentage
-        global_coverage = covered_points / total_points if total_points > 0 else 0
-        
-        # Limit to maximum of 1.0
-        return min(global_coverage, 1.0)
+        except Exception as e:
+            print(f"Warning: Error in global coverage calculation: {str(e)}")
+            # Fallback to simplified estimate
+            return self._estimate_global_coverage(num_satellites, orbital_parameters)
         
     def _calculate_satellite_cost(self, num_satellites):
         """
@@ -1591,7 +1646,7 @@ class ConstellationOptimizer:
             
         return analysis
         
-    def _plot_component_scores(self, analysis):
+    def _plot_component_scores(self, analysis, extra_params=None):
         """
         Create visualization plots for component scores.
         
@@ -1709,32 +1764,66 @@ class ConstellationOptimizer:
         # Adjust layout
         plt.tight_layout()
         
-        # Save the plot
-        filename = f"plots/optimization/component_scores.png"
+        fig.suptitle(
+            f'Component Scores\n'
+            f'Pattern: {self.pattern_type}, Step: {self.step}, '
+            f'Weights: L={self.local_weight}, R={self.regional_weight}, G={self.global_weight}, '
+            f'SatCost={self.satellite_cost_weight}, OpCost={self.operational_cost_weight}, '
+            f'LaunchCost={self.launch_cost_weight}, Sci={self.science_weight}\n'
+            f'Target Altitude: {self.target_altitude}'
+        )
+
+        filename = self._generate_plot_filename("component_scores", extra_params)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         plt.savefig(filename)
         # plt.show()
-        
+
+    def _generate_plot_filename(self, plot_type, extra_params=None):
+        """
+        Generate a unique filename for plots based on optimizer parameters.
+        """
+        parts = [
+            plot_type,
+            f"pattern_{self.pattern_type}",
+            f"step_{self.step}",
+            f"localw_{self.local_weight}",
+            f"regionalw_{self.regional_weight}",
+            f"globalw_{self.global_weight}",
+            f"satcostw_{self.satellite_cost_weight}",
+            f"opcostw_{self.operational_cost_weight}",
+            f"launchcostw_{self.launch_cost_weight}",
+            f"sciw_{self.science_weight}",
+            f"targetalt_{self.target_altitude}",
+        ]
+        if extra_params:
+            for k, v in extra_params.items():
+                parts.append(f"{k}_{v}")
+        filename = "plots/optimization/" + "_".join(str(p) for p in parts) + ".png"
+        return filename
+
 # Example usage
+
 if __name__ == "__main__":
     # Example 1: Global coverage optimization
     print("\n=== EXAMPLE 1: GLOBAL COVERAGE OPTIMIZATION ===")
     optimizer_global = ConstellationOptimizer(
         pattern_type="Walker-Delta",
+        gs="AFB_Andersen",
         local_weight=0.1,        # Low priority on ground station coverage
+        regional_area='California',
         regional_weight=0.2,     # Low priority on regional coverage
         global_weight=0.7,       # High priority on global coverage
         satellite_cost_weight=0.4,
         operational_cost_weight=0.2,
         launch_cost_weight=0.2,
         science_weight=0.2,
-        target_altitude=800.0,   # Target altitude for science requirements
+        target_altitude=500.0,   # Target altitude for science requirements
     )
     
     # Run optimization with improved convergence settings
     orbital_params_global, pattern_params_global, num_satellites_global, best_score_global = optimizer_global.optimize(
         method='differential_evolution',
-        max_iter=200,                # Maximum iterations
+        max_iter=3,                # Maximum iterations
         popsize=15,                  # Balanced population size
         strategy='best1bin',         # Focus on exploiting the best solution for better convergence
         mutation=(0.5, 0.7),         # Lower mutation range for more controlled convergence
@@ -1751,7 +1840,10 @@ if __name__ == "__main__":
     print("\nVerifying score calculations:")
     analysis = optimizer_global.analyze_component_scores(plot=True, verbose=True, debug=True)
     print(f"Best score from optimize(): {best_score_global:.4f}")
-    print(f"Final score from analyze_component_scores(): {analysis['weighted_scores']['final_score']:.4f}")
+    if analysis is not None:
+        print(f"Final score from analyze_component_scores(): {analysis['weighted_scores']['final_score']:.4f}")
+    else:
+        print("No valid analysis available. Optimization did not succeed.")
     print(f"These two scores should match to verify the fix worked.")
     
     # # Example 2: Regional coverage optimization (Western US)
@@ -1837,3 +1929,84 @@ if __name__ == "__main__":
     #       f"altitude: {orbital_params_custom['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
     #       f"inclination: {orbital_params_custom['inclination']:.1f}°, " +
     #       f"score: {best_score_custom:.4f}")
+
+# def _calculate_global_coverage(self, num_satellites, orbital_parameters):
+#     """
+#     Estimate global coverage based on constellation parameters.
+#     This is a simplified model - for a real application you'd want to 
+#     calculate actual global coverage using a grid-based approach.
+    
+#     Parameters:
+#     -----------
+#     num_satellites : int
+#         Number of satellites
+#     orbital_parameters : dict
+#         Orbital parameters
+        
+#     Returns:
+#     --------
+#     global_score : float
+#         Score for global coverage (0-1)
+#     """
+#     # IMPROVED: Grid-based global coverage calculation
+#     # If computational time is a concern, use the simplified estimate
+#     # return self._estimate_global_coverage(num_satellites, orbital_parameters)
+    
+#     # Create a grid of points across Earth's surface
+#     # Grid resolution (higher = more accurate but slower)
+#     grid_resolution = 10  # degrees
+    
+#     # Generate a grid of lat/lon points
+#     lats = np.arange(-90, 91, grid_resolution)
+#     lons = np.arange(-180, 181, grid_resolution)
+    
+#     # Count how many grid points would be covered
+#     inclination = orbital_parameters['inclination']
+#     altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
+    
+#     # Calculate swath width (simplified)
+#     earth_radius = constants.EARTH_RADIUS
+#     max_earth_central_angle = np.arccos(earth_radius / (earth_radius + altitude))
+#     swath_half_angle_deg = np.degrees(max_earth_central_angle)
+    
+#     # Estimate coverage percentage
+#     covered_points = 0
+#     total_points = 0
+    
+#     for lat in lats:
+#         # Weight by cosine of latitude (account for smaller area at high latitudes)
+#         weight = np.cos(np.radians(lat))
+#         if weight < 0.01:  # Avoid division by very small numbers
+#             weight = 0.01
+            
+#         # Skip if satellite can't reach this latitude (based on inclination)
+#         if abs(lat) > inclination + swath_half_angle_deg:
+#             continue
+            
+#         for lon in lons:
+#             total_points += weight
+            
+#             # Simple coverage model: if a point is within the inclination range plus swath,
+#             # consider it potentially covered
+#             if abs(lat) <= inclination + swath_half_angle_deg:
+#                 # Calculate expected revisit frequency based on num_satellites
+#                 # More satellites = better coverage
+#                 satellite_density_factor = min(num_satellites / 50.0, 1.0)
+                
+#                 # Adjust by latitude - points near inclination get more passes
+#                 lat_coverage_factor = 1.0
+#                 if abs(abs(lat) - inclination) < 20:
+#                     # Areas near the inclination get better coverage
+#                     lat_coverage_factor = 1.2
+                
+#                 coverage_probability = satellite_density_factor * lat_coverage_factor
+                
+#                 # Limit maximum probability
+#                 coverage_probability = min(coverage_probability, 1.0)
+#                 covered_points += weight * coverage_probability
+    
+#     # Calculate global coverage percentage
+#     global_coverage = covered_points / total_points if total_points > 0 else 0
+    
+#     # Limit to maximum of 1.0
+#     return min(global_coverage, 1.0)
