@@ -30,7 +30,7 @@ PLOT_GROUND_TRACKS = False
 PLOT_INERTIAL_GROUND_TRACKS = False
 PLOT_INERTIAL_3D = False
 PLOT_ECEF_3D = True
-n_periods_ecef3d = 6
+n_periods_ecef3d = 8
 ANIMATE_CONSTELLATION = True
 PLOT_COVERAGE = False
 COMPUTE_VISIBILITY = False
@@ -46,7 +46,7 @@ if COMPUTE_GLOBAL_COVERAGE or COMPUTE_REGIONAL_COVERAGE:
 else:
     # num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for walker P=4
     # num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for walker P=3
-    num_satellites_list = [30] # Flower
+    num_satellites_list = [90] # Flower
     # num_satellites_list = list(range(1, 101))
 
 
@@ -75,10 +75,22 @@ else:
 #     'bstar':               2e-5      # 1/er
 # }
 ### FLOWERS: TRE LACCI ###
+# orbital_parameters = {
+#     'semi_major_axis':     21133.149,    # km
+#     'eccentricity':        0.2723216,    # unitless
+#     'inclination':         180.0,     # deg
+#     'RAAN':                0,     # deg
+#     'argument_of_periapsis': 270.0,  # deg     
+#     'true_anomaly':        0.0,      # deg
+#     'ndot':                1e-8,     # rev/day² # Includes derivatives
+#     'nddot':               1e-12,    # rev/day³
+#     'bstar':               2e-5      # 1/er
+# }
+### FLOWERS: RINGS ###
 orbital_parameters = {
     'semi_major_axis':     21133.149,    # km
     'eccentricity':        0.2723216,    # unitless
-    'inclination':         180.0,     # deg
+    'inclination':         165.0,     # deg
     'RAAN':                0,     # deg
     'argument_of_periapsis': 270.0,  # deg     
     'true_anomaly':        0.0,      # deg
@@ -86,7 +98,7 @@ orbital_parameters = {
     'nddot':               1e-12,    # rev/day³
     'bstar':               2e-5      # 1/er
 }
-h_perigee = 9000  # km
+h_perigee = 3000  # km
 # compute e given hp and a
 print(f'Target e given hp of {h_perigee} km and a of {orbital_parameters["semi_major_axis"]} km', {1-((constants.EARTH_RADIUS + h_perigee) / orbital_parameters["semi_major_axis"])})
 ### SELECT EPOCH ###
@@ -99,8 +111,8 @@ pattern_list = []
 # pattern_list.append(("Flower", {"Np": 37, "Nd": 18, "Fn": 57, "Fd": 6, "Fh": 19}))  # 3 figure 8: 37-18-57-6-19, i=63.4°, ω=270°, hp=19702 km (a=26080.990 km, e=0.0000327)
 # pattern_list.append(("Flower", {"Np": 12, "Nd": 1, "Fn": 1, "Fd": 13, "Fh": 0}))    # Basic figure 8: 12-1-13-1-13, i=116.6°, ω=270°, hp=1666 km (a=8044.321 km, e=0.0000)
 # pattern_list.append(("Flower", {"Np": 4, "Nd": 1, "Fn": 1, "Fd": 5, "Fh": 0}))      # Straight line:  4-1-5-1-5, i=174.8°, ω=270°, hp=10354 km (a=16732.862 km, e=0.0000434)
-# pattern_list.append(("Flower", {"Np": 8, "Nd": 1, "Fn": 1, "Fd": 90, "Fh": 0}))     # Rings: 8-1-90-1-90, i=165°, ω=270°, hp=3000 km
-pattern_list.append(("Flower", {"Np": 1, "Nd": 11, "Fn": 7, "Fd": 10, "Fh": 0}))    # Planar (Tre Lacci): 1-11-30-7-10, i=180°, ω=270° (a=21133.149 km, e=0.2723216, hp=9000 km)
+pattern_list.append(("Flower", {"Np": 8, "Nd": 1, "Fn": 1, "Fd": 90, "Fh": 0}))     # Rings: 8-1-90-1-90, i=165°, ω=270°, hp=3000 km
+# pattern_list.append(("Flower", {"Np": 31, "Nd": 11, "Fn": 7, "Fd": 10, "Fh": 0}))    # Planar (Tre Lacci): 1-11-30-7-10, i=180°, ω=270° (a=21133.149 km, e=0.2723216, hp=9000 km)
 # # Basic flower: 3-1-4-1-4 (full), 3-1-4-1-2 (not enough slots), 3-2-4-1-2 (full), 3-2-4-1-4 (empty slots), a=20270.418 km, e=0.6557478, hp=600 km
 # pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 4, "Fh": 0}))      # Basic flower (full)
 # pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 2, "Fh": 0}))      # Basic flower (not enough slots)
@@ -142,7 +154,7 @@ fovs = [170] # degrees, field of view of the sensor
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-step =  500 # Time step input
+step =  501 # Time step input
 
 # Estimate one period index to stop ground track after one orbit
 a = orbital_parameters['semi_major_axis']  # km from Earth's center
@@ -781,10 +793,11 @@ if __name__ == "__main__":
                 ax_snapshot.legend(loc="upper center", bbox_to_anchor=(0.5, 0.12), fontsize="small", ncol=4)
                 
                 # Handle layout based on number of satellites
-                if num_satellites > 90:
-                    plt.tight_layout(rect=[0, -0.06, 1, 0.95])
-                    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), fontsize="x-small", ncol=4)
-                    ax_topdown.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), fontsize="x-small", ncol=4)
+                if num_satellites > 89:
+                    fig.subplots_adjust(left=0.12, right=0.88, bottom=0.2, top=0.9)
+                    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 0.01), fontsize="x-small", ncol=7)
+                    ax_topdown.legend(loc="upper center", bbox_to_anchor=(0.5, 0.14), fontsize="x-small", ncol=7) # moving legend box upwards. lot of vertical space from plot
+                    ax_snapshot.legend(loc="upper center", bbox_to_anchor=(0.5, 0.14), fontsize="x-small", ncol=7)
                 elif num_satellites > 49:
                     plt.tight_layout(rect=[0, -0.03, 1, 0.95])
                     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize="x-small", ncol=4)
@@ -811,7 +824,7 @@ if __name__ == "__main__":
                     topdown_filename = f"plots/ecef_topdown/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/Topdown_ECEF_Orbit_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"   
 
                     ax_snapshot.set_title(f"Final positions (top-down view) of {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}\n({orbital_params_str})\n after {n_periods} orbital period(s)")
-                    snapshot_filename = f"plots/ecef_topdown/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/Snapshot_ECEF_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                     
+                    snapshot_filename = f"plots/ecef_topdown/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/Snapshot_ECEF_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                     
                 elif pattern == 'Walker-Delta-SinglePlane':
                     orbital_params_str = (
                         f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
@@ -843,7 +856,7 @@ if __name__ == "__main__":
                     topdown_filename = f"plots/ecef_topdown/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/Topdown_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}_omega{orbital_parameters['argument_of_periapsis']}.png"
 
                     ax_snapshot.set_title(f"Final positions (top-down view) of {pattern} constellation with {num_satellites} sat(s), {Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}\n({orbital_params_str})\n after {n_periods} orbital period(s)")
-                    snapshot_filename = f"plots/ecef_topdown/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/Snapshot_ECEF_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"       
+                    snapshot_filename = f"plots/ecef_topdown/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/Snapshot_ECEF_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"       
                 else:
                     ax.set_title(f"3D ECEF visualization of {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})")
                     filename = f"plots/ecef_3D/{pattern}/{n_periods}T/3D_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
@@ -852,8 +865,8 @@ if __name__ == "__main__":
                     topdown_filename = f"plots/ecef_topdown/{pattern}/{n_periods}T/Topdown_ECEF_Orbit_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
 
                     ax_snapshot.set_title(f"Final positions (top-down view) of {pattern} constellation with {num_satellites} sat(s)\n({orbital_params_str}\nafter {n_periods} orbital period(s))")
-                    snapshot_filename = f"plots/ecef_topdown/{pattern}/{n_periods}T/Snapshot_ECEF_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
-                                
+                    snapshot_filename = f"plots/ecef_topdown/{pattern}/{n_periods}T/Snapshot_ECEF_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+
                 # Create directories if they don't exist and save figures
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 plt.figure(fig.number)
@@ -874,16 +887,36 @@ if __name__ == "__main__":
             if PLOT_ECEF_3D and ANIMATE_CONSTELLATION:
                 # Generate the animation using the already computed positions
                 fps_anim = 60
-                const.create_animation(
-                    time_stamps=time_stamps,
-                    positions=positions,
-                    start_time_datetime=start_time_datetime,
-                    n_periods=n_periods_ecef3d,
-                    filename=f"plots/animations/{pattern}/topdown_animation_step{step}_{fps_anim}fps/{n_periods}T/N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.mp4",
-                    view="topdown",
-                    fps=fps_anim,
-                    tail_length=5 # number of previous positions to show in tail
-                )
+                ANIMATE_TOPDOWN = False  # change only this one
+                ANIMATE_3D = True  # 
+
+                if ANIMATE_TOPDOWN == True:
+                    view = "topdown"
+                else:
+                    view = "3d"
+
+                if pattern == "Flower":
+                    const.create_animation(
+                        time_stamps=time_stamps,
+                        positions=positions,
+                        start_time_datetime=start_time_datetime,
+                        n_periods=n_periods_ecef3d,
+                        filename=f"plots/animations/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{view}_animation_step{step}_{fps_anim}fps/{n_periods}T/N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.mp4",
+                        view=view,
+                        fps=fps_anim,
+                        tail_length=5 # number of previous positions to show in tail
+                    )
+                else:    
+                    const.create_animation(
+                        time_stamps=time_stamps,
+                        positions=positions,
+                        start_time_datetime=start_time_datetime,
+                        n_periods=n_periods_ecef3d,
+                        filename=f"plots/animations/{pattern}/{view}_animation_step{step}_{fps_anim}fps/{n_periods}T/N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.mp4",
+                        view=view,
+                        fps=fps_anim,
+                        tail_length=5 # number of previous positions to show in tail
+                    )
 
             if COMPUTE_GLOBAL_COVERAGE:
                 #############################################

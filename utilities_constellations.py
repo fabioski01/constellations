@@ -599,16 +599,23 @@ class Constellation:
         z = earth_radius * np.outer(np.ones(np.size(u)), np.cos(v))
         ax.plot_surface(x, y, z, color='b', alpha=0.1, edgecolor='k', linewidth=0.25)
         
+        # Format anomalistic period from seconds to HH:MM:SS
+        period_seconds = self.estimate_anomalistic_period()
+        period_hours = int(period_seconds // 3600)
+        period_minutes = int((period_seconds % 3600) // 60)
+        period_seconds_remainder = int(period_seconds % 60)
+        period_formatted = f"{period_hours:02d}:{period_minutes:02d}:{period_seconds_remainder:02d}"
+
         # Set the view
         if view.lower() == "topdown":
             ax.view_init(elev=90, azim=-90)  # Top-down view
             if self.pattern == "Flower":
-                ax.set_title(f"Top-down view of {self.pattern} constellation with {self.num_satellites} satellites\n{self.Np}-{self.Nd}-{self.num_satellites}-{self.Fn}-{self.Fd}-{self.Fh} (ECEF frame), T_anomal={self.estimate_anomalistic_period():.2f} s")
+                ax.set_title(f"Top-down view of {self.pattern} constellation with {self.num_satellites} satellites\n{self.Np}-{self.Nd}-{self.num_satellites}-{self.Fn}-{self.Fd}-{self.Fh} (ECEF frame), T_anomal={period_formatted}")
             else:
-                ax.set_title(f"Top-down view of {self.pattern} constellation with {self.num_satellites} satellites (ECEF frame), T_anomal={self.estimate_anomalistic_period():.2f} s")
+                ax.set_title(f"Top-down view of {self.pattern} constellation with {self.num_satellites} satellites (ECEF frame), T_anomal={period_formatted}")
         else:
             ax.view_init(elev=30, azim=-60)  # 3D perspective
-            ax.set_title(f"3D view of {self.pattern} constellation with {self.num_satellites} satellites (ECEF frame), T_anomal={self.estimate_anomalistic_period():.2f} s")
+            ax.set_title(f"3D view of {self.pattern} constellation with {self.num_satellites} satellites (ECEF frame), T_anomal={period_formatted}")
         
         # Configure the plot
         max_range = np.max(np.abs(positions)) * 1.1
