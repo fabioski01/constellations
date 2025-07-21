@@ -28,96 +28,187 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 # Switches for plotting
 PLOT_GROUND_TRACKS = False
 PLOT_INERTIAL_GROUND_TRACKS = False
+n_periods_ground_tracks = 1
 PLOT_INERTIAL_3D = False
-PLOT_ECEF_3D = True
-n_periods_ecef3d = 8
-ANIMATE_CONSTELLATION = True
+n_periods_3d = 2
+PLOT_ECEF_3D = False
+n_periods_ecef3d = n_periods_3d
+ANIMATE_CONSTELLATION = False # needs PLOT_ECEF_3D to be True
+COMPUTE_GLOBAL_COVERAGE = True
+masking_angles = [10.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold. Usually 10-15 deg min
+fovs = [160] # degrees, field of view of the sensor. If too low is limiting, if it's large then the masking angle is limiting
+n_periods_global_coverage = 1
+COMPUTE_REGIONAL_COVERAGE = True
+# regions_to_analyze = ["Western_US", "Europe", "Japan"]
+regions_to_analyze = ["Western_US", "Eastern_US", "Continental_US", "Europe", "East_Asia", "South_America", "Africa", "Australia", "Arctic", "Antarctica", "Japan", "Italy", "United_Kingdom", "India", "Brazil", "Turkey", "Central_Mexico", "Alaska", "Hawaii", "Iran", "Nepal", "Philippines", "New_Zealand", "Chile", "Indonesia", "Greece", "Central_China", "Kamchatka", "Caribbean", "Eastern_Europe", "Central_Asia_Eastern_China", "Western_South_America_Coast", "West_Coast_US", "California", "Mediterranean", "Iberian_Peninsula", "Southeast_Asia", "Middle_East", "North_Africa", "Great_Lakes"]
+n_periods_regional_coverage = n_periods_global_coverage
 PLOT_COVERAGE = False
+n_periods_plot_coverage = n_periods_global_coverage
 COMPUTE_VISIBILITY = False
+gs = "Fucino"  # Ground station location INPUT
+n_periods_compute_visibility = 1
 PLOT_VISIBILITY = False # needs COMPUTE_VISIBILITY to be True
 PLOT_DATA_COMPARISON = False # needs COMPUTE_VISIBILITY to be True
 PLOT_PATTERN_VISIBILITY_COMPARISON = False # needs COMPUTE_VISIBILITY to be True
-COMPUTE_GLOBAL_COVERAGE = False
-COMPUTE_REGIONAL_COVERAGE = False
 
-if COMPUTE_GLOBAL_COVERAGE or COMPUTE_REGIONAL_COVERAGE:
-    # num_satellites_list = [4,8,16]
-    num_satellites_list = [1] # debug
-else:
-    # num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for walker P=4
-    # num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for walker P=3
-    num_satellites_list = [90] # Flower
-    # num_satellites_list = list(range(1, 101))
+# num_satellites_list = [4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,88,100] # compatible for walker P=4
+# num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for walker P=3
+# num_satellites_list = [77] # Flower
+# num_satellites_list = list(range(1, 101))
+num_satellites_list = [1]
 
-
-### SELECT ORBITAL PARAMETERS ###
-# orbital_parameters = {
-#     'semi_major_axis':     6800.0,    # km
-#     'eccentricity':        0.00,    # unitless
-#     'inclination':         52.0,     # deg
-#     'RAAN':                0,     # deg
-#     'argument_of_periapsis': 250.0,  # deg     
-#     'true_anomaly':        0.0,      # deg
-#     'ndot':                1e-8,     # rev/day² # Includes derivatives
-#     'nddot':               1e-12,    # rev/day³
-#     'bstar':               2e-5      # 1/er
-# }
-### FLOWERS: BASIC FLOWERS ###
-# orbital_parameters = {
-#     'semi_major_axis':     20270.418,    # km
-#     'eccentricity':        0.6557478,    # unitless
-#     'inclination':         63.4,     # deg
-#     'RAAN':                0,     # deg
-#     'argument_of_periapsis': 270.0,  # deg     
-#     'true_anomaly':        0.0,      # deg
-#     'ndot':                1e-8,     # rev/day² # Includes derivatives
-#     'nddot':               1e-12,    # rev/day³
-#     'bstar':               2e-5      # 1/er
-# }
-### FLOWERS: TRE LACCI ###
-# orbital_parameters = {
-#     'semi_major_axis':     21133.149,    # km
-#     'eccentricity':        0.2723216,    # unitless
-#     'inclination':         180.0,     # deg
-#     'RAAN':                0,     # deg
-#     'argument_of_periapsis': 270.0,  # deg     
-#     'true_anomaly':        0.0,      # deg
-#     'ndot':                1e-8,     # rev/day² # Includes derivatives
-#     'nddot':               1e-12,    # rev/day³
-#     'bstar':               2e-5      # 1/er
-# }
-### FLOWERS: RINGS ###
+## SELECT ORBITAL PARAMETERS ###
 orbital_parameters = {
-    'semi_major_axis':     21133.149,    # km
-    'eccentricity':        0.2723216,    # unitless
-    'inclination':         165.0,     # deg
+    'semi_major_axis':     6800.0,    # km
+    'eccentricity':        0.00,    # unitless
+    'inclination':         51.0,     # deg
     'RAAN':                0,     # deg
-    'argument_of_periapsis': 270.0,  # deg     
+    'argument_of_periapsis': 250.0,  # deg     
     'true_anomaly':        0.0,      # deg
     'ndot':                1e-8,     # rev/day² # Includes derivatives
     'nddot':               1e-12,    # rev/day³
     'bstar':               2e-5      # 1/er
 }
-h_perigee = 3000  # km
-# compute e given hp and a
-print(f'Target e given hp of {h_perigee} km and a of {orbital_parameters["semi_major_axis"]} km', {1-((constants.EARTH_RADIUS + h_perigee) / orbital_parameters["semi_major_axis"])})
+### FLOWERS ###
+FLOWER_CONSTELLATIONS = {
+    "basic_flower": { # need 2-4 sat
+        "pattern_params": {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 4, "Fh": 0}, # pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 4, "Fh": 0}))      # Basic flower (full)
+                                                                        # pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 2, "Fh": 0}))      # Basic flower (not enough slots)
+                                                                        # pattern_list.append(("Flower", {"Np": 3, "Nd": 2, "Fn": 1, "Fd": 2, "Fh": 0}))      # Basic flower (full)
+                                                                        # pattern_list.append(("Flower", {"Np": 3, "Nd": 2, "Fn": 1, "Fd": 4, "Fh": 0}))      # Basic flower (empty slots)
+        "orbital_params": {
+            'semi_major_axis': 20270.418,    # km
+            'eccentricity': 0.6557478,       # unitless
+            'inclination': 63.4,             # deg
+            'RAAN': 0,                       # deg
+            'argument_of_periapsis': 270.0,  # deg     
+            'true_anomaly': 0.0,             # deg
+            'ndot': 1e-8,                    # rev/day²
+            'nddot': 1e-12,                  # rev/day³
+            'bstar': 2e-5,                   # 1/er
+            'description': "Basic flower (full)"
+        }
+    },
+    "tre_lacci": { # need 30 sat
+        "pattern_params": {"Np": 31, "Nd": 11, "Fn": 7, "Fd": 10, "Fh": 0},
+        "orbital_params": {
+            'semi_major_axis': 21133.149,    # km
+            'eccentricity': 0.2723216,       # unitless
+            'inclination': 180.0,            # deg
+            'RAAN': 0,                       # deg
+            'argument_of_periapsis': 270.0,  # deg     
+            'true_anomaly': 0.0,             # deg
+            'ndot': 1e-8,                    # rev/day²
+            'nddot': 1e-12,                  # rev/day³
+            'bstar': 2e-5,                   # 1/er
+            'description': "Planar (Tre Lacci): 31-11-N-7-10"
+        }
+    },
+    "rings": { # need 90 sat
+        "pattern_params": {"Np": 8, "Nd": 1, "Fn": 1, "Fd": 90, "Fh": 0},
+        "orbital_params": {
+            'semi_major_axis': 21133.149,    # km
+            'eccentricity': 0.5565734193233578,       # unitless
+            'inclination': 165.0,            # deg
+            'RAAN': 0,                       # deg
+            'argument_of_periapsis': 270.0,  # deg     
+            'true_anomaly': 0.0,             # deg
+            'ndot': 1e-8,                    # rev/day²
+            'nddot': 1e-12,                  # rev/day³
+            'bstar': 2e-5,                   # 1/er
+            'description': "Rings: 8-1-N-1-90" 
+        }
+    },
+    "straight_line": { # needs 5 sat
+        "pattern_params": {"Np": 4, "Nd": 1, "Fn": 1, "Fd": 5, "Fh": 0},
+        "orbital_params": {
+            'semi_major_axis': 16732.862,    # km
+            'eccentricity': 0.0000434,       # unitless
+            'inclination': 174.8,            # deg
+            'RAAN': 0,                       # deg
+            'argument_of_periapsis': 270.0,  # deg     
+            'true_anomaly': 0.0,             # deg
+            'ndot': 1e-8,                    # rev/day²
+            'nddot': 1e-12,                  # rev/day³
+            'bstar': 2e-5,                   # 1/er
+            'description': "Straight line: 4-1-N-1-5"
+        }
+    },
+    "helix": { # needs 49 sat
+        "pattern_params": {"Np": 15, "Nd": 7, "Fn": 23, "Fd": 49, "Fh": 0},
+        "orbital_params": {
+            'semi_major_axis': 25367.718,    # km
+            'eccentricity': 0.3937911,       # unitless
+            'inclination': 63.4,             # deg
+            'RAAN': 0,                       # deg
+            'argument_of_periapsis': 270.0,  # deg     
+            'true_anomaly': 0.0,             # deg
+            'ndot': 1e-8,                    # rev/day²
+            'nddot': 1e-12,                  # rev/day³
+            'bstar': 2e-5,                   # 1/er
+            'description': "Helix: 15-7-N-23-49"
+        }
+    },
+    "3_figure_8": { # needs 57 sat
+        "pattern_params": {"Np": 37, "Nd": 18, "Fn": 57, "Fd": 6, "Fh": 19},
+        "orbital_params": {
+            'semi_major_axis': 26080.990,    # km
+            'eccentricity': 0.0000327,       # unitless
+            'inclination': 63.4,             # deg
+            'RAAN': 0,                       # deg
+            'argument_of_periapsis': 270.0,  # deg     
+            'true_anomaly': 0.0,             # deg
+            'ndot': 1e-8,                    # rev/day²
+            'nddot': 1e-12,                  # rev/day³
+            'bstar': 2e-5,                   # 1/er
+            'description': "3 figure 8: 37-18-57-6-19"
+        }
+    },
+    "basic_figure_8": { # needs 13 sat
+        "pattern_params": {"Np": 12, "Nd": 1, "Fn": 1, "Fd": 13, "Fh": 0},
+        "orbital_params": {
+            'semi_major_axis': 8044.321,    # km
+            'eccentricity': 0.0000,       # unitless
+            'inclination': 116.6,             # deg
+            'RAAN': 0,                       # deg
+            'argument_of_periapsis': 270.0,  # deg     
+            'true_anomaly': 0.0,             # deg
+            'ndot': 1e-8,                    # rev/day²
+            'nddot': 1e-12,                  # rev/day³
+            'bstar': 2e-5,                   # 1/er
+            'description': "Basic figure 8: 12-1-13-1-13"
+        }
+    },
+    "lone_star": { # needs 77 sat
+        "pattern_params": {"Np": 38, "Nd": 23, "Fn": 23, "Fd": 77, "Fh": 0},
+        "orbital_params": {
+            'semi_major_axis': 20000,    # km. needs h_p=1300 km
+            'eccentricity': 0.615,       # unitless
+            'inclination': 0,             # deg
+            'RAAN': 0,                       # deg
+            'argument_of_periapsis': 270.0,  # deg     
+            'true_anomaly': 0.0,             # deg
+            'ndot': 1e-8,                    # rev/day²
+            'nddot': 1e-12,                  # rev/day³
+            'bstar': 2e-5,                   # 1/er
+            'description': "Basic figure 8: 12-1-13-1-13"
+        }
+    },
+    
+}
+# selected_flower = "lone_star"  # Change this to try different configurations
+# orbital_parameters = FLOWER_CONSTELLATIONS[selected_flower]["orbital_params"].copy()
+# pattern_params_flower = FLOWER_CONSTELLATIONS[selected_flower]["pattern_params"]
+
+# h_perigee = 1300  # km
+# print(f'Target e given hp of {h_perigee} km and a of {orbital_parameters["semi_major_axis"]} km', {1-((constants.EARTH_RADIUS + h_perigee) / orbital_parameters["semi_major_axis"])})
+
 ### SELECT EPOCH ###
 epoch = datetime(2025,5,5,0,0,0)
 
 # ### SELECT A PATTERN ###
-pattern_list = []
-##### Flower examples #####
-# pattern_list.append(("Flower", {"Np": 15, "Nd": 7, "Fn": 23, "Fd": 49, "Fh": 0}))   # Helix: 15-7-49-23-49, i=63.4°, ω=270°, hp=9000 km (a=25367.718 km, e=0.3937911)
-# pattern_list.append(("Flower", {"Np": 37, "Nd": 18, "Fn": 57, "Fd": 6, "Fh": 19}))  # 3 figure 8: 37-18-57-6-19, i=63.4°, ω=270°, hp=19702 km (a=26080.990 km, e=0.0000327)
-# pattern_list.append(("Flower", {"Np": 12, "Nd": 1, "Fn": 1, "Fd": 13, "Fh": 0}))    # Basic figure 8: 12-1-13-1-13, i=116.6°, ω=270°, hp=1666 km (a=8044.321 km, e=0.0000)
-# pattern_list.append(("Flower", {"Np": 4, "Nd": 1, "Fn": 1, "Fd": 5, "Fh": 0}))      # Straight line:  4-1-5-1-5, i=174.8°, ω=270°, hp=10354 km (a=16732.862 km, e=0.0000434)
-pattern_list.append(("Flower", {"Np": 8, "Nd": 1, "Fn": 1, "Fd": 90, "Fh": 0}))     # Rings: 8-1-90-1-90, i=165°, ω=270°, hp=3000 km
-# pattern_list.append(("Flower", {"Np": 31, "Nd": 11, "Fn": 7, "Fd": 10, "Fh": 0}))    # Planar (Tre Lacci): 1-11-30-7-10, i=180°, ω=270° (a=21133.149 km, e=0.2723216, hp=9000 km)
-# # Basic flower: 3-1-4-1-4 (full), 3-1-4-1-2 (not enough slots), 3-2-4-1-2 (full), 3-2-4-1-4 (empty slots), a=20270.418 km, e=0.6557478, hp=600 km
-# pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 4, "Fh": 0}))      # Basic flower (full)
-# pattern_list.append(("Flower", {"Np": 3, "Nd": 1, "Fn": 1, "Fd": 2, "Fh": 0}))      # Basic flower (not enough slots)
-# pattern_list.append(("Flower", {"Np": 3, "Nd": 2, "Fn": 1, "Fd": 2, "Fh": 0}))      # Basic flower (full)
-# pattern_list.append(("Flower", {"Np": 3, "Nd": 2, "Fn": 1, "Fd": 4, "Fh": 0}))      # Basic flower (empty slots)
+# pattern_list = []
+# # pattern_list.append(("Flower", pattern_params_flower))
 
 # pattern_list.append(("Walker-Delta", {"P": 1, "F": 1}))
 # if COMPUTE_GLOBAL_COVERAGE or COMPUTE_REGIONAL_COVERAGE:
@@ -137,19 +228,10 @@ pattern_list.append(("Flower", {"Np": 8, "Nd": 1, "Fn": 1, "Fd": 90, "Fh": 0})) 
 #     # For P=1, there's no valid F value, so add this manually
 #     pattern_list.append(("Walker-Delta", {"P": 1, "F": 1}))
 
-    # pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
-    # pattern_list = [("Walker-Delta", {"P": 1, "F": 1}), ("Walker-Delta", {"P": 2, "F": 1}), ("Walker-Delta", {"P": 3, "F": 1}), ("Walker-Delta", {"P": 4, "F": 1}), ("Walker-Delta", {"P": 5, "F": 1}), ("Walker-Delta", {"P": 6, "F": 1}), ("Walker-Delta", {"P": 7, "F": 1}), ("Walker-Delta", {"P": 8, "F": 1}), ("Walker-Delta", {"P": 9, "F": 1}), ("Walker-Delta", {"P": 10, "F": 1}),]
+#     pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
+pattern_list = [("Walker-Delta", {"P": 1, "F": 1}),]
 
 pattern_params = {} # saving parameters for each pattern for plotting outside the pattern loop
-
-### INPUT for visibility plots ###
-gs = "Fucino"  # Ground station location
-
-### INPUTS for coverage plots ###
-# masking_angles = [5.0,10.0,15.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold. Usually 10-15 deg min
-masking_angles = [20.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold
-# fovs = [20,70,120,180] # degrees, field of view of the sensor. If too low is limiting, if it's large then the masking angle is limiting
-fovs = [170] # degrees, field of view of the sensor
 
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
@@ -294,7 +376,7 @@ if __name__ == "__main__":
                 print(f"Plotting ground tracks of {num_satellites} satellites...")
                     # Add this debug code right after the ECI propagation in your main.py:
                 
-                n_periods = 1  # Number of periods to plot
+                n_periods = n_periods_ground_tracks  # Number of periods to plot
 
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
@@ -419,7 +501,7 @@ if __name__ == "__main__":
                 # Plot inertial ground track (without Earth rotation)
                 print(f"Plotting inertial ground tracks of {num_satellites} satellites...")
                 
-                n_periods = 1  # Number of periods to plot
+                n_periods = n_periods_ground_tracks  # Number of periods to plot
 
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period)
                 idx_max = n_periods * idx_oneperiod
@@ -510,7 +592,7 @@ if __name__ == "__main__":
                 # Plot inertial orbit of satellite in 3D (in loop)
                 print(f"Plotting inertial 3D orbits of {num_satellites} satellites...")
                 
-                n_periods = 1  # Number of periods to plot
+                n_periods = n_periods_3d  # Number of periods to plot
 
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
@@ -798,10 +880,17 @@ if __name__ == "__main__":
                     ax.legend(loc="upper center", bbox_to_anchor=(0.5, 0.01), fontsize="x-small", ncol=7)
                     ax_topdown.legend(loc="upper center", bbox_to_anchor=(0.5, 0.14), fontsize="x-small", ncol=7) # moving legend box upwards. lot of vertical space from plot
                     ax_snapshot.legend(loc="upper center", bbox_to_anchor=(0.5, 0.14), fontsize="x-small", ncol=7)
+                elif num_satellites > 75:
+                    fig.subplots_adjust(left=0.12, right=0.88, bottom=0.2, top=0.9)
+                    fig_snapshot.subplots_adjust(left=0.12, right=0.88, bottom=0.05, top=0.95)
+                    fig_topdown.subplots_adjust(left=0.12, right=0.88, bottom=0.05, top=0.95)
+                    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 0.01), fontsize="x-small", ncol=7)
+                    ax_topdown.legend(loc="upper center", bbox_to_anchor=(0.5, 0.14), fontsize="x-small", ncol=7) # moving legend box upwards. lot of vertical space from plot
+                    ax_snapshot.legend(loc="upper center", bbox_to_anchor=(0.5, 0.14), fontsize="x-small", ncol=7)                
                 elif num_satellites > 49:
                     plt.tight_layout(rect=[0, -0.03, 1, 0.95])
-                    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize="x-small", ncol=4)
-                    ax_topdown.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize="x-small", ncol=4)
+                    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize="x-small", ncol=5)
+                    ax_topdown.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), fontsize="x-small", ncol=5)
                 else:
                     fig.subplots_adjust(left=0.12, right=0.88, bottom=0.2, top=0.9)
                     fig_snapshot.subplots_adjust(left=0.12, right=0.88, bottom=0.2, top=0.9)   
@@ -923,7 +1012,7 @@ if __name__ == "__main__":
                 ### Compute global coverage using grid-based approach
                 print(f"Computing global coverage for {num_satellites} satellites...")
                 
-                n_periods = 1  # Number of periods to consider for coverage computation
+                n_periods = n_periods_global_coverage  # Number of periods to consider for coverage computation
 
                 SHOW_GROUND_TRACKS_ON_COVERAGE = True # Show satellite ground tracks on coverage plots (for debugging)
 
@@ -991,7 +1080,7 @@ if __name__ == "__main__":
                         
                         if pattern == 'Walker-Delta':
                             title = f"Grid-based global coverage of a {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {constellation_coverage:.2f}%"
-                            filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/global/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/1T/constellation_coverage_step{step}_N{num_satellites}.png"                            
+                            filename = f"plots/grid_coverage/global/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/mask{masking_angle}_fov{fov}/constellation_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                            
                         elif pattern == 'Walker-Delta-SinglePlane':
                             orbital_params_str = (
                                 f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
@@ -1001,13 +1090,13 @@ if __name__ == "__main__":
                                 f"ω={orbital_parameters['argument_of_periapsis']}°"
                             )     
                             title = f"Grid-based global coverage of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {constellation_coverage:.2f}%"
-                            filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/global/{pattern}/1T/constellation_coverage_step{step}_N{num_satellites}.png"
+                            filename = f"plots/grid_coverage/global/{pattern}/{n_periods}T/mask{masking_angle}_fov{fov}/constellation_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                                        
                         elif pattern == "Flower":
                             title = f"Grid-based global coverage of a {pattern} constellation with {num_satellites} sat(s), Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}, during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {constellation_coverage:.2f}% ({orbital_params_str})"
-                            filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/global/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/1T/constellation_coverage_step{step}_N{num_satellites}.png"    
+                            filename = f"plots/grid_coverage/global/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/mask{masking_angle}_fov{fov}/constellation_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                                        
                         else:
                             title = f"Grid-based global coverage of a {pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {constellation_coverage:.2f}%"
-                            filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/global/{pattern}/1T/constellation_coverage_step{step}_N{num_satellites}.png"
+                            filename = f"plots/grid_coverage/global/{pattern}/{n_periods}T/mask{masking_angle}_fov{fov}/constellation_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                                        
                         # Plot the coverage map with binary colormap (covered or not covered)
                         fig = Coverage.plot_coverage_map(global_coverage, title=title)
                         
@@ -1055,16 +1144,13 @@ if __name__ == "__main__":
                 #############################################
                 ### Compute regional coverage using grid-based approach
                 
-                n_periods = 1  # Number of periods to consider for coverage computation
+                n_periods = n_periods_regional_coverage  # Number of periods to consider for coverage computation
 
                 SHOW_GROUND_TRACKS_ON_COVERAGE = True # Show satellite ground tracks on coverage plots (for debugging)
 
                 # Create a Coverage object
                 coverage_obj = Coverage(orbital_parameters, positions=positions, times=time_stamps)
                 
-                # Compute and plot regional coverage for specific regions
-                # regions_to_analyze = ["Western_US", "Europe", "Japan"]
-                regions_to_analyze = ["Western_US", "Eastern_US", "Continental_US", "Europe", "East_Asia", "South_America", "Africa", "Australia", "Arctic", "Antarctica", "Japan", "Italy", "United_Kingdom", "India", "Brazil", "Turkey", "Central_Mexico", "Alaska", "Hawaii", "Iran", "Nepal", "Philippines", "New_Zealand", "Chile", "Indonesia", "Greece", "Central_China", "Kamchatka", "Caribbean", "Eastern_Europe", "Central_Asia_Eastern_China", "Western_South_America_Coast", "West_Coast_US", "California", "Mediterranean", "Iberian_Peninsula", "Southeast_Asia", "Middle_East", "North_Africa", "Great_Lakes"]
 
                 print(f"\nComputing regional coverage for {num_satellites} satellites for regions: {regions_to_analyze}")
 
@@ -1095,7 +1181,7 @@ if __name__ == "__main__":
                             
                             if pattern == 'Walker-Delta':
                                 title = f"Grid-based regional coverage over the region of {region} of a\n{pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {regional_coverage:.2f}%"
-                                filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/regional/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/1T/region_{region}_coverage_step{step}_N{num_satellites}.png"                            
+                                filename = f"plots/grid_coverage/regional/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/mask{masking_angle}_fov{fov}/region_{region}_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                                           
                             elif pattern == 'Walker-Delta-SinglePlane':
                                 orbital_params_str = (
                                     f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
@@ -1105,13 +1191,13 @@ if __name__ == "__main__":
                                     f"ω={orbital_parameters['argument_of_periapsis']}°"
                                 )     
                                 title = f"Grid-based regional coverage over the region of {region} of a\n{pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {regional_coverage:.2f}%"
-                                filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/regional/{pattern}/1T/region_{region}_coverage_step{step}_N{num_satellites}.png"
+                                filename = f"plots/grid_coverage/regional/{pattern}/{n_periods}T/mask{masking_angle}_fov{fov}/region_{region}_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                                           
                             elif pattern == "Flower":
                                 title = f"Grid-based regional coverage over the region of {region} of a\n{pattern} constellation with {num_satellites} sat(s), Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}, during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {regional_coverage:.2f}%"
-                                filename = f"plots/grid_coverage/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/mask{masking_angle}_fov{fov}/regional/{region}/region_coverage_step{step}_N{num_satellites}_{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}.png"                            
+                                filename = f"plots/grid_coverage/regional/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/mask{masking_angle}_fov{fov}/region_{region}_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                                           
                             else:
                                 title = f"Grid-based regional coverage over the region of {region} of a\n{pattern} constellation with {num_satellites} sat(s) during {n_periods} orbital period(s)\n({orbital_params_str})\nMasking Angle: {masking_angle}°, FOV: {fov}°, Total Coverage: {regional_coverage:.2f}%"
-                                filename = f"plots/grid_coverage/a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}/mask{masking_angle}_fov{fov}/regional/{pattern}/1T/region_{region}_coverage_step{step}_N{num_satellites}.png"
+                                filename = f"plots/grid_coverage/regional/{pattern}/{n_periods}T/mask{masking_angle}_fov{fov}/region_{region}_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                                                           
 
                             # Plot the regional coverage
                             fig = Coverage.plot_coverage_map(regional_result, title=title)
@@ -1160,7 +1246,7 @@ if __name__ == "__main__":
                 ### Plot coverage for multiple satellites
                 print(f"Plotting coverage of {num_satellites} satellites...")
 
-                n_periods = 1  # Number of periods to plot
+                n_periods = n_periods_plot_coverage  # Number of periods to plot
 
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
@@ -1290,7 +1376,7 @@ if __name__ == "__main__":
                 #############################################
                 ### Compute and store visibility/overlap data for all satellites (NO plotting)
                 print(f"Computing visibility and overlap for {num_satellites} satellites in {pattern}...")
-                n_periods = 1
+                n_periods = n_periods_compute_visibility
                 idx_oneperiod = np.searchsorted(time_stamps, orbital_period) # Index of one orbital period
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
                 elevation_threshold = 10.0  # degrees
@@ -1350,7 +1436,7 @@ if __name__ == "__main__":
                 overlap_text = f"overlap: {overlap_percentage:.2f}%" if total_time_with_any_visible > 0 else "no visibility"
                 pass
 
-            if PLOT_VISIBILITY:
+            if PLOT_VISIBILITY and COMPUTE_VISIBILITY:
                 #############################################
                 ### Only plot using precomputed data (NO computation)
                 print(f"Plotting visibility and elevation angle of {num_satellites} satellites in {pattern}...")
@@ -1416,7 +1502,7 @@ if __name__ == "__main__":
                     filename = f"plots/visibility/{pattern}/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}_RAAN{orbital_parameters['RAAN']}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
                 elif pattern == "Flower":
                     ax1.set_title(f"Satellite Visibility from {gs} Ground Station a {pattern} constellation\nwith {num_satellites} sat(s), Np={Np}, Nd={Nd}, Fn={Fn}, Fd={Fd}, Fh={Fh}, during {n_periods} orbital period(s)\n({orbital_params_str})\nTotal time with at least one visible sat: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {percentage_visible:.2f}%", fontsize=10)
-                    filename = f"plots/visibility/{pattern}/Np{Np}_Nd{Nd}_Fn{Fn}_Fd{Fd}_Fh{Fh}/{n_periods}T/visibility_multiple_satellites{gs}_step{step}_N{num_satellites}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                
+                    filename = f"plots/visibility/{pattern}/{Np}-{Nd}-{num_satellites}-{Fn}-{Fd}-{Fh}/{n_periods}T/visibility_multiple_satellites{gs}_step{step}_N{num_satellites}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                
                 else:
                     ax1.set_title(f"Satellite Visibility from {gs} Ground Station a {pattern} constellation\nwith N{num_satellites} sat(s), during {n_periods} orbital period(s)\n({orbital_params_str})\nTotal time with at least one visible sat: {total_time_with_any_visible:.2f} s ({total_time_with_any_visible/3600:.2f} hr), {percentage_visible:.2f}%; {overlap_text}", fontsize=10)
                     filename = f"plots/visibility/{pattern}/{n_periods}T/visibility_multiple_satellites_{gs}_step{step}_N{num_satellites}_el{elevation_threshold}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
@@ -1431,7 +1517,7 @@ if __name__ == "__main__":
             #############################################
 
         ### STILL IN THE PATTERN LOOP
-        if PLOT_DATA_COMPARISON:
+        if PLOT_DATA_COMPARISON and COMPUTE_VISIBILITY:
             print(f"Plotting comparison of visibility and elevation angle wrt to number of satellites in {pattern_key}...")
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(8, 7), gridspec_kw={'height_ratios': [2, 1]})
 
@@ -1482,7 +1568,7 @@ if __name__ == "__main__":
             pass
 
     ### Pattern Comparison Plot ###
-    if PLOT_PATTERN_VISIBILITY_COMPARISON:
+    if PLOT_PATTERN_VISIBILITY_COMPARISON and COMPUTE_VISIBILITY:
         print(f"Plotting comparison of visibility and elevation angle wrt to number of satellites for different patterns: {pattern_list}...")
         
         # Define a richer set of colors using colormap
