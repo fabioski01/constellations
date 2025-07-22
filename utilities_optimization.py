@@ -107,7 +107,7 @@ class ConstellationOptimizer:
                  operational_cost_weight=0.1,    # Operational costs (deorbiting, station keeping)
                  launch_cost_weight=0.1,         # Launch costs (higher for higher orbits)
                  # Science requirements
-                 science_weight=0.2,             # Science requirements weight
+                 science_weight=0.8,             # Science requirements weight
                  target_altitude=500.0,          # Target altitude for science instruments (km)
                  target_altitude_tolerance=50.0, # Tolerance for target altitude (km)
                  # Regional coverage area (Western US as default)
@@ -486,45 +486,45 @@ class ConstellationOptimizer:
         from utilities import CoordinateConversion
         return CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(eci_position, timestamp)
     
-    def _estimate_global_coverage(self, num_satellites, orbital_parameters):
-        """
-        Estimate global coverage based on constellation parameters. Very fast and simplified model.
-        (more satellites → better coverage, higher inclination → better polar coverage)
+    # def _estimate_global_coverage(self, num_satellites, orbital_parameters):
+    #     """
+    #     Estimate global coverage based on constellation parameters. Very fast and simplified model.
+    #     (more satellites → better coverage, higher inclination → better polar coverage)
 
-        In satellite constellation literature, global coverage is typically calculated using more rigorous methods:
-        -   Grid-based methods: Dividing Earth into cells and calculating the percentage of cells with visibility
-            -   Papers by Wertz, Larson & Wertz "Space Mission Analysis & Design"
-            -   Walker's original papers on satellite constellations
-        -   Street of coverage: Calculating the minimum number of satellites needed for continuous coverage
-            -   Rider's work on polar orbiting satellites
-            -   Ballard's extensions to Walker's constellation theory
-        -   Analytical coverage models: Using spherical geometry to determine coverage
-            -   Extensive work by Luders & Ginsberg on optimal satellite constellation design
+    #     In satellite constellation literature, global coverage is typically calculated using more rigorous methods:
+    #     -   Grid-based methods: Dividing Earth into cells and calculating the percentage of cells with visibility
+    #         -   Papers by Wertz, Larson & Wertz "Space Mission Analysis & Design"
+    #         -   Walker's original papers on satellite constellations
+    #     -   Street of coverage: Calculating the minimum number of satellites needed for continuous coverage
+    #         -   Rider's work on polar orbiting satellites
+    #         -   Ballard's extensions to Walker's constellation theory
+    #     -   Analytical coverage models: Using spherical geometry to determine coverage
+    #         -   Extensive work by Luders & Ginsberg on optimal satellite constellation design
 
-        To be implemented:    
-            A grid-based Earth model (typically 1-5° resolution)
-            Ray-tracing or geometric calculations for satellite visibility at each grid point
-            Time-step evaluation to calculate coverage over a full orbital period
-        Coverage metrics like:
-            Mean coverage time
-            Percentage of Earth covered
-            Maximum revisit time
-        """
-        # Simple model: estimate coverage based on number of satellites, inclination, and altitude
-        inclination = orbital_parameters['inclination']
-        altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
+    #     To be implemented:    
+    #         A grid-based Earth model (typically 1-5° resolution)
+    #         Ray-tracing or geometric calculations for satellite visibility at each grid point
+    #         Time-step evaluation to calculate coverage over a full orbital period
+    #     Coverage metrics like:
+    #         Mean coverage time
+    #         Percentage of Earth covered
+    #         Maximum revisit time
+    #     """
+    #     # Simple model: estimate coverage based on number of satellites, inclination, and altitude
+    #     inclination = orbital_parameters['inclination']
+    #     altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
         
-        # Higher inclination gives better polar coverage (up to 90°)
-        inclination_factor = min(inclination, 180 - inclination) / 90.0
+    #     # Higher inclination gives better polar coverage (up to 90°)
+    #     inclination_factor = min(inclination, 180 - inclination) / 90.0
         
-        # Higher altitude gives wider coverage area per satellite
-        altitude_factor = np.sqrt(altitude / 2000)  # Normalized to ~1 at 2000km
+    #     # Higher altitude gives wider coverage area per satellite
+    #     altitude_factor = np.sqrt(altitude / 2000)  # Normalized to ~1 at 2000km
         
-        # Coverage estimate: more satellites and better distribution = better coverage
-        coverage_estimate = (num_satellites * altitude_factor * inclination_factor) / 50
+    #     # Coverage estimate: more satellites and better distribution = better coverage
+    #     coverage_estimate = (num_satellites * altitude_factor * inclination_factor) / 50
         
-        # Cap at 1.0 (full coverage)
-        return min(coverage_estimate, 1.0)
+    #     # Cap at 1.0 (full coverage)
+    #     return min(coverage_estimate, 1.0)
         
     def optimize(self, method='differential_evolution', max_iter=50, popsize=15, strategy='best1bin', 
                  mutation=(0.5, 0.7), recombination=0.7, seed=None, early_stopping=True, patience=20, 
@@ -851,178 +851,178 @@ class ConstellationOptimizer:
             return self._calculate_regional_coverage_simplified(const, orbital_parameters, num_satellites, 
                                                         epoch, orbital_period)
 
-    def _calculate_regional_coverage_simplified(self, constellation, orbital_parameters, num_satellites, epoch, orbital_period):
-        """
-        Calculate coverage metrics for a regional area.
+    # def _calculate_regional_coverage_simplified(self, constellation, orbital_parameters, num_satellites, epoch, orbital_period):
+    #     """
+    #     Calculate coverage metrics for a regional area.
         
-        Parameters:
-        -----------
-        constellation : Constellation object
-            Constellation object
-        orbital_parameters : dict
-            Orbital parameters
-        num_satellites : int
-            Number of satellites
-        epoch : datetime
-            Epoch for constellation
-        orbital_period : float
-            Orbital period in seconds
+    #     Parameters:
+    #     -----------
+    #     constellation : Constellation object
+    #         Constellation object
+    #     orbital_parameters : dict
+    #         Orbital parameters
+    #     num_satellites : int
+    #         Number of satellites
+    #     epoch : datetime
+    #         Epoch for constellation
+    #     orbital_period : float
+    #         Orbital period in seconds
             
-        Returns:
-        --------
-        regional_score : float
-            Score for regional coverage (0-1)
-        """
-        # IMPROVED: Grid-based regional coverage calculation
-        # 1. Create a grid of points across the regional area
-        # 2. Calculate visibility at each grid point
-        # 3. Calculate percentage of region with coverage
+    #     Returns:
+    #     --------
+    #     regional_score : float
+    #         Score for regional coverage (0-1)
+    #     """
+    #     # IMPROVED: Grid-based regional coverage calculation
+    #     # 1. Create a grid of points across the regional area
+    #     # 2. Calculate visibility at each grid point
+    #     # 3. Calculate percentage of region with coverage
         
-        # Extract region boundaries
-        lat_min = min(p[0] for p in self.regional_area)
-        lat_max = max(p[0] for p in self.regional_area)
-        lon_min = min(p[1] for p in self.regional_area)
-        lon_max = max(p[1] for p in self.regional_area)
+    #     # Extract region boundaries
+    #     lat_min = min(p[0] for p in self.regional_area)
+    #     lat_max = max(p[0] for p in self.regional_area)
+    #     lon_min = min(p[1] for p in self.regional_area)
+    #     lon_max = max(p[1] for p in self.regional_area)
         
-        # Grid resolution (higher = more accurate but slower)
-        grid_resolution = 2  # degrees
+    #     # Grid resolution (higher = more accurate but slower)
+    #     grid_resolution = 2  # degrees
         
-        # Generate a grid of lat/lon points within the region
-        lats = np.arange(lat_min, lat_max + grid_resolution, grid_resolution)
-        lons = np.arange(lon_min, lon_max + grid_resolution, grid_resolution)
+    #     # Generate a grid of lat/lon points within the region
+    #     lats = np.arange(lat_min, lat_max + grid_resolution, grid_resolution)
+    #     lons = np.arange(lon_min, lon_max + grid_resolution, grid_resolution)
         
-        # Calculate altitude and other orbital parameters
-        inclination = orbital_parameters['inclination']
-        altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
+    #     # Calculate altitude and other orbital parameters
+    #     inclination = orbital_parameters['inclination']
+    #     altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
         
-        # Calculate swath width (simplified)
-        earth_radius = constants.EARTH_RADIUS
-        max_earth_central_angle = np.arccos(earth_radius / (earth_radius + altitude))
-        swath_half_angle_deg = np.degrees(max_earth_central_angle)
+    #     # Calculate swath width (simplified)
+    #     earth_radius = constants.EARTH_RADIUS
+    #     max_earth_central_angle = np.arccos(earth_radius / (earth_radius + altitude))
+    #     swath_half_angle_deg = np.degrees(max_earth_central_angle)
         
-        # Check if region is within satellite coverage (based on inclination)
-        if lat_max < -inclination - swath_half_angle_deg or lat_min > inclination + swath_half_angle_deg:
-            # Region is outside of satellite coverage
-            return 0.0
+    #     # Check if region is within satellite coverage (based on inclination)
+    #     if lat_max < -inclination - swath_half_angle_deg or lat_min > inclination + swath_half_angle_deg:
+    #         # Region is outside of satellite coverage
+    #         return 0.0
         
-        # Estimate coverage percentage
-        covered_points = 0
-        total_points = 0
+    #     # Estimate coverage percentage
+    #     covered_points = 0
+    #     total_points = 0
         
-        for lat in lats:
-            # Weight points by cosine of latitude (account for smaller area at high latitudes)
-            weight = np.cos(np.radians(lat))
-            if weight < 0.01:  # Avoid division by very small numbers
-                weight = 0.01
+    #     for lat in lats:
+    #         # Weight points by cosine of latitude (account for smaller area at high latitudes)
+    #         weight = np.cos(np.radians(lat))
+    #         if weight < 0.01:  # Avoid division by very small numbers
+    #             weight = 0.01
                 
-            for lon in lons:
-                # Check if point is within the polygon region (if region is not rectangular)
-                if len(self.regional_area) > 4:  # More complex than a rectangle
-                    if not self._point_in_polygon(lat, lon, self.regional_area):
-                        continue
+    #         for lon in lons:
+    #             # Check if point is within the polygon region (if region is not rectangular)
+    #             if len(self.regional_area) > 4:  # More complex than a rectangle
+    #                 if not self._point_in_polygon(lat, lon, self.regional_area):
+    #                     continue
                 
-                total_points += weight
+    #             total_points += weight
                 
-                # Check if this point can be covered based on inclination and swath
-                if abs(lat) <= inclination + swath_half_angle_deg:
-                    # Calculate coverage based on satellite density
-                    # First approximation: avg region area / avg satellite coverage area
-                    region_area = self._estimate_region_area(self.regional_area)
+    #             # Check if this point can be covered based on inclination and swath
+    #             if abs(lat) <= inclination + swath_half_angle_deg:
+    #                 # Calculate coverage based on satellite density
+    #                 # First approximation: avg region area / avg satellite coverage area
+    #                 region_area = self._estimate_region_area(self.regional_area)
                     
-                    # Approximate satellite footprint area
-                    swath_area = 2 * np.pi * earth_radius * swath_half_angle_deg / 180.0
+    #                 # Approximate satellite footprint area
+    #                 swath_area = 2 * np.pi * earth_radius * swath_half_angle_deg / 180.0
                     
-                    # Calculate coverage probability based on density
-                    satellite_density_factor = min(num_satellites * swath_area / region_area, 1.0)
+    #                 # Calculate coverage probability based on density
+    #                 satellite_density_factor = min(num_satellites * swath_area / region_area, 1.0)
                     
-                    # Adjust for latitude - better coverage near inclination
-                    lat_coverage_factor = 1.0
-                    if abs(abs(lat) - inclination) < 15:
-                        # Areas near the inclination get better coverage
-                        lat_coverage_factor = 1.3
+    #                 # Adjust for latitude - better coverage near inclination
+    #                 lat_coverage_factor = 1.0
+    #                 if abs(abs(lat) - inclination) < 15:
+    #                     # Areas near the inclination get better coverage
+    #                     lat_coverage_factor = 1.3
                     
-                    # Combined coverage probability for this point
-                    coverage_probability = min(satellite_density_factor * lat_coverage_factor, 1.0)
-                    covered_points += weight * coverage_probability
+    #                 # Combined coverage probability for this point
+    #                 coverage_probability = min(satellite_density_factor * lat_coverage_factor, 1.0)
+    #                 covered_points += weight * coverage_probability
         
-        # Calculate regional coverage percentage
-        regional_coverage = covered_points / total_points if total_points > 0 else 0
+    #     # Calculate regional coverage percentage
+    #     regional_coverage = covered_points / total_points if total_points > 0 else 0
         
-        # Limit maximum score to 1.0
-        regional_score = min(regional_coverage, 1.0)
+    #     # Limit maximum score to 1.0
+    #     regional_score = min(regional_coverage, 1.0)
         
-        return regional_score
+    #     return regional_score
         
-    def _point_in_polygon(self, lat, lon, polygon):
-        """
-        Determine if a point is inside a polygon using ray casting algorithm.
+    # def _point_in_polygon(self, lat, lon, polygon):
+    #     """
+    #     Determine if a point is inside a polygon using ray casting algorithm.
         
-        Parameters:
-        -----------
-        lat, lon : float
-            Latitude and longitude of the point to check
-        polygon : list of tuples
-            List of (lat, lon) coordinates defining the polygon vertices
+    #     Parameters:
+    #     -----------
+    #     lat, lon : float
+    #         Latitude and longitude of the point to check
+    #     polygon : list of tuples
+    #         List of (lat, lon) coordinates defining the polygon vertices
             
-        Returns:
-        --------
-        inside : bool
-            True if point is inside polygon, False otherwise
-        """
-        n = len(polygon)
-        inside = False
+    #     Returns:
+    #     --------
+    #     inside : bool
+    #         True if point is inside polygon, False otherwise
+    #     """
+    #     n = len(polygon)
+    #     inside = False
         
-        p1_lat, p1_lon = polygon[0]
-        for i in range(n + 1):
-            p2_lat, p2_lon = polygon[i % n]
+    #     p1_lat, p1_lon = polygon[0]
+    #     for i in range(n + 1):
+    #         p2_lat, p2_lon = polygon[i % n]
             
-            if lon > min(p1_lon, p2_lon) and lon <= max(p1_lon, p2_lon) and lat <= max(p1_lat, p2_lat):
-                if p1_lon != p2_lon:
-                    xinters = (lon - p1_lon) * (p2_lat - p1_lat) / (p2_lon - p1_lon) + p1_lat
+    #         if lon > min(p1_lon, p2_lon) and lon <= max(p1_lon, p2_lon) and lat <= max(p1_lat, p2_lat):
+    #             if p1_lon != p2_lon:
+    #                 xinters = (lon - p1_lon) * (p2_lat - p1_lat) / (p2_lon - p1_lon) + p1_lat
                     
-                if p1_lat == p2_lat or lat <= xinters:
-                    inside = not inside
+    #             if p1_lat == p2_lat or lat <= xinters:
+    #                 inside = not inside
                     
-            p1_lat, p1_lon = p2_lat, p2_lon
+    #         p1_lat, p1_lon = p2_lat, p2_lon
             
-        return inside
+    #     return inside
         
-    def _estimate_region_area(self, region_points):
-        """
-        Estimate the area of a region defined by latitude/longitude points.
-        Uses a simplified calculation assuming a spherical Earth.
+    # def _estimate_region_area(self, region_points):
+    #     """
+    #     Estimate the area of a region defined by latitude/longitude points.
+    #     Uses a simplified calculation assuming a spherical Earth.
         
-        Parameters:
-        -----------
-        region_points : list
-            List of (lat, lon) tuples defining the region
+    #     Parameters:
+    #     -----------
+    #     region_points : list
+    #         List of (lat, lon) tuples defining the region
             
-        Returns:
-        --------
-        area : float
-            Area in square km
-        """
-        # Convert the region points to 3D coordinates on a unit sphere
-        earth_radius = constants.EARTH_RADIUS
+    #     Returns:
+    #     --------
+    #     area : float
+    #         Area in square km
+    #     """
+    #     # Convert the region points to 3D coordinates on a unit sphere
+    #     earth_radius = constants.EARTH_RADIUS
         
-        # Simple rectangular approximation for now
-        if len(region_points) < 3:
-            return 0.0
+    #     # Simple rectangular approximation for now
+    #     if len(region_points) < 3:
+    #         return 0.0
             
-        lat_min = min(p[0] for p in region_points)
-        lat_max = max(p[0] for p in region_points)
-        lon_min = min(p[1] for p in region_points)
-        lon_max = max(p[1] for p in region_points)
+    #     lat_min = min(p[0] for p in region_points)
+    #     lat_max = max(p[0] for p in region_points)
+    #     lon_min = min(p[1] for p in region_points)
+    #     lon_max = max(p[1] for p in region_points)
         
-        # Calculate the area (simplified)
-        lat_range_rad = np.radians(lat_max - lat_min)
-        lon_range_rad = np.radians(lon_max - lon_min)
-        avg_lat_rad = np.radians((lat_max + lat_min) / 2.0)
+    #     # Calculate the area (simplified)
+    #     lat_range_rad = np.radians(lat_max - lat_min)
+    #     lon_range_rad = np.radians(lon_max - lon_min)
+    #     avg_lat_rad = np.radians((lat_max + lat_min) / 2.0)
         
-        # Area calculation (spherical cap approximation)
-        area = earth_radius**2 * lon_range_rad * np.cos(avg_lat_rad) * lat_range_rad
+    #     # Area calculation (spherical cap approximation)
+    #     area = earth_radius**2 * lon_range_rad * np.cos(avg_lat_rad) * lat_range_rad
         
-        return area
+    #     return area
         
     def _calculate_global_coverage(self, num_satellites, orbital_parameters, positions=None, time_stamps=None):
         """
@@ -1498,12 +1498,13 @@ class ConstellationOptimizer:
             positions, time_stamps, num_satellites, orbital_period
         )
         
+        # Pass positions and time stamps to ensure grid coverage calculation is used
         regional_score = self._calculate_regional_coverage(
-            const, orbital_parameters, num_satellites, epoch, orbital_period
+            const, orbital_parameters, num_satellites, epoch, orbital_period, positions=positions, time_stamps=time_stamps
         )
         
         global_score = self._calculate_global_coverage(
-            num_satellites, orbital_parameters
+            num_satellites, orbital_parameters, positions=positions, time_stamps=time_stamps
         )
         
         satellite_cost_score = self._calculate_satellite_cost(num_satellites)
@@ -1784,16 +1785,16 @@ class ConstellationOptimizer:
         """
         parts = [
             plot_type,
-            f"pattern_{self.pattern_type}",
-            f"step_{self.step}",
-            f"localw_{self.local_weight}",
-            f"regionalw_{self.regional_weight}",
-            f"globalw_{self.global_weight}",
-            f"satcostw_{self.satellite_cost_weight}",
-            f"opcostw_{self.operational_cost_weight}",
-            f"launchcostw_{self.launch_cost_weight}",
-            f"sciw_{self.science_weight}",
-            f"targetalt_{self.target_altitude}",
+            f"pat_{self.pattern_type}",
+            f"step{self.step}",
+            f"locW{self.local_weight}",
+            f"regW{self.regional_weight}",
+            f"globW{self.global_weight}",
+            f"satCw{self.satellite_cost_weight}",
+            f"opsCw{self.operational_cost_weight}",
+            f"lauCw{self.launch_cost_weight}",
+            f"sciW{self.science_weight}",
+            f"tAlt{self.target_altitude}",
         ]
         if extra_params:
             for k, v in extra_params.items():
@@ -1806,26 +1807,47 @@ class ConstellationOptimizer:
 if __name__ == "__main__":
     # Example 1: Global coverage optimization
     print("\n=== EXAMPLE 1: GLOBAL COVERAGE OPTIMIZATION ===")
+    # Create optimizer instance
     optimizer_global = ConstellationOptimizer(
         pattern_type="Walker-Delta",
         gs="AFB_Andersen",
         local_weight=0.1,        # Low priority on ground station coverage
         regional_area='California',
         regional_weight=0.2,     # Low priority on regional coverage
-        global_weight=0.7,       # High priority on global coverage
-        satellite_cost_weight=0.4,
+        global_weight=0.8,       # High priority on global coverage
+        satellite_cost_weight=0.2,
         operational_cost_weight=0.2,
         launch_cost_weight=0.2,
-        science_weight=0.2,
+        science_weight=0.9,
         target_altitude=500.0,   # Target altitude for science requirements
     )
     
-    # Run optimization with improved convergence settings
+    # Run optimization
+    # Differential Evolution Strategies for optimization:
+    #
+    # 1. Exploration-focused (good for early stages):
+    #    - 'rand1bin': Random base with one difference vector, better at avoiding local optima
+    #    - 'rand2bin': Random base with two difference vectors, maximum exploration
+    #
+    # 2. Balanced:
+    #    - 'randtobest1bin': Combines random and best solution approaches
+    #    - 'best2bin': Uses best solution as base with two difference vectors
+    #
+    # 3. Exploitation-focused (good for refinement):
+    #    - 'best1bin': Current selection - focuses on best solution, faster convergence
+    #    - 'currenttobest1bin': Current solution moving toward best, good for fine-tuning
+    # 
+    # 4. Crossover variants: All strategies have exponential versions (e.g., 'best1exp')
+    #    - 'bin': Uniform crossover probability for all parameters
+    #    - 'exp': Parameters close together more likely to be exchanged together
+    #
+    # Consider a multi-stage approach: start with exploration ('rand1bin'), 
+    # then switch to exploitation
     orbital_params_global, pattern_params_global, num_satellites_global, best_score_global = optimizer_global.optimize(
         method='differential_evolution',
-        max_iter=3,                # Maximum iterations
-        popsize=15,                  # Balanced population size
-        strategy='best1bin',         # Focus on exploiting the best solution for better convergence
+        max_iter=5,                # Maximum iterations
+        popsize=15,                  # population size
+        strategy='rand2bin',         # Focus on exploiting the best solution for better convergence
         mutation=(0.5, 0.7),         # Lower mutation range for more controlled convergence
         recombination=0.7,           # Moderate recombination for balanced exploration/exploitation
         early_stopping=True,         # Enable early stopping
@@ -1838,7 +1860,7 @@ if __name__ == "__main__":
     
     # Analyze component scores with detailed output to verify normalization fixes
     print("\nVerifying score calculations:")
-    analysis = optimizer_global.analyze_component_scores(plot=True, verbose=True, debug=True)
+    analysis = optimizer_global.analyze_component_scores(params=optimizer_global.best_params, plot=True, verbose=True, debug=True)
     print(f"Best score from optimize(): {best_score_global:.4f}")
     if analysis is not None:
         print(f"Final score from analyze_component_scores(): {analysis['weighted_scores']['final_score']:.4f}")

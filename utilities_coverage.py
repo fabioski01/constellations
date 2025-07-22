@@ -371,15 +371,15 @@ class Coverage:
         constellation_coverage_percentage = (weighted_constellation_area / total_weighted_area) * 100
         
         # Print debug information
-        print(f"Total grid cells: {coverage_grid.size}")
-        print(f"Covered grid cells: {np.sum(coverage_grid)}")
-        print(f"Coverage fraction: {np.sum(coverage_grid) / coverage_grid.size:.4f}")
-        print(f"Raw coverage percentage: {np.sum(coverage_grid) / coverage_grid.size * 100:.2f}%")
-        print(f"Area-weighted coverage percentage: {constellation_coverage_percentage:.2f}%")
+        # print(f"Total grid cells: {coverage_grid.size}")
+        # print(f"Covered grid cells: {np.sum(coverage_grid)}")
+        # print(f"Coverage fraction: {np.sum(coverage_grid) / coverage_grid.size:.4f}")
+        # print(f"Raw coverage percentage: {np.sum(coverage_grid) / coverage_grid.size * 100:.2f}%")
+        # print(f"Area-weighted coverage percentage: {constellation_coverage_percentage:.2f}%")
         
-        # Print per-satellite coverage
-        for i, cov in enumerate(single_sat_coverage):
-            print(f"  Satellite {i+1}: {cov:.2f}% area-weighted coverage")
+        # # Print per-satellite coverage
+        # for i, cov in enumerate(single_sat_coverage):
+        #     print(f"  Satellite {i+1}: {cov:.2f}% area-weighted coverage")
         
         # Create result dictionary
         result = {
@@ -526,10 +526,10 @@ class Coverage:
             constellation_coverage_percentage = (weighted_coverage / weighted_region) * 100 if weighted_region > 0 else 0
             
             # Print debug information for regional coverage
-            print(f"Region grid cells: {np.sum(region_mask)}")
-            print(f"Covered region grid cells: {np.sum(constellation_region_coverage)}")
-            print(f"Region coverage fraction: {np.sum(constellation_region_coverage) / np.sum(region_mask):.4f}")
-            print(f"Area-weighted region coverage percentage: {constellation_coverage_percentage:.2f}%")
+            # print(f"Region grid cells: {np.sum(region_mask)}")
+            # print(f"Covered region grid cells: {np.sum(constellation_region_coverage)}")
+            # print(f"Region coverage fraction: {np.sum(constellation_region_coverage) / np.sum(region_mask):.4f}")
+            # print(f"Area-weighted region coverage percentage: {constellation_coverage_percentage:.2f}%")
         else:
             constellation_coverage_percentage = 0
         
