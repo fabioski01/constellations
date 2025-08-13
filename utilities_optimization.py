@@ -96,7 +96,7 @@ class ConstellationOptimizer:
     """
     
     def __init__(self, pattern_type="Walker-Delta", 
-                 start_time=None, end_time=None, step=500,
+                 start_time=None, end_time=None, step=1500,
                  gs=None, elevation_threshold=10.0,
                  # Coverage weights
                  local_weight=0.4,      # Ground station visibility weight
@@ -245,6 +245,8 @@ class ConstellationOptimizer:
         params : list or array
             Parameters to optimize [num_satellites, semi_major_axis, eccentricity, inclination, 
                                    RAAN, argument_of_periapsis, P, F]
+            or [num_satellites, semi_major_axis, eccentricity, inclination, 
+                RAAN, argument_of_periapsis, Np, Nd, Fn, Fd, Fh] for Flower                           
         
         Returns:
         --------
@@ -257,11 +259,14 @@ class ConstellationOptimizer:
         """
         # Extract parameters (continuous and discrete)
         num_satellites = int(round(params[0]))  # Number of satellites (integer)
-        semi_major_axis = params[1]
+        perigee_height = params[1] # using perigee height instead of semi-major axis in km
         eccentricity = params[2]
         inclination = params[3]
         RAAN = params[4]
         arg_periapsis = params[5]
+
+        # Calculate semi-major axis from perigee height and eccentricity
+        semi_major_axis = (perigee_height + constants.EARTH_RADIUS) / (1 - eccentricity)
         
         # Create orbital parameters dictionary
         orbital_parameters = {
@@ -276,21 +281,35 @@ class ConstellationOptimizer:
             'bstar': 2e-5                          # 1/er
         }
         
-        # For Walker-Delta pattern, extract P and F
+        # Extract pattern-specific parameters
         pattern_params = {}
         if self.pattern_type == "Walker-Delta":
             pattern_params['P'] = int(round(params[6]))
             pattern_params['F'] = int(round(params[7]))
             
             # Ensure P and F are valid values
-            pattern_params['P'] = max(1, pattern_params['P'])
-            pattern_params['F'] = min(max(1, pattern_params['F']), pattern_params['P']-1)
-            
+            pattern_params['P'] = max(1, pattern_params['P']) # Number of planes must be at least 1
+            pattern_params['F'] = min(max(1, pattern_params['F']), pattern_params['P']-1) # Phasing parameter must be in [1, P-1]
+        
             # Walker-Delta requires: 
             # 1. T (total satellites) divisible by P (number of planes)
             # 2. T (total satellites) divisible by F (phasing parameter)
-            # We'll check these constraints in the objective function
+            # these constraints are checked in the objective function
         
+        elif self.pattern_type == "Flower":
+            pattern_params['Np'] = int(round(params[6]))  # Number of petals (lobes in ground track).
+            pattern_params['Nd'] = int(round(params[7]))  # Number of sidereal days for ground track repeat.
+            pattern_params['Fn'] = int(round(params[8]))  # Phase number, phasing integer, must be relatively prime to Fd.
+            pattern_params['Fd'] = int(round(params[9]))  # Phase denominator, phasing integer, must be relatively prime to Fn.
+            pattern_params['Fh'] = int(round(params[10])) # Step phasing integer, must be in the range [0, Nd-1], can be non constant. In this case will be constant, and usually zero.
+
+            # Ensure parameters are valid
+            pattern_params['Np'] = max(1, pattern_params['Np']) # Number of petals must be at least 1
+            pattern_params['Nd'] = max(1, pattern_params['Nd']) # Number of sidereal days must be at least 1
+            pattern_params['Fn'] = max(1, pattern_params['Fn']) # Phase number must be at least 1
+            pattern_params['Fd'] = max(1, pattern_params['Fd']) # Phase denominator must be at least 1
+            pattern_params['Fh'] = min(max(0, pattern_params['Fh']), pattern_params['Nd']-1) # Step phasing must be in [0, Nd-1]
+            
         return num_satellites, orbital_parameters, pattern_params
     
     def objective_function(self, params):
@@ -344,17 +363,17 @@ class ConstellationOptimizer:
                 
                 # Validate P and F
                 if P < 1 or F < 1 or F >= P:
-                    print(f"Warning: Invalid Walker-Delta parameters P={P}, F={F}.")
+                    # print(f"Warning: Invalid Walker-Delta parameters P={P}, F={F}.")
                     return 1e10
                 
                 # Check if number of satellites is compatible with P
                 if num_satellites < P or num_satellites % P != 0:
-                    print(f"Warning: Number of satellites {num_satellites} must be divisible by number of planes (P={P}).")
+                    # print(f"Warning: Number of satellites {num_satellites} must be divisible by number of planes (P={P}).")
                     return 1e10
                     
                 # Check if number of satellites (T) is divisible by F
                 if num_satellites % F != 0:
-                    print(f"Warning: Number of satellites {num_satellites} must be divisible by phasing (F={F}).")
+                    # print(f"Warning: Number of satellites {num_satellites} must be divisible by phasing (F={F}).")
                     return 1e10  # Total number of satellites (T) must be divisible by phasing (F)
                     
                 # Create constellation
@@ -362,20 +381,72 @@ class ConstellationOptimizer:
                     num_satellites, orbital_parameters, epoch, 
                     self.pattern_type, P=P, F=F
                 )
+            
+            elif self.pattern_type == "Flower":
+                # Get Flower constellation parameters
+                Np = pattern_params['Np']
+                Nd = pattern_params['Nd']
+                Fn = pattern_params['Fn']
+                Fd = pattern_params['Fd']
+                Fh = pattern_params['Fh']
+                
+                # Validate Flower constellation parameters
+                if Np < 1:
+                    print(f"Warning: Invalid number of petals Np={Np}, must be at least 1.")
+                    return 1e10
+                    
+                if Nd < 1:
+                    print(f"Warning: Invalid number of days Nd={Nd}, must be at least 1.")
+                    return 1e10
+                
+                # Check if Fn and Fd are relatively prime (gcd = 1)
+                def gcd(a, b):
+                    while b:
+                        a, b = b, a % b
+                    return a
+                    
+                if gcd(Fn, Fd) != 1:
+                    # print(f"Warning: Fn={Fn} and Fd={Fd} must be relatively prime (no common factors).")
+                    return 1e10
+                    
+                if Fh < 0 or Fh >= Nd:
+                    print(f"Warning: Step phasing Fh={Fh} must be in range [0, {Nd-1}].")
+                    return 1e10
+                
+                # Add Flower parameters to orbital_parameters dictionary as well as passing as keywords args to ensure compatibility with the Constellation class
+                orbital_parameters = orbital_parameters.copy()
+                orbital_parameters['Np'] = Np
+                orbital_parameters['Nd'] = Nd
+                orbital_parameters['Fn'] = Fn
+                orbital_parameters['Fd'] = Fd
+                orbital_parameters['Fh'] = Fh
+
+                # For Flower constellations, create with appropriate parameters
+                const = Constellation(
+                    num_satellites, orbital_parameters, epoch,
+                    self.pattern_type, Np=Np, Nd=Nd, Fn=Fn, Fd=Fd, Fh=Fh
+                )            
+                        
             else:
                 const = Constellation(
                     num_satellites, orbital_parameters, epoch, 
                     self.pattern_type
                 )
             
-            # Propagate constellation
-            result = const.generate_positions_with_time(
-                self.start_time, self.end_time, self.step
-            )
-            
-            positions = result["positions"]  # Shape: (num_satellites, num_time_steps, 3)
-            time_stamps = result["time_stamps"]
-            
+            try:
+                # Propagate constellation
+                result = const.generate_positions_with_time(
+                    self.start_time, self.end_time, self.step
+                )
+                
+                positions = result["positions"]  # Shape: (num_satellites, num_time_steps, 3)
+                time_stamps = result["time_stamps"]
+            except Exception as e:
+                print(f"Error in propagation: {str(e)}")
+                print(f"Orbital parameters: {orbital_parameters}")
+                print(f"Pattern parameters: {pattern_params}")
+                return 1e10  # Return a high value for invalid orbits
+
             # Calculate orbital period
             a = orbital_parameters['semi_major_axis']  # km from Earth's center
             orbital_period = 2 * np.pi * np.sqrt(a**3 / constants.GRAVITATIONAL_CONSTANT)
@@ -478,57 +549,17 @@ class ConstellationOptimizer:
             return -combined_score
             
         except Exception as e:
-            print(f"Error in objective function: {str(e)}")
+            # print(f"Error in objective function: {str(e)}")
             return 1e10  # Return a high value for errors
     
     def _eci_to_ecef(self, eci_position, timestamp):
         """Convert ECI position to ECEF."""
         from utilities import CoordinateConversion
         return CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(eci_position, timestamp)
-    
-    # def _estimate_global_coverage(self, num_satellites, orbital_parameters):
-    #     """
-    #     Estimate global coverage based on constellation parameters. Very fast and simplified model.
-    #     (more satellites → better coverage, higher inclination → better polar coverage)
-
-    #     In satellite constellation literature, global coverage is typically calculated using more rigorous methods:
-    #     -   Grid-based methods: Dividing Earth into cells and calculating the percentage of cells with visibility
-    #         -   Papers by Wertz, Larson & Wertz "Space Mission Analysis & Design"
-    #         -   Walker's original papers on satellite constellations
-    #     -   Street of coverage: Calculating the minimum number of satellites needed for continuous coverage
-    #         -   Rider's work on polar orbiting satellites
-    #         -   Ballard's extensions to Walker's constellation theory
-    #     -   Analytical coverage models: Using spherical geometry to determine coverage
-    #         -   Extensive work by Luders & Ginsberg on optimal satellite constellation design
-
-    #     To be implemented:    
-    #         A grid-based Earth model (typically 1-5° resolution)
-    #         Ray-tracing or geometric calculations for satellite visibility at each grid point
-    #         Time-step evaluation to calculate coverage over a full orbital period
-    #     Coverage metrics like:
-    #         Mean coverage time
-    #         Percentage of Earth covered
-    #         Maximum revisit time
-    #     """
-    #     # Simple model: estimate coverage based on number of satellites, inclination, and altitude
-    #     inclination = orbital_parameters['inclination']
-    #     altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
-        
-    #     # Higher inclination gives better polar coverage (up to 90°)
-    #     inclination_factor = min(inclination, 180 - inclination) / 90.0
-        
-    #     # Higher altitude gives wider coverage area per satellite
-    #     altitude_factor = np.sqrt(altitude / 2000)  # Normalized to ~1 at 2000km
-        
-    #     # Coverage estimate: more satellites and better distribution = better coverage
-    #     coverage_estimate = (num_satellites * altitude_factor * inclination_factor) / 50
-        
-    #     # Cap at 1.0 (full coverage)
-    #     return min(coverage_estimate, 1.0)
-        
-    def optimize(self, method='differential_evolution', max_iter=50, popsize=15, strategy='best1bin', 
+            
+    def optimize(self, method='differential_evolution', max_iter=50, popsize=15, strategy='rand2bin', 
                  mutation=(0.5, 0.7), recombination=0.7, seed=None, early_stopping=True, patience=20, 
-                 improvement_threshold=0.001):
+                 improvement_threshold=0.001, workers=1):
         """
         Run the optimization process.
         
@@ -546,11 +577,28 @@ class ConstellationOptimizer:
             - 'rand1bin': Uses random solution as base with one difference vector (more exploration)
             - 'rand2bin': Uses random solution as base with two difference vectors (most exploration)
             - 'randtobest1bin': Combination of rand1bin and best1bin (balanced)
+            - 'best1exp'
+            - 'rand1exp'
+            - 'rand2exp'
+            - 'randtobest1bin'
+            - 'randtobest1exp'
+            - 'currenttobest1bin'
+            - 'currenttobest1exp'
+            - 'best2exp'
+            - 'best2bin'           
         mutation : float or tuple(float, float)
             Mutation constant. If specified as a tuple (min, max), adaptive mutation is used.
-            Larger values (0.8-1.0) give more exploration, smaller values more exploitation.
+            Larger values (0.8-1.0) give more exploration, smaller values more exploitation. 
+            It is also known as differential weight (F).
+            If specified as a float it should be in the range [0, 2).
+            If specified as a tuple ``(min, max)`` dithering is employed. Dithering
+            randomly changes the mutation constant on a generation by generation
+            basis. The mutation constant for that generation is taken from
+            ``U[min, max)``. Dithering can help speed convergence significantly.
+            Increasing the mutation constant increases the search radius, but will
+            slow down convergence.
         recombination : float
-            Recombination probability, between 0 and 1. Higher values mean more mixing.
+            Recombination probability, between 0 and 1. Higher values mean more mixing. Also known as crossover proablility. Increasing this value allows a larger number of mutants to progress into the next generation, but at the risk of population stability.
         seed : int, optional
             Random seed for reproducibility. Set to a specific value for repeatable results,
             or leave as None for different results each run.
@@ -572,20 +620,34 @@ class ConstellationOptimizer:
         best_score : float
             Best score achieved
         """
-        # Define parameter bounds
-        bounds = [
+        # Define parameter bounds, specific to the pattern type
+        if self.pattern_type == "Walker-Delta":
+            bounds = [
             (1, 100),             # num_satellites (integer between 1 and 100)
-            (6500, 8500),         # semi_major_axis (km)
+            # (6500, 8500),         # semi_major_axis (km). Earth radius is 6378 km
+            (250, 1000),          # perigee_height (km)
             (0, 0.01),            # eccentricity (close to circular)
             (0, 90),              # inclination (deg)
             (0, 360),             # RAAN (deg)
             (0, 360),             # argument_of_periapsis (deg)
-        ]
-        
-        # Add bounds for P and F if using Walker-Delta
-        if self.pattern_type == "Walker-Delta":
-            bounds.append((1, 20))  # P (planes) - will be constrained by num_satellites
-            bounds.append((1, 20))  # F (phase) - will be constrained by P
+            ]
+            bounds.append((1, 20))  # P (planes)
+            bounds.append((1, 20))  # F (phase)
+        elif self.pattern_type == "Flower":
+            bounds = [
+            (1, 100),             # num_satellites (integer between 1 and 100)
+            # (6500, 20000),         # semi_major_axis (km)
+            (250, 3000),          # perigee_height (km). More range for higher eccentricity
+            (0, 0.65),            # eccentricity. Flower can have high e
+            (0, 180),              # inclination (deg). They can be retrograde
+            (0, 360),             # RAAN (deg)
+            (0, 360),             # argument_of_periapsis (deg). Usually is 270 deg
+            ]
+            bounds.append((1, 99))   # Np (petals). Varies largely, but can be equal to num sat
+            bounds.append((1, 49))   # Nd (days). Varies, usually equal to 1 or in combination with Fd to get Nd * Fd = num sat
+            bounds.append((1, 99))   # Fn (satellite phasing). Varies largely, unpredictable
+            bounds.append((1, 100))   # Fd (day phasing). Varies largely in combination with Nd and num sat
+            bounds.append((0, 0))    # Fh (step phasing). Used for combinations. Usually zero
         
         # Select optimization algorithm
         if method == 'differential_evolution':
@@ -634,7 +696,8 @@ class ConstellationOptimizer:
                 updating='deferred',     # Update the population after a complete iteration
                 init='random',          # Random initialization of population
                 seed=seed,             # Optional seed for reproducibility
-                callback=callback       # Early stopping callback
+                callback=callback,       # Early stopping callback
+                workers=workers  # Number of parallel workers (1 for single-threaded)
             )
         elif method == 'dual_annealing':
             result = optimize.dual_annealing(
@@ -702,35 +765,106 @@ class ConstellationOptimizer:
         print(f"Best Score: {best_score}")
         print(f"Success: {result.success}")
         print(f"Message: {result.message}")
+
+        # Store algorithm parameters as class attributes for later use
+        self.mutation = mutation
+        self.recombination = recombination
+        self.strategy = strategy
         
         return orbital_parameters, pattern_params, num_satellites, best_score
+
+    def optimize_multiple_patterns(self, patterns=None, **kwargs):
+        """
+        Run optimization for multiple constellation patterns and compare results.
         
-    def plot_optimization_history(self, extra_params=None):
-        """Plot the optimization history to see convergence."""
-        if not self.optimization_history:
-            print("No optimization history to plot.")
-            return
+        Parameters:
+        -----------
+        patterns : list of str, optional
+            List of patterns to optimize. If None, uses ["Walker-Delta", "Flower"]
+        **kwargs : 
+            Arguments to pass to the optimize method
+            
+        Returns:
+        --------
+        results : dict
+            Dictionary of optimization results for each pattern
+        best_pattern : str
+            The pattern that achieved the best score
+        """
+        if patterns is None:
+            patterns = ["Walker-Delta", "Flower"]
+        
+        results = {}
+        best_score = -np.inf
+        best_pattern = None
+        
+        # Store pattern histories separately
+        pattern_histories = {}
 
-        scores = [item[1] for item in self.optimization_history]
-        plt.figure(figsize=(10, 6))
-        plt.plot(scores, 'o-')
-        plt.xlabel('Evaluation Number')
-        plt.ylabel('Combined Score (higher is better)')
-        plt.title(
-            f'Optimization Progress\n'
-            f'Pattern: {self.pattern_type}, Step: {self.step}, '
-            f'Weights: L={self.local_weight}, R={self.regional_weight}, G={self.global_weight}, '
-            f'SatCost={self.satellite_cost_weight}, OpCost={self.operational_cost_weight}, '
-            f'LaunchCost={self.launch_cost_weight}, Sci={self.science_weight}\n'
-            f'Target Altitude: {self.target_altitude}'
-        )
-        plt.grid(True)
+        for pattern in patterns:
+            print(f"\n=== OPTIMIZING {pattern} PATTERN ===")
+            # Save original pattern
+            original_pattern = self.pattern_type
+            # Set new pattern
+            self.pattern_type = pattern
 
-        filename = self._generate_plot_filename("optimization_history", extra_params)
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        plt.savefig(filename)
-        # plt.show()
-    
+            # IMPORTANT: Reset the optimization history for each pattern
+            self.optimization_history = []           
+            
+            # Run optimization
+            orbital_params, pattern_params, num_satellites, score = self.optimize(**kwargs)
+            
+            # Add the final best solution to the optimization history if it's not already there, this ensures the best point appears in the plot
+            if self.best_params is not None:
+                # Check if best solution is already in history
+                best_score_in_history = False
+                for _, hist_score, _ in self.optimization_history:
+                    if abs(hist_score - score) < 1e-6:
+                        best_score_in_history = True
+                        break
+                        
+                if not best_score_in_history:
+                    print(f"Adding final best solution (score: {score:.4f}) to optimization history")
+                    # Evaluate the best solution one more time to get component scores
+                    final_score = -self.objective_function(self.best_params)
+                    # Note: objective_function will append this to history with component scores
+            
+            # Store optimization history for this pattern
+            pattern_histories[pattern] = self.optimization_history.copy()
+
+            # Store results
+            results[pattern] = {
+                'orbital_params': orbital_params,
+                'pattern_params': pattern_params,
+                'num_satellites': num_satellites,
+                'score': score,
+                'best_params': self.best_params.copy() if self.best_params is not None else None
+            }
+            
+            # Check if this is the best pattern
+            if score > best_score:
+                best_score = score
+                best_pattern = pattern
+            
+            # Reset to original pattern
+            self.pattern_type = original_pattern
+
+        # Store the pattern histories in results for later use
+        results['pattern_histories'] = pattern_histories
+                
+        # Compare results
+        print("\n=== PATTERN COMPARISON ===")
+        for pattern, result in results.items():
+            if pattern != 'pattern_histories':  # Skip the histories entry
+                print(f"{pattern}: {result['num_satellites']} satellites, " +
+                    f"altitude: {result['orbital_params']['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
+                    f"inclination: {result['orbital_params']['inclination']:.1f}°, " +
+                    f"score: {result['score']:.4f}")
+        
+        print(f"\nBest pattern: {best_pattern} with score {results[best_pattern]['score']:.4f}")
+        
+        return results, best_pattern
+   
     def _calculate_local_coverage(self, positions, time_stamps, num_satellites, orbital_period):
         """
         Calculate coverage metrics from ground station (local coverage).
@@ -851,179 +985,6 @@ class ConstellationOptimizer:
             return self._calculate_regional_coverage_simplified(const, orbital_parameters, num_satellites, 
                                                         epoch, orbital_period)
 
-    # def _calculate_regional_coverage_simplified(self, constellation, orbital_parameters, num_satellites, epoch, orbital_period):
-    #     """
-    #     Calculate coverage metrics for a regional area.
-        
-    #     Parameters:
-    #     -----------
-    #     constellation : Constellation object
-    #         Constellation object
-    #     orbital_parameters : dict
-    #         Orbital parameters
-    #     num_satellites : int
-    #         Number of satellites
-    #     epoch : datetime
-    #         Epoch for constellation
-    #     orbital_period : float
-    #         Orbital period in seconds
-            
-    #     Returns:
-    #     --------
-    #     regional_score : float
-    #         Score for regional coverage (0-1)
-    #     """
-    #     # IMPROVED: Grid-based regional coverage calculation
-    #     # 1. Create a grid of points across the regional area
-    #     # 2. Calculate visibility at each grid point
-    #     # 3. Calculate percentage of region with coverage
-        
-    #     # Extract region boundaries
-    #     lat_min = min(p[0] for p in self.regional_area)
-    #     lat_max = max(p[0] for p in self.regional_area)
-    #     lon_min = min(p[1] for p in self.regional_area)
-    #     lon_max = max(p[1] for p in self.regional_area)
-        
-    #     # Grid resolution (higher = more accurate but slower)
-    #     grid_resolution = 2  # degrees
-        
-    #     # Generate a grid of lat/lon points within the region
-    #     lats = np.arange(lat_min, lat_max + grid_resolution, grid_resolution)
-    #     lons = np.arange(lon_min, lon_max + grid_resolution, grid_resolution)
-        
-    #     # Calculate altitude and other orbital parameters
-    #     inclination = orbital_parameters['inclination']
-    #     altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
-        
-    #     # Calculate swath width (simplified)
-    #     earth_radius = constants.EARTH_RADIUS
-    #     max_earth_central_angle = np.arccos(earth_radius / (earth_radius + altitude))
-    #     swath_half_angle_deg = np.degrees(max_earth_central_angle)
-        
-    #     # Check if region is within satellite coverage (based on inclination)
-    #     if lat_max < -inclination - swath_half_angle_deg or lat_min > inclination + swath_half_angle_deg:
-    #         # Region is outside of satellite coverage
-    #         return 0.0
-        
-    #     # Estimate coverage percentage
-    #     covered_points = 0
-    #     total_points = 0
-        
-    #     for lat in lats:
-    #         # Weight points by cosine of latitude (account for smaller area at high latitudes)
-    #         weight = np.cos(np.radians(lat))
-    #         if weight < 0.01:  # Avoid division by very small numbers
-    #             weight = 0.01
-                
-    #         for lon in lons:
-    #             # Check if point is within the polygon region (if region is not rectangular)
-    #             if len(self.regional_area) > 4:  # More complex than a rectangle
-    #                 if not self._point_in_polygon(lat, lon, self.regional_area):
-    #                     continue
-                
-    #             total_points += weight
-                
-    #             # Check if this point can be covered based on inclination and swath
-    #             if abs(lat) <= inclination + swath_half_angle_deg:
-    #                 # Calculate coverage based on satellite density
-    #                 # First approximation: avg region area / avg satellite coverage area
-    #                 region_area = self._estimate_region_area(self.regional_area)
-                    
-    #                 # Approximate satellite footprint area
-    #                 swath_area = 2 * np.pi * earth_radius * swath_half_angle_deg / 180.0
-                    
-    #                 # Calculate coverage probability based on density
-    #                 satellite_density_factor = min(num_satellites * swath_area / region_area, 1.0)
-                    
-    #                 # Adjust for latitude - better coverage near inclination
-    #                 lat_coverage_factor = 1.0
-    #                 if abs(abs(lat) - inclination) < 15:
-    #                     # Areas near the inclination get better coverage
-    #                     lat_coverage_factor = 1.3
-                    
-    #                 # Combined coverage probability for this point
-    #                 coverage_probability = min(satellite_density_factor * lat_coverage_factor, 1.0)
-    #                 covered_points += weight * coverage_probability
-        
-    #     # Calculate regional coverage percentage
-    #     regional_coverage = covered_points / total_points if total_points > 0 else 0
-        
-    #     # Limit maximum score to 1.0
-    #     regional_score = min(regional_coverage, 1.0)
-        
-    #     return regional_score
-        
-    # def _point_in_polygon(self, lat, lon, polygon):
-    #     """
-    #     Determine if a point is inside a polygon using ray casting algorithm.
-        
-    #     Parameters:
-    #     -----------
-    #     lat, lon : float
-    #         Latitude and longitude of the point to check
-    #     polygon : list of tuples
-    #         List of (lat, lon) coordinates defining the polygon vertices
-            
-    #     Returns:
-    #     --------
-    #     inside : bool
-    #         True if point is inside polygon, False otherwise
-    #     """
-    #     n = len(polygon)
-    #     inside = False
-        
-    #     p1_lat, p1_lon = polygon[0]
-    #     for i in range(n + 1):
-    #         p2_lat, p2_lon = polygon[i % n]
-            
-    #         if lon > min(p1_lon, p2_lon) and lon <= max(p1_lon, p2_lon) and lat <= max(p1_lat, p2_lat):
-    #             if p1_lon != p2_lon:
-    #                 xinters = (lon - p1_lon) * (p2_lat - p1_lat) / (p2_lon - p1_lon) + p1_lat
-                    
-    #             if p1_lat == p2_lat or lat <= xinters:
-    #                 inside = not inside
-                    
-    #         p1_lat, p1_lon = p2_lat, p2_lon
-            
-    #     return inside
-        
-    # def _estimate_region_area(self, region_points):
-    #     """
-    #     Estimate the area of a region defined by latitude/longitude points.
-    #     Uses a simplified calculation assuming a spherical Earth.
-        
-    #     Parameters:
-    #     -----------
-    #     region_points : list
-    #         List of (lat, lon) tuples defining the region
-            
-    #     Returns:
-    #     --------
-    #     area : float
-    #         Area in square km
-    #     """
-    #     # Convert the region points to 3D coordinates on a unit sphere
-    #     earth_radius = constants.EARTH_RADIUS
-        
-    #     # Simple rectangular approximation for now
-    #     if len(region_points) < 3:
-    #         return 0.0
-            
-    #     lat_min = min(p[0] for p in region_points)
-    #     lat_max = max(p[0] for p in region_points)
-    #     lon_min = min(p[1] for p in region_points)
-    #     lon_max = max(p[1] for p in region_points)
-        
-    #     # Calculate the area (simplified)
-    #     lat_range_rad = np.radians(lat_max - lat_min)
-    #     lon_range_rad = np.radians(lon_max - lon_min)
-    #     avg_lat_rad = np.radians((lat_max + lat_min) / 2.0)
-        
-    #     # Area calculation (spherical cap approximation)
-    #     area = earth_radius**2 * lon_range_rad * np.cos(avg_lat_rad) * lat_range_rad
-        
-    #     return area
-        
     def _calculate_global_coverage(self, num_satellites, orbital_parameters, positions=None, time_stamps=None):
         """
         Estimate global coverage based on constellation parameters using the Coverage utilities.
@@ -1479,6 +1440,27 @@ class ConstellationOptimizer:
                 num_satellites, orbital_parameters, epoch, 
                 self.pattern_type, P=P, F=F
             )
+        elif self.pattern_type == "Flower":
+            Np = pattern_params['Np']
+            Nd = pattern_params['Nd']
+            Fn = pattern_params['Fn']
+            Fd = pattern_params['Fd']
+            Fh = pattern_params['Fh']
+
+            # Add Flower-specific parameters to orbital_parameters
+            orbital_parameters.update({
+                'Np': Np,
+                'Nd': Nd,
+                'Fn': Fn,
+                'Fd': Fd,
+                'Fh': Fh
+            })
+            
+            # Create Flower constellation
+            const = Constellation(
+                num_satellites, orbital_parameters, epoch, 
+                self.pattern_type, Np=Np, Nd=Nd, Fn=Fn, Fd=Fd, Fh=Fh
+            )
         else:
             const = Constellation(
                 num_satellites, orbital_parameters, epoch, 
@@ -1601,10 +1583,16 @@ class ConstellationOptimizer:
             }
         }
         
-        # Add pattern parameters if applicable
+        # Add pattern parameters to analysis
         if self.pattern_type == "Walker-Delta":
             analysis['parameters']['P'] = pattern_params['P']
             analysis['parameters']['F'] = pattern_params['F']
+        elif self.pattern_type == "Flower":
+            analysis['parameters']['Np'] = pattern_params['Np']
+            analysis['parameters']['Nd'] = pattern_params['Nd']
+            analysis['parameters']['Fn'] = pattern_params['Fn']
+            analysis['parameters']['Fd'] = pattern_params['Fd']
+            analysis['parameters']['Fh'] = pattern_params['Fh']
             
         # Print detailed analysis if verbose is enabled
         if verbose:
@@ -1647,145 +1635,11 @@ class ConstellationOptimizer:
             
         return analysis
         
-    def _plot_component_scores(self, analysis, extra_params=None):
+    def _generate_plot_directory(self):
         """
-        Create visualization plots for component scores.
-        
-        Parameters:
-        -----------
-        analysis : dict
-            Analysis dictionary from analyze_component_scores
-        """
-        # Create figure with multiple subplots
-        fig = plt.figure(figsize=(15, 10))
-        gs = gridspec.GridSpec(2, 3, figure=fig)
-        
-        # 1. Raw component scores bar chart
-        ax1 = fig.add_subplot(gs[0, :2])
-        raw_scores = analysis['raw_scores']
-        score_names = list(raw_scores.keys())
-        score_values = list(raw_scores.values())
-        
-        colors = ['#3498db', '#9b59b6', '#2ecc71', '#f1c40f', '#e74c3c', '#1abc9c', '#34495e', '#d35400']
-        ax1.bar(score_names, score_values, color=colors)
-        ax1.set_title('Raw Component Scores')
-        ax1.set_ylim(0, 1.0)
-        plt.setp(ax1.get_xticklabels(), rotation=45, ha='right')
-        ax1.grid(axis='y', linestyle='--', alpha=0.7)
-        
-        # 2. Weighted contribution pie chart
-        ax2 = fig.add_subplot(gs[0, 2])
-        weights = analysis['weights']
-        weighted_scores = analysis['weighted_scores']
-        
-        # Only include non-zero weights
-        labels = []
-        sizes = []
-        
-        if weights['local_weight'] > 0:
-            labels.append('Local')
-            sizes.append(weighted_scores['weighted_local'])
-        
-        if weights['regional_weight'] > 0:
-            labels.append('Regional')
-            sizes.append(weighted_scores['weighted_regional'])
-            
-        if weights['global_weight'] > 0:
-            labels.append('Global')
-            sizes.append(weighted_scores['weighted_global'])
-            
-        if weights['satellite_cost_weight'] > 0:
-            labels.append('Sat Cost')
-            sizes.append(weighted_scores['weighted_satellite_cost'])
-            
-        if weights['operational_cost_weight'] > 0:
-            labels.append('Op Cost')
-            sizes.append(weighted_scores['weighted_operational_cost'])
-            
-        if weights['launch_cost_weight'] > 0:
-            labels.append('Launch Cost')
-            sizes.append(weighted_scores['weighted_launch_cost'])
-            
-        if weights['science_weight'] > 0:
-            labels.append('Science')
-            sizes.append(weighted_scores['weighted_science'])
-            
-        # Make sure sizes add up to 100% for pie chart
-        sizes_normalized = [s / sum(sizes) for s in sizes]
-        
-        ax2.pie(sizes_normalized, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
-        ax2.axis('equal')
-        ax2.set_title('Weighted Contribution to Final Score')
-        
-        # 3. Score breakdown - grouped bar chart
-        ax3 = fig.add_subplot(gs[1, :])
-        
-        # Group scores into categories
-        categories = ['Coverage', 'Cost', 'Science']
-        category_scores = [
-            weighted_scores['weighted_coverage'],
-            weighted_scores['weighted_cost'],
-            weighted_scores['weighted_science'] if weights['science_weight'] > 0 else 0
-        ]
-        
-        # Components within each category
-        coverage_components = [
-            weighted_scores['weighted_local'], 
-            weighted_scores['weighted_regional'],
-            weighted_scores['weighted_global']
-        ]
-        
-        cost_components = [
-            weighted_scores['weighted_satellite_cost'],
-            weighted_scores['weighted_operational_cost'],
-            weighted_scores['weighted_launch_cost']
-        ]
-        
-        science_components = [weighted_scores['weighted_science']] if weights['science_weight'] > 0 else [0]
-        
-        # Main bars
-        x = np.arange(len(categories))
-        width = 0.25
-        ax3.bar(x, category_scores, width=0.5, label='Category Total')
-        
-        # Add text labels on top of bars
-        for i, v in enumerate(category_scores):
-            ax3.text(i, v + 0.01, f'{v:.3f}', ha='center')
-        
-        # Add a line for final score
-        ax3.axhline(y=weighted_scores['final_score'], color='r', linestyle='-', label=f'Final Score: {weighted_scores["final_score"]:.3f}')
-        
-        ax3.set_xticks(x)
-        ax3.set_xticklabels(categories)
-        ax3.set_ylim(0, 1.0)
-        ax3.set_title('Score Breakdown by Category')
-        ax3.legend()
-        ax3.grid(axis='y', linestyle='--', alpha=0.7)
-        
-        # Adjust layout
-        plt.tight_layout()
-        
-        fig.suptitle(
-            f'Component Scores\n'
-            f'Pattern: {self.pattern_type}, Step: {self.step}, '
-            f'Weights: L={self.local_weight}, R={self.regional_weight}, G={self.global_weight}, '
-            f'SatCost={self.satellite_cost_weight}, OpCost={self.operational_cost_weight}, '
-            f'LaunchCost={self.launch_cost_weight}, Sci={self.science_weight}\n'
-            f'Target Altitude: {self.target_altitude}'
-        )
-
-        filename = self._generate_plot_filename("component_scores", extra_params)
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        plt.savefig(filename)
-        # plt.show()
-
-    def _generate_plot_filename(self, plot_type, extra_params=None):
-        """
-        Generate a unique filename for plots based on optimizer parameters.
+        Generate a unique directory name for plots based on optimizer parameters.
         """
         parts = [
-            plot_type,
-            f"pat_{self.pattern_type}",
             f"step{self.step}",
             f"locW{self.local_weight}",
             f"regW{self.regional_weight}",
@@ -1796,239 +1650,312 @@ class ConstellationOptimizer:
             f"sciW{self.science_weight}",
             f"tAlt{self.target_altitude}",
         ]
+        directory = "_".join(parts)
+        return directory
+
+    def _generate_plot_filename(self, plot_type, extra_params=None):
+        """
+        Generate a unique filename for plots based on optimizer parameters.
+        """
+        directory = self._generate_plot_directory()
+        parts = [plot_type]
         if extra_params:
             for k, v in extra_params.items():
                 parts.append(f"{k}_{v}")
-        filename = "plots/optimization/" + "_".join(str(p) for p in parts) + ".png"
+        filename = f"plots/optimization/{directory}/" + "_".join(parts) + ".png"
         return filename
 
-# Example usage
+    def _plot_component_scores(self, analysis, extra_params=None):
+        """
+        Create visualization plots for component scores.
+        """
+        # Create figure with multiple subplots
+        fig = plt.figure(figsize=(12, 12))
+        gs = gridspec.GridSpec(2, 3, figure=fig)
+
+        # Add space for title and subtitle
+        fig.subplots_adjust(top=0.87)
+
+        # 1. Raw component scores bar chart
+        ax1 = fig.add_subplot(gs[0, :2])
+        raw_scores = analysis['raw_scores']
+        score_names = list(raw_scores.keys())
+        score_values = list(raw_scores.values())
+
+        colors = ['#3498db', '#9b59b6', '#2ecc71', '#f1c40f', '#e74c3c', '#1abc9c', '#34495e', '#d35400']
+        ax1.bar(score_names, score_values, color=colors)
+        ax1.set_title('Raw Component Scores')
+        ax1.set_ylim(0, 1.0)
+        plt.setp(ax1.get_xticklabels(), rotation=45, ha='right')
+        ax1.grid(axis='y', linestyle='--', alpha=0.7)
+
+        # 2. Weighted contribution pie chart
+        ax2 = fig.add_subplot(gs[0, 2])
+        weights = analysis['weights']
+        weighted_scores = analysis['weighted_scores']
+
+        # Only include non-zero weights
+        labels = []
+        sizes = []
+
+        if weights['local_weight'] > 0:
+            labels.append('Local')
+            sizes.append(weighted_scores['weighted_local'])
+
+        if weights['regional_weight'] > 0:
+            labels.append('Regional')
+            sizes.append(weighted_scores['weighted_regional'])
+
+        if weights['global_weight'] > 0:
+            labels.append('Global')
+            sizes.append(weighted_scores['weighted_global'])
+
+        if weights['satellite_cost_weight'] > 0:
+            labels.append('Sat Cost')
+            sizes.append(weighted_scores['weighted_satellite_cost'])
+
+        if weights['operational_cost_weight'] > 0:
+            labels.append('Op Cost')
+            sizes.append(weighted_scores['weighted_operational_cost'])
+
+        if weights['launch_cost_weight'] > 0:
+            labels.append('Launch Cost')
+            sizes.append(weighted_scores['weighted_launch_cost'])
+
+        if weights['science_weight'] > 0:
+            labels.append('Science')
+            sizes.append(weighted_scores['weighted_science'])
+
+        # Make sure sizes add up to 100% for pie chart
+        sizes_normalized = [s / sum(sizes) for s in sizes]
+
+        ax2.pie(sizes_normalized, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
+        ax2.axis('equal')
+        ax2.set_title('Weighted Contribution to Final Score')
+
+        # 3. Score breakdown - grouped bar chart
+        ax3 = fig.add_subplot(gs[1, :])
+
+        # Group scores into categories
+        categories = ['Coverage', 'Cost', 'Science']
+        category_scores = [
+            weighted_scores['weighted_coverage'],
+            weighted_scores['weighted_cost'],
+            weighted_scores['weighted_science'] if weights['science_weight'] > 0 else 0
+        ]
+
+        # Main bars
+        x = np.arange(len(categories))
+        width = 0.5
+        ax3.bar(x, category_scores, width=width, label='Category Total')
+
+        # Add text labels on top of bars
+        for i, v in enumerate(category_scores):
+            ax3.text(i, v + 0.01, f'{v:.3f}', ha='center')
+
+        # Add a line for final score
+        ax3.axhline(y=weighted_scores['final_score'], color='r', linestyle='-', label=f'Final Score: {weighted_scores["final_score"]:.3f}')
+
+        ax3.set_xticks(x)
+        ax3.set_xticklabels(categories)
+        ax3.set_ylim(0, 1.0)
+        ax3.set_title('Score Breakdown by Category')
+        ax3.legend()
+        ax3.grid(axis='y', linestyle='--', alpha=0.7)
+
+        # Adjust layout
+        plt.tight_layout(rect=[0, 0, 1, 0.87])  # Adjust rect to match the top value
+
+        # Add title and subtitle
+        pattern_info = (
+            f"P={analysis['parameters']['P']}, F={analysis['parameters']['F']}" if self.pattern_type == "Walker-Delta" else
+            f"Np={analysis['parameters']['Np']}, Nd={analysis['parameters']['Nd']}, Fn={analysis['parameters']['Fn']}, "
+            f"Fd={analysis['parameters']['Fd']}, Fh={analysis['parameters']['Fh']}"
+        )
+        fig.suptitle(
+            f'Component Scores\n'
+            f'Step: {self.step} s, '
+            f'Weights: L={self.local_weight}, R={self.regional_weight}, G={self.global_weight}, '
+            f'SatCost={self.satellite_cost_weight}, OpCost={self.operational_cost_weight}, '
+            f'LaunchCost={self.launch_cost_weight}, Sci={self.science_weight}, '
+            f'Target Altitude: {self.target_altitude} km\n'
+            f'Pattern: {self.pattern_type}, Pattern Parameters: {pattern_info}',
+            y=0.95
+        )
+
+        filename = self._generate_plot_filename("component_scores", extra_params)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        plt.savefig(filename)
+        # plt.show()
+
+    def plot_optimization_history(self, extra_params=None):
+        """Plot the optimization history to see convergence."""
+        if not self.optimization_history:
+            print("No optimization history to plot.")
+            return
+
+        scores = [item[1] for item in self.optimization_history]
+        plt.figure(figsize=(12, 10))
+        plt.plot(scores, 'o-', label="Score")
+        plt.xlabel('Evaluation Number')
+        plt.ylabel('Combined Score (higher is better)')
+
+        plt.title(
+            f'Optimization Progress\n'
+            f'Step: {self.step} s, '
+            f'Weights: L={self.local_weight}, R={self.regional_weight}, G={self.global_weight}, '
+            f'SatCost={self.satellite_cost_weight}, OpCost={self.operational_cost_weight}, '
+            f'LaunchCost={self.launch_cost_weight}, Sci={self.science_weight}, '  
+            f'Target Altitude: {self.target_altitude} km\n'
+            f'Algorithm: Differential Evolution; mutation={self.mutation}, recombination={self.recombination}, strategy={self.strategy}.\n'
+            f'Pattern: {self.pattern_type}\n'
+            f'Best Pattern: {self.pattern_type if hasattr(self, "best_pattern") else "N/A"}'
+        )
+        plt.grid(True)
+
+        filename = self._generate_plot_filename("optimization_history", extra_params)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        plt.savefig(filename)
+        # plt.show()
+
+    def plot_multiple_patterns_optimization_history(self, results, best_pattern, extra_params=None):
+        """
+        Plot optimization history for multiple patterns to compare their convergence.
+        """
+        if 'pattern_histories' not in results:
+            print("No pattern histories found in results. Cannot plot comparison.")
+            return
+            
+        plt.figure(figsize=(14, 8))
+
+        # plt.tight_layout(rect=[0.0, 0.0, 0.99, 0.6])  # The rect parameter reserves space [left, bottom, right, top]
+        plt.subplots_adjust(top=0.85, bottom=0.07, left=0.06, right=0.97)
+        # plt.rcParams['figure.constrained_layout.use'] = True
+
+        # Color map and marker styles for different patterns
+        styles = {
+            'Walker-Delta': {'color': '#3498db', 'marker': 'o', 'linestyle': ':', 'linewidth': 2.5, 'markersize': 6},
+            'Flower': {'color': '#e74c3c', 'marker': 's', 'linestyle': '--', 'linewidth': 2.5, 'markersize': 6},
+            'Other': {'color': '#2ecc71', 'marker': '^', 'linestyle': '-.', 'linewidth': 2.5, 'markersize': 6}
+        }
+        
+        # Debug output to verify histories
+        print("\nPattern Optimization Histories:")
+
+        # Define fixed label positions for each pattern
+        label_positions = {
+            'Walker-Delta': {'offset': 0.01, 'va': 'bottom'},  # Walker-Delta labels go above
+            'Flower': {'offset': -0.01, 'va': 'top'}           # Flower labels go below
+        }
+
+        for pattern, history in results['pattern_histories'].items():
+            print(f"{pattern}: {len(history)} evaluations")
+            if history:
+                scores = [item[1] for item in history]
+                print(f"  Scores: {scores}")
+                
+                # Use distinct styling for each pattern
+                style = styles.get(pattern, styles['Other'])
+                
+                # Plot with enhanced visibility
+                plt.plot(range(len(scores)), scores, 
+                        label=f"{pattern} (Best: {results[pattern]['score']:.4f})",
+                        **style)
+                
+        # Now add labels in alternating fashion
+        patterns = list(results['pattern_histories'].keys())
+        if len(patterns) >= 2:  # Only do alternating if we have at least two patterns
+            for i in range(max(len(results['pattern_histories'][pattern]) for pattern in patterns)):
+                # For each index position, only label one pattern
+                pattern_to_label = patterns[i % len(patterns)]
+                
+                if i < len(results['pattern_histories'][pattern_to_label]):
+                    history = results['pattern_histories'][pattern_to_label]
+                    score = history[i][1]
+                    
+                    pos = label_positions.get(pattern_to_label, {'offset': 0.01, 'va': 'bottom'})
+
+                plt.text(i, score + pos['offset'], f'{score:.3f}', ha='center', va=pos['va'], fontsize=8)
+                    
+        plt.xlabel('Evaluation Number', fontsize=12)
+        plt.ylabel('Objective Function Score', fontsize=12)
+        plt.title(
+            f'Multi-Pattern Optimization Comparison, step: {self.step} s\n'
+            f'Weights: L={self.local_weight}, R={self.regional_weight}, G={self.global_weight}, '
+            f'SatCost={self.satellite_cost_weight}, OpCost={self.operational_cost_weight}, LaunchCost={self.launch_cost_weight}, Sci={self.science_weight}\n'
+            f'Target Altitude: {self.target_altitude} km\n'
+            f'Algorithm: Differential Evolution; mutation={self.mutation}, recombination={self.recombination}, strategy={self.strategy}\n'
+            f'Best Pattern: {best_pattern}',
+            fontsize=13
+        )
+        plt.grid(True, alpha=0.7)
+        plt.legend(loc='best', fontsize=12)
+        
+        # Add a horizontal line for the best score
+        best_score = results[best_pattern]['score']
+        plt.axhline(y=best_score, color='k', linestyle=':', linewidth=2,
+                    label=f'Best Score: {best_score:.4f}')
+        
+        # Ensure both patterns are visible by setting y-axis limits with padding
+        scores_all = []
+        for pattern, history in results['pattern_histories'].items():
+            if history:
+                scores_all.extend([item[1] for item in history])
+        
+        if scores_all:
+            ymin = min(scores_all) - 0.05
+            ymax = max(scores_all) + 0.05
+            plt.ylim(ymin, ymax)
+        
+        # Save the plot
+        filename = self._generate_plot_filename("multi_pattern_history", extra_params)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        plt.savefig(filename)
+        
+        return plt 
+
 
 if __name__ == "__main__":
-    # Example 1: Global coverage optimization
-    print("\n=== EXAMPLE 1: GLOBAL COVERAGE OPTIMIZATION ===")
-    # Create optimizer instance
-    optimizer_global = ConstellationOptimizer(
-        pattern_type="Walker-Delta",
-        gs="AFB_Andersen",
-        local_weight=0.1,        # Low priority on ground station coverage
-        regional_area='California',
-        regional_weight=0.2,     # Low priority on regional coverage
-        global_weight=0.8,       # High priority on global coverage
-        satellite_cost_weight=0.2,
-        operational_cost_weight=0.2,
-        launch_cost_weight=0.2,
-        science_weight=0.9,
-        target_altitude=500.0,   # Target altitude for science requirements
-    )
-    
-    # Run optimization
-    # Differential Evolution Strategies for optimization:
-    #
-    # 1. Exploration-focused (good for early stages):
-    #    - 'rand1bin': Random base with one difference vector, better at avoiding local optima
-    #    - 'rand2bin': Random base with two difference vectors, maximum exploration
-    #
-    # 2. Balanced:
-    #    - 'randtobest1bin': Combines random and best solution approaches
-    #    - 'best2bin': Uses best solution as base with two difference vectors
-    #
-    # 3. Exploitation-focused (good for refinement):
-    #    - 'best1bin': Current selection - focuses on best solution, faster convergence
-    #    - 'currenttobest1bin': Current solution moving toward best, good for fine-tuning
-    # 
-    # 4. Crossover variants: All strategies have exponential versions (e.g., 'best1exp')
-    #    - 'bin': Uniform crossover probability for all parameters
-    #    - 'exp': Parameters close together more likely to be exchanged together
-    #
-    # Consider a multi-stage approach: start with exploration ('rand1bin'), 
-    # then switch to exploitation
-    orbital_params_global, pattern_params_global, num_satellites_global, best_score_global = optimizer_global.optimize(
-        method='differential_evolution',
-        max_iter=5,                # Maximum iterations
-        popsize=15,                  # population size
-        strategy='rand2bin',         # Focus on exploiting the best solution for better convergence
-        mutation=(0.5, 0.7),         # Lower mutation range for more controlled convergence
-        recombination=0.7,           # Moderate recombination for balanced exploration/exploitation
-        early_stopping=True,         # Enable early stopping
-        patience=20,                 # Stop after 20 iterations without improvement
-        improvement_threshold=0.001  # Minimum improvement to be considered significant
-    )
-    
-    # Plot optimization history and analyze scores
-    optimizer_global.plot_optimization_history()
-    
-    # Analyze component scores with detailed output to verify normalization fixes
-    print("\nVerifying score calculations:")
-    analysis = optimizer_global.analyze_component_scores(params=optimizer_global.best_params, plot=True, verbose=True, debug=True)
-    print(f"Best score from optimize(): {best_score_global:.4f}")
-    if analysis is not None:
-        print(f"Final score from analyze_component_scores(): {analysis['weighted_scores']['final_score']:.4f}")
-    else:
-        print("No valid analysis available. Optimization did not succeed.")
-    print(f"These two scores should match to verify the fix worked.")
-    
-    # # Example 2: Regional coverage optimization (Western US)
-    # print("\n=== EXAMPLE 2: REGIONAL COVERAGE OPTIMIZATION ===")
-    # # Define Western US region
-    # western_us = [
-    #     (32.0, -125.0),  # Southwest corner
-    #     (32.0, -105.0),  # Southeast corner
-    #     (49.0, -105.0),  # Northeast corner
-    #     (49.0, -125.0)   # Northwest corner
-    # ]
-    
-    # optimizer_regional = ConstellationOptimizer(
-    #     pattern_type="Walker-Delta",
-    #     local_weight=0.2,        # Some priority on ground station coverage
-    #     regional_weight=0.6,     # High priority on regional coverage
-    #     global_weight=0.2,       # Low priority on global coverage
-    #     satellite_cost_weight=0.5,
-    #     operational_cost_weight=0.2,
-    #     launch_cost_weight=0.3,
-    #     science_weight=0.0,      # No science requirements
-    #     regional_area=western_us
-    # )
-    
-    # # Run optimization
-    # orbital_params_regional, pattern_params_regional, num_satellites_regional, best_score_regional = optimizer_regional.optimize(
-    #     method='differential_evolution',
-    #     max_iter=30,
-    #     popsize=15
-    # )
-    
-    # # Analyze regional optimization results
-    # optimizer_regional.analyze_component_scores(plot=True)
-    
-    # # Example 3: Custom regional area (Europe)
-    # print("\n=== EXAMPLE 3: CUSTOM REGION OPTIMIZATION (EUROPE) ===")
-    # # Define Europe region
-    # europe_region = [
-    #     (35.0, -10.0),   # Southwest corner
-    #     (35.0, 40.0),    # Southeast corner
-    #     (70.0, 40.0),    # Northeast corner
-    #     (70.0, -10.0)    # Northwest corner
-    # ]
-    
-    # # Science-focused mission with specific altitude requirements
-    # optimizer_custom = ConstellationOptimizer(
-    #     pattern_type="Walker-Delta",
-    #     local_weight=0.1,        # Low priority on ground station coverage
-    #     regional_weight=0.4,     # Medium priority on regional coverage
-    #     global_weight=0.2,       # Low priority on global coverage
-    #     satellite_cost_weight=0.1,
-    #     operational_cost_weight=0.0,  # Not concerned with operational costs
-    #     launch_cost_weight=0.1,
-    #     science_weight=0.5,      # High priority on science requirements
-    #     target_altitude=600.0,   # Lower target altitude for specific science instruments
-    #     target_altitude_tolerance=30.0,  # Tighter tolerance
-    #     regional_area=europe_region
-    # )
-    
-    # # Run optimization
-    # orbital_params_custom, pattern_params_custom, num_satellites_custom, best_score_custom = optimizer_custom.optimize(
-    #     method='differential_evolution',
-    #     max_iter=30,
-    #     popsize=15
-    # )
-    
-    # # Analyze custom optimization results
-    # optimizer_custom.analyze_component_scores(plot=True)
-    
-    # # Compare all three optimized constellations
-    # print("\n=== COMPARISON OF OPTIMIZED CONSTELLATIONS ===")
-    # print(f"Global:   {num_satellites_global} satellites, " + 
-    #       f"altitude: {orbital_params_global['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
-    #       f"inclination: {orbital_params_global['inclination']:.1f}°, " +
-    #       f"score: {best_score_global:.4f}")
-          
-    # print(f"Regional: {num_satellites_regional} satellites, " + 
-    #       f"altitude: {orbital_params_regional['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
-    #       f"inclination: {orbital_params_regional['inclination']:.1f}°, " +
-    #       f"score: {best_score_regional:.4f}")
-          
-    # print(f"Custom:   {num_satellites_custom} satellites, " + 
-    #       f"altitude: {orbital_params_custom['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km, " +
-    #       f"inclination: {orbital_params_custom['inclination']:.1f}°, " +
-    #       f"score: {best_score_custom:.4f}")
 
-# def _calculate_global_coverage(self, num_satellites, orbital_parameters):
-#     """
-#     Estimate global coverage based on constellation parameters.
-#     This is a simplified model - for a real application you'd want to 
-#     calculate actual global coverage using a grid-based approach.
-    
-#     Parameters:
-#     -----------
-#     num_satellites : int
-#         Number of satellites
-#     orbital_parameters : dict
-#         Orbital parameters
-        
-#     Returns:
-#     --------
-#     global_score : float
-#         Score for global coverage (0-1)
-#     """
-#     # IMPROVED: Grid-based global coverage calculation
-#     # If computational time is a concern, use the simplified estimate
-#     # return self._estimate_global_coverage(num_satellites, orbital_parameters)
-    
-#     # Create a grid of points across Earth's surface
-#     # Grid resolution (higher = more accurate but slower)
-#     grid_resolution = 10  # degrees
-    
-#     # Generate a grid of lat/lon points
-#     lats = np.arange(-90, 91, grid_resolution)
-#     lons = np.arange(-180, 181, grid_resolution)
-    
-#     # Count how many grid points would be covered
-#     inclination = orbital_parameters['inclination']
-#     altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
-    
-#     # Calculate swath width (simplified)
-#     earth_radius = constants.EARTH_RADIUS
-#     max_earth_central_angle = np.arccos(earth_radius / (earth_radius + altitude))
-#     swath_half_angle_deg = np.degrees(max_earth_central_angle)
-    
-#     # Estimate coverage percentage
-#     covered_points = 0
-#     total_points = 0
-    
-#     for lat in lats:
-#         # Weight by cosine of latitude (account for smaller area at high latitudes)
-#         weight = np.cos(np.radians(lat))
-#         if weight < 0.01:  # Avoid division by very small numbers
-#             weight = 0.01
-            
-#         # Skip if satellite can't reach this latitude (based on inclination)
-#         if abs(lat) > inclination + swath_half_angle_deg:
-#             continue
-            
-#         for lon in lons:
-#             total_points += weight
-            
-#             # Simple coverage model: if a point is within the inclination range plus swath,
-#             # consider it potentially covered
-#             if abs(lat) <= inclination + swath_half_angle_deg:
-#                 # Calculate expected revisit frequency based on num_satellites
-#                 # More satellites = better coverage
-#                 satellite_density_factor = min(num_satellites / 50.0, 1.0)
-                
-#                 # Adjust by latitude - points near inclination get more passes
-#                 lat_coverage_factor = 1.0
-#                 if abs(abs(lat) - inclination) < 20:
-#                     # Areas near the inclination get better coverage
-#                     lat_coverage_factor = 1.2
-                
-#                 coverage_probability = satellite_density_factor * lat_coverage_factor
-                
-#                 # Limit maximum probability
-#                 coverage_probability = min(coverage_probability, 1.0)
-#                 covered_points += weight * coverage_probability
-    
-#     # Calculate global coverage percentage
-#     global_coverage = covered_points / total_points if total_points > 0 else 0
-    
-#     # Limit to maximum of 1.0
-#     return min(global_coverage, 1.0)
+    # Example of multi-pattern optimization
+    print("\n=== EXAMPLE 4: MULTI-PATTERN OPTIMIZATION ===")
+    multi_optimizer = ConstellationOptimizer(
+        pattern_type="Walker-Delta",  # Initial pattern (will be changed during optimization)
+        gs="AFB_Andersen",
+        local_weight=0.2,
+        regional_weight=0.3,
+        global_weight=0.5,
+        satellite_cost_weight=0.3,
+        operational_cost_weight=0.1,
+        launch_cost_weight=0.1,
+        science_weight=0.6,
+        target_altitude=610.0,
+        step=1000
+    )
+
+    # Compare Walker-Delta and Flower patterns
+    results, best_pattern = multi_optimizer.optimize_multiple_patterns(
+        patterns=["Walker-Delta", "Flower"],
+        method='differential_evolution',
+        max_iter=100,
+        popsize=150,
+        strategy='rand1bin', # 'best1bin','best1exp','rand1bin','rand1exp','rand2bin','rand2exp','randtobest1bin','randtobest1exp','currenttobest1bin','currenttobest1exp','best2exp','best2bin'
+        mutation=(0.5, 0.7),
+        recombination=0.7,
+        seed=100,
+        early_stopping=True, # If set to false the plots will crash because history is not recorded (optimization still works). Probably because no callback is created and all obj functions calls happend in worker processes only, which do not transfer back to main process.
+        patience=80,
+        improvement_threshold=0.001,
+        workers=-1  # Use all available CPU cores
+    )
+
+    print(f"Best pattern: {best_pattern} with score {results[best_pattern]['score']:.4f}")
+
+    best_orbital_params = results[best_pattern]['orbital_params']
+    best_pattern_params = results[best_pattern]['pattern_params']
+    print(f"Altitude: {best_orbital_params['semi_major_axis'] - constants.EARTH_RADIUS:.1f} km")
+    print(f"Inclination: {best_orbital_params['inclination']:.1f}°")
+    print(f"Number of satellites: {results[best_pattern]['num_satellites']}")
+    print(f"Pattern parameters: {best_pattern_params}")
+
+    multi_optimizer.plot_multiple_patterns_optimization_history(results, best_pattern)
