@@ -10,9 +10,9 @@ weighted objectives. The optimizer can balance trade-offs between:
 - Global coverage (Earth-wide coverage estimation)
 
 ## Cost Factors
-- Satellite costs (including economies of scale)
-- Operational costs (station-keeping, deorbiting, communication)
-- Launch costs (based on altitude, inclination, launch vehicle capacity)
+- Satellite costs, payload (depending on instrument type, mass, power, design life) and spacecraft (depending on mass) (including economies of scale)
+-  (DEACTIVATED) Operational costs (station-keeping, deorbiting, communication)
+- Launch costs (based on altitude, inclination, launch vehicle capacity, orbital planes)
 
 ## Science Requirements
 - Target altitude optimization
@@ -80,7 +80,7 @@ class ConstellationOptimizer:
     by balancing multiple competing objectives:
     
     1. Coverage metrics: local (ground station), regional (specific area), and global coverage
-    2. Cost factors: satellite manufacturing, operational lifetime, and launch costs
+    2. Cost factors: spacecraft, payload, and launch costs
     3. Science requirements: orbital parameters optimized for specific mission requirements
     
     The optimizer uses evolutionary algorithms (differential evolution by default) to find
@@ -99,20 +99,17 @@ class ConstellationOptimizer:
                  start_time=None, end_time=None, step=1500,
                  gs=None, elevation_threshold=10.0,
                  # Coverage weights
-                 local_weight=0.4,      # Ground station visibility weight
-                 regional_weight=0.3,   # Regional coverage weight
-                 global_weight=0.3,     # Global coverage weight
+                 local_weight=0.4, regional_weight=0.3, global_weight=0.3,
                  # Cost weights
-                 satellite_cost_weight=0.2,      # Cost of satellites
-                 operational_cost_weight=0.1,    # Operational costs (deorbiting, station keeping)
-                 launch_cost_weight=0.1,         # Launch costs (higher for higher orbits)
+                 satellite_cost_weight=0.2, operational_cost_weight=0.1, launch_cost_weight=0.1,
                  # Science requirements
-                 science_weight=0.8,             # Science requirements weight
-                 target_altitude=500.0,          # Target altitude for science instruments (km)
-                 target_altitude_tolerance=50.0, # Tolerance for target altitude (km)
-                 # Regional coverage area (Western US as default)
-                 regional_area=None              # List of (lat, lon) coordinates defining region
-                 ):
+                 science_weight=0.8, target_altitude=500.0, target_altitude_tolerance=50.0,
+                 # Regional coverage area
+                 regional_area=None,
+                 # New: launch and payload inputs
+                 sat_mass_kg=130.0,
+                 payloads=[{'type': 'fields', 'cat': 'EO', 'mass_kg': 12.0, 'power_w': 35.0},
+                           {'type': 'particle', 'cat': 'EO', 'mass_kg': 9.0, 'power_w': 22.0},]):
         """
         Initialize the optimizer with baseline parameters.
         
@@ -162,6 +159,16 @@ class ConstellationOptimizer:
         ---------------------
         regional_area : list of tuples
             List of (lat, lon) coordinates defining the region of interest
+
+        Spacecraft Mass:
+        ---------------------
+        sat_mass_kg : float
+            Mass of the satellite in kg (default: 130.0 kg)
+
+        Payloads
+        ---------------------
+        payloads : list of dicts
+            List of payloads with their type, environmental category, mass, and power requirements.
         """
         self.pattern_type = pattern_type
         self.step = step
@@ -183,6 +190,10 @@ class ConstellationOptimizer:
         self.target_altitude = target_altitude
         self.target_altitude_tolerance = target_altitude_tolerance
         
+        # Store spacecraft mass and payload definition for cost models
+        self.sat_mass_kg = float(sat_mass_kg)
+        self.payloads = payloads
+
         from utilities_coverage import get_region_coordinates, get_available_regions
 
         if regional_area is None:
@@ -472,14 +483,14 @@ class ConstellationOptimizer:
             )
             
             # 2. Cost scores
-            # Satellite cost (more satellites = higher cost)
+            # Satellite cost (more satellites = higher cost) in M USD
             satellite_cost_score = self._calculate_satellite_cost(num_satellites)
             
-            # Operational cost (higher altitude = higher lifetime = higher cost)
-            operational_cost_score = self._calculate_operational_cost(orbital_parameters)
+            # Operational cost is currently deactivated; use neutral score
+            operational_cost_score = 1.0
             
-            # Launch cost (higher altitude/inclination = higher cost)
-            launch_cost_score = self._calculate_launch_cost(orbital_parameters, num_satellites)
+            # Launch cost (higher altitude/inclination = higher cost) in M USD
+            launch_cost_score = self._calculate_launch_cost(orbital_parameters, num_satellites, self.sat_mass_kg, pattern_params)
             
             # 3. Science requirement score
             science_score = self._calculate_science_requirement_score(orbital_parameters)
@@ -1032,280 +1043,301 @@ class ConstellationOptimizer:
             print(f"Warning: Error in global coverage calculation: {str(e)}")
             # Fallback to simplified estimate
             return self._estimate_global_coverage(num_satellites, orbital_parameters)
-        
-    def _calculate_satellite_cost(self, num_satellites):
+
+    def compute_payload(self, payloads=None, payload_mass_kg=None, cat='EO', instrument='particle', power_w=None, design_life_months=None, design_life_years=None):
         """
-        Calculate cost score based on number of satellites.
-        More satellites = higher cost = lower score.
+        Compute payload TFU cost (M$).
+
+        Modes:
+        - Multi-instrument: payloads=[{ 'type': 'fields'|'particle', 'mass_kg': float,
+                                        'power_w': float, 'cat': 'EO'|'planetary',
+                                        'design_life_months'?: float }, ...]
+          (legacy key 'design_life_years' is also accepted and will be converted to months)
+        - Single-instrument (legacy): payload_mass_kg + power_w + cat + instrument.
+          For planetary particle instruments, pass design_life_months (or legacy design_life_years).
+
+        Defaults (if nothing is provided): EO fields 10 kg/30 W + EO particle 10 kg/30 W.
+        """
+        # Default two-instrument payload if nothing specified
+        if payloads is None:
+            payloads = [
+                {'type': 'fields', 'cat': 'EO', 'mass_kg': 10.0, 'power_w': 30.0},
+                {'type': 'particle', 'cat': 'EO', 'mass_kg': 10.0, 'power_w': 30.0},
+            ]
+
+        # Enforce single mission category
+        cats = {str(item.get('cat', 'EO')).strip().lower() for item in payloads}
+        if len(cats) > 1:
+            raise ValueError("All payloads must share the same 'cat' ('EO' or 'planetary'); mixing categories is not supported.")
+        mission_cat = cats.pop() if cats else 'eo'
+
+        total = 0.0
+        for i, item in enumerate(payloads):
+            t = str(item.get('type', 'particle')).lower()
+            m = float(item['mass_kg'])
+            p = float(item['power_w'])
+
+            if t == 'fields':
+                total += self._calculate_payload_cost(cat=mission_cat, mass_field=m, power_field=p)
+            elif t == 'particle':
+                if mission_cat == 'planetary':
+                    # Accept months (preferred) or years (legacy) and use months directly in CER
+                    has_months = 'design_life_months' in item and item['design_life_months'] is not None
+                    has_years = 'design_life_years' in item and item['design_life_years'] is not None
+                    if not (has_months or has_years):
+                        raise ValueError(f"design_life_months is required for planetary particle instrument at index {i} (legacy 'design_life_years' also accepted).")
+                    if has_months:
+                        dl_months = float(item['design_life_months'])
+                    else:
+                        dl_months = float(item['design_life_years']) * 12.0
+                    total += self._calculate_payload_cost(cat='planetary',
+                                                          mass_particle=m, power_particle=p,
+                                                          design_life_planetary=dl_months)
+                else:
+                    total += self._calculate_payload_cost(cat='EO',
+                                                          mass_particle=m, power_particle=p)
+            else:
+                raise ValueError(f"Unsupported instrument type '{t}' at index {i}")
+
+        # Support single-instrument legacy call when payloads is provided via parameters
+        if payload_mass_kg is not None and power_w is not None and instrument is not None:
+            t = str(instrument).lower()
+            if t == 'fields':
+                total += self._calculate_payload_cost(cat=cat.lower(), mass_field=float(payload_mass_kg), power_field=float(power_w))
+            elif t == 'particle':
+                if str(cat).lower() == 'planetary':
+                    # Use months directly; convert legacy years to months if provided
+                    if design_life_months is None and design_life_years is None:
+                        raise ValueError("design_life_months is required for planetary particle instrument (legacy 'design_life_years' also accepted).")
+                    dl_months_single = float(design_life_months) if design_life_months is not None else float(design_life_years) * 12.0
+                    total += self._calculate_payload_cost(cat='planetary',
+                                                          mass_particle=float(payload_mass_kg), power_particle=float(power_w),
+                                                          design_life_planetary=dl_months_single)
+                else:
+                    total += self._calculate_payload_cost(cat='EO',
+                                                          mass_particle=float(payload_mass_kg), power_particle=float(power_w))
+
+        return total
+
+    def _calculate_payload_cost(
+        self,
+        cat='EO',
+        mass_field=None,
+        power_field=None,
+        mass_particle=None,
+        power_particle=None,
+        design_life_planetary=None
+    ):
+        """
+        Calculate payload instrument cost using CERs and return total in 2025 M$.
+
+        Inputs:
+        - cat: 'EO' or 'planetary' (default 'EO')
+        - mass_field (kg), power_field (W) for Fields instrument
+        - mass_particle (kg), power_particle (W) for Particle instrument
+        - design_life_planetary (months) required only for planetary particle instrument
+
+        Notes:
+        - CERs are in $K FY04; convert to M$ and July 2025 dollars (x1.70 approx).
+        - Fields cost formula is the same for EO and planetary; particle differs by cat.
+        - If only one instrument is provided, only that cost is computed.
+        - If no inputs are provided, returns 0.0.
+        """
+        def to_musd_2025(cost_k_fy04: float) -> float:
+            inflation_2004_to_2025 = 1.70
+            return (cost_k_fy04 / 1000.0) * inflation_2004_to_2025
+
+        def check_positive(name, value):
+            if value is None:
+                return
+            if float(value) <= 0:
+                raise ValueError(f"{name} must be > 0")
+
+        # Validate inputs that are present
+        check_positive("mass_field", mass_field)
+        check_positive("power_field", power_field)
+        check_positive("mass_particle", mass_particle)
+        check_positive("power_particle", power_particle)
+        check_positive("design_life_planetary", design_life_planetary)
+
+        cat_norm = (cat or 'EO').strip().lower()
+        if cat_norm not in ('eo', 'planetary'):
+            raise ValueError("cat must be 'EO' or 'planetary'")
+
+        total_musd_2025 = 0.0
+
+        # Fields instrument (same for EO and planetary)
+        if mass_field is not None or power_field is not None:
+            if mass_field is None or power_field is None:
+                raise ValueError("Both mass_field and power_field are required for Fields instrument cost.")
+            c_k = 1464.0 * (float(mass_field) ** 0.29) * (float(power_field) ** 0.36)
+            total_musd_2025 += to_musd_2025(c_k)
+
+        # Particle instrument
+        if cat_norm == 'planetary':
+            # Planetary particles requires design life (months), mass, power
+            if any(v is not None for v in (design_life_planetary, mass_particle, power_particle)):
+                if design_life_planetary is None or mass_particle is None or power_particle is None:
+                    raise ValueError("design_life_planetary (months), mass_particle, and power_particle are required for planetary particle instrument cost.")
+                c_k = 247.0 * (float(design_life_planetary) ** 0.50) * (float(mass_particle) ** 0.31) * (float(power_particle) ** 0.44)
+                total_musd_2025 += to_musd_2025(c_k)
+        else:
+            # EO particles uses EO formula (no design life)
+            if mass_particle is not None or power_particle is not None:
+                if mass_particle is None or power_particle is None:
+                    raise ValueError("Both mass_particle and power_particle are required for EO particle instrument cost.")
+                c_k = 1353.0 * (float(mass_particle) ** 0.47) * (float(power_particle) ** 0.39)
+                total_musd_2025 += to_musd_2025(c_k)
+
+        return total_musd_2025
+
+    def compute_satellite_cost(self, mass_kg: float | None = None):
+        """
+        Spacecraft cost CERs (M$), driven by total spacecraft mass (kg).
+        Returns (NRE_musd, tfu_musd).
+
+        NRE (M$): 3.424 * mass^0.5
+        TFU (M$): 0.151 * mass^0.7
+        """
+        m = float(self.sat_mass_kg if mass_kg is None else mass_kg)
+        if m <= 0:
+            raise ValueError("spacecraft mass must be > 0 kg")
+        nre_musd = 3.424 * (m ** 0.5)
+        tfu_musd = 0.151 * (m ** 0.7)
+        return nre_musd, tfu_musd
         
-        Parameters:
-        -----------
-        num_satellites : int
-            Number of satellites
-            
+    def _calculate_launch_cost(self, orbital_parameters, num_satellites, sat_mass_kg, pattern_params=None):
+        """
+        Calculate total launch cost in million USD (M$).
+
+        Assumptions:
+        - Satellites in different planes cannot share a launch if ΔRAAN between planes > delta_raan_dep (90 deg).
+        - OCF increases roughly linearly with inclination (0->1, 150->2) and altitude (200 km->1, 1200 km->1.4).
+        - Vehicle options evaluated per plane-group: Falcon 9 and Falcon Heavy. Cheapest is chosen per group.
+        - Base prices (to LEO) per kg (K$/kg): F9=5, FH=3. OCF adjusts price, not capacity.
+        - Capacities: F9=15000 kg, FH=30000 kg.
+
         Returns:
-        --------
-        satellite_cost_score : float
-            Score for satellite cost (0-1, higher is better)
+        - total_musd: float, total mission launch cost in million USD.
         """
-        # IMPROVED: More advanced satellite cost model
-        
-        # Base satellite cost (can be adjusted based on satellite complexity)
-        # Small satellite (~100kg): $1-5M
-        # Medium satellite (~300kg): $10-50M
-        # Large satellite (>500kg): $50-300M
-        base_satellite_cost = 10.0  # Million $ per satellite (default: medium smallsat)
-        
-        # Manufacturing economies of scale
-        # First few satellites are expensive, then cost per satellite decreases
-        if num_satellites <= 5:
-            manufacturing_factor = 1.0  # No economies of scale for small numbers
-        elif num_satellites <= 20:
-            # Medium economies of scale (0.85 = 15% reduction for large orders)
-            manufacturing_factor = 1.0 - 0.15 * (num_satellites - 5) / 15.0
-        else:
-            # Maximum economies of scale (20% reduction)
-            manufacturing_factor = 0.8
-            
-        # Batch production costs
-        batch_cost = num_satellites * base_satellite_cost * manufacturing_factor
-        
-        # Development and non-recurring engineering costs
-        # These are high for first few satellites but amortize with larger constellations
-        dev_cost = 50.0 + 10.0 * np.log10(num_satellites)  # Million $
-        
-        # Total cost
-        total_cost = batch_cost + dev_cost  # Million $
-        
-        # Normalize score (higher is better = lower cost)
-        # Calibrated to give ~0.5 for 50 satellites costing ~$500M
-        cost_score = 1.0 / (1.0 + (total_cost / 500.0))
-        
-        return cost_score
-        
-    def _calculate_operational_cost(self, orbital_parameters):
-        """
-        Calculate operational cost score based on orbital parameters.
-        Lower altitude = quicker deorbiting = lower operational cost = higher score.
-        
-        Station keeping costs are weighted 3x more heavily than other operational cost components
-        to reflect their significant impact on mission operations.
-        
-        Parameters:
-        -----------
-        orbital_parameters : dict
-            Orbital parameters
-            
-        Returns:
-        --------
-        operational_cost_score : float
-            Score for operational cost (0-1, higher is better)
-        """
-        # IMPROVED: More detailed operational cost model with weighted components
-        
-        # Main factors affecting operational costs:
-        # 1. Station-keeping requirements (affected by altitude and eccentricity) - WEIGHTED 3X
-        # 2. Ground station contact time (affected by altitude and inclination)
-        # 3. Deorbiting requirements (affected by altitude)
-        # 4. Satellite lifetime (affected by altitude)
-        
-        # Calculate satellite lifetime based on altitude
-        altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
-        eccentricity = orbital_parameters['eccentricity']
-        inclination = orbital_parameters['inclination']
-        
-        # Satellite lifetime increases with altitude
-        # LEO (300-500km): ~2-5 years
-        # LEO (500-800km): ~5-10 years
-        # LEO (800-1200km): ~10-15 years
-        # MEO (>1200km): ~15+ years
-        if altitude < 500:
-            lifetime_years = 2 + (altitude - 300) / 50
-        elif altitude < 800:
-            lifetime_years = 5 + (altitude - 500) / 60
-        elif altitude < 1200:
-            lifetime_years = 10 + (altitude - 800) / 80
-        else:
-            lifetime_years = 15 + (altitude - 1200) / 200
-            
-        # Cap at 25 years
-        lifetime_years = min(lifetime_years, 25)
-        
-        # Calculate station-keeping costs
-        # Higher altitude = less drag = less station-keeping
-        # But higher eccentricity = more station-keeping
-        station_keeping_factor = 1.0 + eccentricity * 10.0
-        if altitude < 500:
-            station_keeping_cost = 2.0 * station_keeping_factor  # High
-        elif altitude < 800:
-            station_keeping_cost = 1.0 * station_keeping_factor  # Medium
-        else:
-            station_keeping_cost = 0.5 * station_keeping_factor  # Low
-            
-        # Ground station contact costs
-        # Higher altitude = longer contact times = lower contact costs
-        if altitude < 500:
-            contact_cost = 1.0  # High
-        elif altitude < 1000:
-            contact_cost = 0.7  # Medium
-        else:
-            contact_cost = 0.5  # Low
-            
-        # Deorbiting costs (higher altitude = more expensive to deorbit)
-        if altitude < 500:
-            deorbit_cost = 0.1  # Natural decay is fast
-        elif altitude < 800:
-            deorbit_cost = 0.3  # Some propulsion needed
-        elif altitude < 1200:
-            deorbit_cost = 0.6  # Significant propulsion needed
-        else:
-            deorbit_cost = 1.0  # Very expensive
-            
-        # Annual operational cost with weighted components
-        # Station keeping is weighted 3x more heavily than other components to reflect its importance
-        station_keeping_weight = 3.0
-        contact_weight = 1.0
-        deorbit_weight = 1.0
-        
-        annual_cost = (station_keeping_weight * station_keeping_cost + 
-                      contact_weight * contact_cost + 
-                      deorbit_weight * (deorbit_cost / lifetime_years)) / (station_keeping_weight + contact_weight + deorbit_weight)
-        
-        # Total cost over lifetime
-        total_operational_cost = annual_cost * lifetime_years
-        
-        # Normalize score (higher is better = lower operational cost)
-        # Calibrated to give ~0.8 for 500km, ~0.5 for 1000km, ~0.2 for 2000km
-        operational_cost_score = 1.0 / (1.0 + (total_operational_cost / 10.0))
-        
-        # Return score and detailed breakdown for debug purposes
-        operational_cost_details = {
-            'station_keeping_cost': station_keeping_cost,
-            'contact_cost': contact_cost,
-            'deorbit_cost': deorbit_cost,
-            'lifetime_years': lifetime_years,
-            'annual_cost': annual_cost,
-            'total_operational_cost': total_operational_cost,
-            'operational_cost_score': operational_cost_score,
-            'weights': {
-                'station_keeping_weight': 3.0,
-                'contact_weight': 1.0,
-                'deorbit_weight': 1.0
+        altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS  # km
+        inclination = orbital_parameters['inclination']  # deg
+        sat_mass_kg = float(sat_mass_kg)
+        T = int(num_satellites)
+
+        # Determine planes (Walker-Delta) else assume 1 plane
+        P = 1
+        if pattern_params and 'P' in pattern_params and int(pattern_params['P']) > 0:
+            P = int(pattern_params['P'])
+
+        # Satellites per plane (assumes divisibility; Walker-Delta is enforced elsewhere)
+        sats_per_plane = max(1, T // P)
+
+        # RAAN grouping rule: planes with separation <= delta_raan_dep can be launched together
+        delta_raan_dep = 90.0  # deg
+        plane_spacing = 360.0 / P if P > 0 else 360.0
+        planes_per_group = max(1, int(np.floor(delta_raan_dep / plane_spacing)) + 1)
+        num_groups = int(np.ceil(P / planes_per_group))
+
+        # OCF components
+        # Inclination OCF: 0 deg -> 1.0, 150 deg -> 2.0 (linear, clipped)
+        ocf_inc = 1.0 + max(0.0, min(1.0, inclination / 150.0)) * 1.0
+        # Altitude OCF: 200 km -> 1.0, 1200 km -> 1.4 (linear, clipped)
+        ocf_alt = 1.0 + max(0.0, min(1.0, (altitude - 200.0) / (1200.0 - 200.0))) * 0.4
+
+        # Vehicle models
+        vehicles = {
+            'F9': {
+                'base_kusd_per_kg': 5.0,
+                'capacity_kg': 15000.0,
+                # Calibrated so at inc=150, alt=1200 -> OCF ~ 2.3
+                'alpha_inc': 1.00,  # weight for (ocf_inc - 1)
+                'beta_alt': 0.75    # weight for (ocf_alt - 1)
+            },
+            'FH': {
+                'base_kusd_per_kg': 3.0,
+                'capacity_kg': 30000.0,
+                # Calibrated so at inc=150, alt=1200 -> OCF ~ 1.9
+                'alpha_inc': 0.70,
+                'beta_alt': 0.50
             }
         }
-        
-        # Store the details for access in analyze_component_scores
-        self._operational_cost_details = operational_cost_details
-        
-        return operational_cost_score
-        
-    def _calculate_launch_cost(self, orbital_parameters, num_satellites):
+
+        total_cost_kusd = 0.0
+
+        # Iterate plane groups; last group may have fewer planes
+        for g in range(num_groups):
+            planes_in_group = min(planes_per_group, P - g * planes_per_group)
+            group_mass_kg = planes_in_group * sats_per_plane * sat_mass_kg
+
+            # Evaluate both vehicles; choose cheaper for this group
+            best_group_cost_kusd = float('inf')
+            for v in vehicles.values():
+                ocf_total = 1.0 + v['alpha_inc'] * (ocf_inc - 1.0) + v['beta_alt'] * (ocf_alt - 1.0)
+                eff_kusd_per_kg = v['base_kusd_per_kg'] * ocf_total
+
+                capacity = v['capacity_kg']
+                launches = int(np.ceil(group_mass_kg / capacity))
+                # Charge per launch using full capacity rate (conservative)
+                group_cost_kusd = launches * capacity * eff_kusd_per_kg
+                best_group_cost_kusd = min(best_group_cost_kusd, group_cost_kusd)
+
+            total_cost_kusd += best_group_cost_kusd
+
+        total_musd = total_cost_kusd / 1000.0
+        return total_musd
+
+    def economies_of_scale(self,
+                           num_satellites: int,
+                           orbital_parameters: dict,
+                           sat_mass_kg: float | None = None,
+                           pattern_params: dict = None,
+                           learning_rate: float = 0.9,
+                           payloads: list = None):
         """
-        Calculate launch cost score based on a realistic launch model.
-        
-        This function models launch costs considering multiple factors:
-        - Altitude (higher orbits require more fuel/energy)
-        - Inclination (polar and sun-synchronous orbits are more expensive)
-        - Satellite mass (estimated based on altitude)
-        - Launch vehicle selection based on payload capacity
-        - Number of satellites per launch and total launches needed
-        
-        Higher scores (closer to 1.0) represent lower launch costs.
-        
-        Parameters:
-        -----------
-        orbital_parameters : dict
-            Orbital parameters including semi_major_axis and inclination
-        num_satellites : int
-            Number of satellites in the constellation
-            
-        Returns:
-        --------
-        launch_cost_score : float
-            Normalized score for launch cost (0-1, higher is better)
+        Total system cost (M$) = NRE + RE (learning curve) + Launch.
+        Spacecraft TFU and NRE are computed via mass-based CERs.
+        Payload TFU is computed from the provided payloads (or self.payloads if None).
         """
-        # IMPROVED: More realistic launch cost model
-        
-        # Main factors affecting launch costs:
-        # 1. Altitude (higher = more fuel = higher cost)
-        # 2. Inclination (higher = more fuel = higher cost)
-        # 3. Number of satellites per launch (more satellites = more launches)
-        # 4. Launch vehicle selection
-        
-        # Get orbital parameters
-        altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
-        inclination = orbital_parameters['inclination']
-        
-        # Base cost per kg to orbit (approximate values in $K/kg)
-        # Small: Electron ($20K/kg), Medium: Falcon 9 ($5K/kg), Heavy: Falcon Heavy ($3K/kg)
-        if altitude < 600:  # LEO
-            base_cost_per_kg = 5.0  # Thousand $ per kg
-        elif altitude < 1500:  # MEO
-            base_cost_per_kg = 8.0  # Thousand $ per kg
-        else:  # HEO
-            base_cost_per_kg = 12.0  # Thousand $ per kg
-            
-        # Inclination penalty (equatorial is cheapest, polar is expensive)
-        # Delta-v costs increase with inclination change
-        if inclination < 30:
-            inclination_factor = 1.0
-        elif inclination < 60:
-            inclination_factor = 1.1
-        elif inclination < 90:
-            inclination_factor = 1.2
-        else:
-            inclination_factor = 1.3
-            
-        # Special cases
-        if abs(inclination - 98) < 3:
-            # Sun-synchronous orbit penalty
-            inclination_factor *= 1.1
-        
-        # Estimate satellite mass based on altitude (higher orbit = more propulsion = heavier)
-        # Typical smallsat masses: 100-300kg for LEO, 300-500kg for MEO
-        if altitude < 600:
-            sat_mass = 150  # kg
-        elif altitude < 1200:
-            sat_mass = 250  # kg
-        else:
-            sat_mass = 400  # kg
-            
-        # Determine satellites per launch based on launch vehicle payload capacity
-        # Small: ~300kg, Medium: ~15,000kg, Heavy: ~30,000kg to LEO
-        if sat_mass < 200:
-            # Smallsats
-            if num_satellites <= 3:
-                # Small launcher (Electron, Astra)
-                launch_capacity = 300  # kg
-                launches_needed = max(1, np.ceil(num_satellites * sat_mass / launch_capacity))
-            else:
-                # Medium launcher with rideshare (Falcon 9)
-                launch_capacity = 15000  # kg
-                launches_needed = max(1, np.ceil(num_satellites * sat_mass / launch_capacity))
-        else:
-            # Larger satellites
-            if num_satellites <= 10:
-                # Medium launcher (Falcon 9)
-                launch_capacity = 15000  # kg
-                launches_needed = max(1, np.ceil(num_satellites * sat_mass / launch_capacity))
-            else:
-                # Heavy launcher (Falcon Heavy)
-                launch_capacity = 30000  # kg
-                launches_needed = max(1, np.ceil(num_satellites * sat_mass / launch_capacity))
-        
-        # Calculate total launch cost
-        cost_per_launch = base_cost_per_kg * inclination_factor * launch_capacity
-        total_launch_cost = launches_needed * cost_per_launch  # Thousand $
-        
-        # Calculate per-satellite launch cost
-        per_sat_launch_cost = total_launch_cost / num_satellites if num_satellites > 0 else total_launch_cost
-        
-        # Normalize score (higher is better = lower launch cost)
-        # Typical launch costs might range from $5M to $100M+ for a constellation
-        launch_cost_score = 1.0 / (1.0 + (per_sat_launch_cost / 2000.0))  # 2000 K$ = $2M per satellite
-        
-        return launch_cost_score
-        
+        N = int(num_satellites)
+        if N <= 0:
+            return {'total_musd': 0.0, 'NRE_musd': 0.0, 'RE_musd': 0.0, 'launch_musd': 0.0,
+                    'learning_rate': learning_rate, 'C_TFU_musd': 0.0, 'payload_tfu_musd': 0.0}
+
+        # Spacecraft costs from mass-based CERs
+        m = self.sat_mass_kg if sat_mass_kg is None else float(sat_mass_kg)
+        nre_musd, sc_tfu_musd = self.compute_satellite_cost(m)
+
+        # Payload TFU (M$)
+        payload_def = payloads if payloads is not None else self.payloads
+        payload_tfu_musd = self.compute_payload(payload_def)
+
+        # Unit TFU for learning curve (spacecraft + payload)
+        C_TFU = float(sc_tfu_musd) + float(payload_tfu_musd)
+
+        # Learning curve
+        b = float(learning_rate)
+        exp_b = np.log(b) / np.log(2.0)
+        n = np.arange(1, N + 1, dtype=float)
+        C_RE = float(np.sum(C_TFU * (n ** exp_b)))
+
+        # Launch total (M$)
+        C_L = self._calculate_launch_cost(orbital_parameters, N, m, pattern_params)
+
+        C_NRE = float(nre_musd)
+        total = C_NRE + C_RE + C_L
+
+        return {
+            'total_musd': total,
+            'NRE_musd': C_NRE,
+            'RE_musd': C_RE,
+            'launch_musd': C_L,
+            'learning_rate': b,
+            'C_TFU_musd': C_TFU,
+            'payload_tfu_musd': float(payload_tfu_musd),
+            'sc_tfu_musd': float(sc_tfu_musd)
+        }
+
     def _calculate_science_requirement_score(self, orbital_parameters):
         """
         Calculate science requirement score based on orbital parameters.
@@ -1490,7 +1522,8 @@ class ConstellationOptimizer:
         )
         
         satellite_cost_score = self._calculate_satellite_cost(num_satellites)
-        operational_cost_score = self._calculate_operational_cost(orbital_parameters)
+        # Operational cost currently deactivated; use neutral score
+        operational_cost_score = 1.0
         launch_cost_score = self._calculate_launch_cost(orbital_parameters, num_satellites)
         science_score = self._calculate_science_requirement_score(orbital_parameters)
         
@@ -1510,7 +1543,7 @@ class ConstellationOptimizer:
         if cost_weight_sum > 0:
             weighted_cost = (weighted_satellite_cost + weighted_operational_cost + weighted_launch_cost) / cost_weight_sum
         else:
-            weighted_cost = 1.0
+            weighted_cost = 1.0  # No cost consideration
             
         weighted_science = self.science_weight * science_score
         
@@ -1929,7 +1962,7 @@ if __name__ == "__main__":
         operational_cost_weight=0.1,
         launch_cost_weight=0.1,
         science_weight=0.6,
-        target_altitude=610.0,
+        target_altitude=600.0,
         step=1000
     )
 
@@ -1937,16 +1970,16 @@ if __name__ == "__main__":
     results, best_pattern = multi_optimizer.optimize_multiple_patterns(
         patterns=["Walker-Delta", "Flower"],
         method='differential_evolution',
-        max_iter=100,
-        popsize=150,
-        strategy='rand1bin', # 'best1bin','best1exp','rand1bin','rand1exp','rand2bin','rand2exp','randtobest1bin','randtobest1exp','currenttobest1bin','currenttobest1exp','best2exp','best2bin'
+        max_iter=5,
+        popsize=15,
+        strategy='randtobest1exp', # 'best1bin','best1exp','rand1bin','rand1exp','rand2bin','rand2exp','randtobest1bin','randtobest1exp','currenttobest1bin','currenttobest1exp','best2exp','best2bin'
         mutation=(0.5, 0.7),
         recombination=0.7,
         seed=100,
         early_stopping=True, # If set to false the plots will crash because history is not recorded (optimization still works). Probably because no callback is created and all obj functions calls happend in worker processes only, which do not transfer back to main process.
         patience=80,
         improvement_threshold=0.001,
-        workers=-1  # Use all available CPU cores
+        workers=4  # Use all available CPU cores
     )
 
     print(f"Best pattern: {best_pattern} with score {results[best_pattern]['score']:.4f}")
@@ -1959,3 +1992,120 @@ if __name__ == "__main__":
     print(f"Pattern parameters: {best_pattern_params}")
 
     multi_optimizer.plot_multiple_patterns_optimization_history(results, best_pattern)
+
+
+    # def _calculate_operational_cost(self, orbital_parameters):
+    #     """
+    #     Calculate operational cost score based on orbital parameters.
+    #     Lower altitude = quicker deorbiting = lower operational cost = higher score.
+        
+    #     Station keeping costs are weighted 3x more heavily than other operational cost components
+    #     to reflect their significant impact on mission operations.
+        
+    #     Parameters:
+    #     -----------
+    #     orbital_parameters : dict
+    #         Orbital parameters
+            
+    #     Returns:
+    #     --------
+    #     operational_cost_score : float
+    #         Score for operational cost (0-1, higher is better)
+    #     """
+    #     # IMPROVED: More detailed operational cost model with weighted components
+        
+    #     # Main factors affecting operational costs:
+    #     # 1. Station-keeping requirements (affected by altitude and eccentricity) - WEIGHTED 3X
+    #     # 2. Ground station contact time (affected by altitude and inclination)
+    #     # 3. Deorbiting requirements (affected by altitude)
+    #     # 4. Satellite lifetime (affected by altitude)
+        
+    #     # Calculate satellite lifetime based on altitude
+    #     altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
+    #     eccentricity = orbital_parameters['eccentricity']
+    #     inclination = orbital_parameters['inclination']
+        
+    #     # Satellite lifetime increases with altitude
+    #     # LEO (300-500km): ~2-5 years
+    #     # LEO (500-800km): ~5-10 years
+    #     # LEO (800-1200km): ~10-15 years
+    #     # MEO (>1200km): ~15+ years
+    #     if altitude < 500:
+    #         lifetime_years = 2 + (altitude - 300) / 50
+    #     elif altitude < 800:
+    #         lifetime_years = 5 + (altitude - 500) / 60
+    #     elif altitude < 1200:
+    #         lifetime_years = 10 + (altitude - 800) / 80
+    #     else:
+    #         lifetime_years = 15 + (altitude - 1200) / 200
+            
+    #     # Cap at 25 years
+    #     lifetime_years = min(lifetime_years, 25)
+        
+    #     # Calculate station-keeping costs
+    #     # Higher altitude = less drag = less station-keeping
+    #     # But higher eccentricity = more station-keeping
+    #     station_keeping_factor = 1.0 + eccentricity * 10.0
+    #     if altitude < 500:
+    #         station_keeping_cost = 2.0 * station_keeping_factor  # High
+    #     elif altitude < 800:
+    #         station_keeping_cost = 1.0 * station_keeping_factor  # Medium
+    #     else:
+    #         station_keeping_cost = 0.5 * station_keeping_factor  # Low
+            
+    #     # Ground station contact costs
+    #     # Higher altitude = longer contact times = lower contact costs
+    #     if altitude < 500:
+    #         contact_cost = 1.0  # High
+    #     elif altitude < 1000:
+    #         contact_cost = 0.7  # Medium
+    #     else:
+    #         contact_cost = 0.5  # Low
+            
+    #     # Deorbiting costs (higher altitude = more expensive to deorbit)
+    #     if altitude < 500:
+    #         deorbit_cost = 0.1  # Natural decay is fast
+    #     elif altitude < 800:
+    #         deorbit_cost = 0.3  # Some propulsion needed
+    #     elif altitude < 1200:
+    #         deorbit_cost = 0.6  # Significant propulsion needed
+    #     else:
+    #         deorbit_cost = 1.0  # Very expensive
+            
+    #     # Annual operational cost with weighted components
+    #     # Station keeping is weighted 3x more heavily than other components to reflect its importance
+    #     station_keeping_weight = 3.0
+    #     contact_weight = 1.0
+    #     deorbit_weight = 1.0
+        
+    #     annual_cost = (station_keeping_weight * station_keeping_cost + 
+    #                   contact_weight * contact_cost + 
+    #                   deorbit_weight * (deorbit_cost / lifetime_years)) / (station_keeping_weight + contact_weight + deorbit_weight)
+        
+    #     # Total cost over lifetime
+    #     total_operational_cost = annual_cost * lifetime_years
+        
+    #     # Normalize score (higher is better = lower operational cost)
+    #     # Calibrated to give ~0.8 for 500km, ~0.5 for 1000km, ~0.2 for 2000km
+    #     operational_cost_score = 1.0 / (1.0 + (total_operational_cost / 10.0))
+        
+    #     # Return score and detailed breakdown for debug purposes
+    #     operational_cost_details = {
+    #         'station_keeping_cost': station_keeping_cost,
+    #         'contact_cost': contact_cost,
+    #         'deorbit_cost': deorbit_cost,
+    #         'lifetime_years': lifetime_years,
+    #         'annual_cost': annual_cost,
+    #         'total_operational_cost': total_operational_cost,
+    #         'operational_cost_score': operational_cost_score,
+    #         'weights': {
+    #             'station_keeping_weight': 3.0,
+    #             'contact_weight': 1.0,
+    #             'deorbit_weight': 1.0
+    #         }
+    #     }
+        
+    #     # Store the details for access in analyze_component_scores
+    #     self._operational_cost_details = operational_cost_details
+        
+    #     return operational_cost_score
