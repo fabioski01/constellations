@@ -295,12 +295,19 @@ class ConstellationOptimizer:
         # Extract pattern-specific parameters
         pattern_params = {}
         if self.pattern_type == "Walker-Delta":
-            pattern_params['P'] = int(round(params[6]))
-            pattern_params['F'] = int(round(params[7]))
-            
-            # Ensure P and F are valid values
-            pattern_params['P'] = max(1, pattern_params['P']) # Number of planes must be at least 1
-            pattern_params['F'] = min(max(1, pattern_params['F']), pattern_params['P']-1) # Phasing parameter must be in [1, P-1]
+            # Be defensive: params may be shorter depending on caller; provide sensible defaults
+            try:
+                p_val = int(round(params[6]))
+            except Exception:
+                p_val = 1
+            try:
+                f_val = int(round(params[7]))
+            except Exception:
+                f_val = 1
+
+            pattern_params['P'] = max(1, p_val)  # Number of planes must be at least 1
+            # Phasing parameter should be at least 1 and less than P (will be clamped later if needed)
+            pattern_params['F'] = max(1, f_val)
         
             # Walker-Delta requires: 
             # 1. T (total satellites) divisible by P (number of planes)
@@ -308,18 +315,33 @@ class ConstellationOptimizer:
             # these constraints are checked in the objective function
         
         elif self.pattern_type == "Flower":
-            pattern_params['Np'] = int(round(params[6]))  # Number of petals (lobes in ground track).
-            pattern_params['Nd'] = int(round(params[7]))  # Number of sidereal days for ground track repeat.
-            pattern_params['Fn'] = int(round(params[8]))  # Phase number, phasing integer, must be relatively prime to Fd.
-            pattern_params['Fd'] = int(round(params[9]))  # Phase denominator, phasing integer, must be relatively prime to Fn.
-            pattern_params['Fh'] = int(round(params[10])) # Step phasing integer, must be in the range [0, Nd-1], can be non constant. In this case will be constant, and usually zero.
+            # Defensive parsing: optimization callers may not always provide all Flower parameters
+            # Defaults chosen to form a minimal valid Flower configuration
+            defaults = {'Np': 1, 'Nd': 1, 'Fn': 1, 'Fd': 1, 'Fh': 0}
+            keys = ['Np', 'Nd', 'Fn', 'Fd', 'Fh']
+            for i, k in enumerate(keys):
+                idx = 6 + i
+                try:
+                    pattern_params[k] = int(round(params[idx]))
+                except Exception:
+                    pattern_params[k] = defaults[k]
 
-            # Ensure parameters are valid
-            pattern_params['Np'] = max(1, pattern_params['Np']) # Number of petals must be at least 1
-            pattern_params['Nd'] = max(1, pattern_params['Nd']) # Number of sidereal days must be at least 1
-            pattern_params['Fn'] = max(1, pattern_params['Fn']) # Phase number must be at least 1
-            pattern_params['Fd'] = max(1, pattern_params['Fd']) # Phase denominator must be at least 1
-            pattern_params['Fh'] = min(max(0, pattern_params['Fh']), pattern_params['Nd']-1) # Step phasing must be in [0, Nd-1]
+            # Ensure parameters are valid ranges
+            pattern_params['Np'] = max(1, pattern_params['Np'])
+            pattern_params['Nd'] = max(1, pattern_params['Nd'])
+            pattern_params['Fn'] = max(1, pattern_params['Fn'])
+            pattern_params['Fd'] = max(1, pattern_params['Fd'])
+            # Fh must be in [0, Nd-1]
+            pattern_params['Fh'] = max(0, pattern_params['Fh'])
+            if pattern_params['Fh'] >= pattern_params['Nd']:
+                pattern_params['Fh'] = pattern_params['Nd'] - 1
+            # Also include these in the orbital_parameters dict so callers that
+            # expect Flower keys (e.g. Constellation) find them there.
+            orbital_parameters['Np'] = pattern_params['Np']
+            orbital_parameters['Nd'] = pattern_params['Nd']
+            orbital_parameters['Fn'] = pattern_params['Fn']
+            orbital_parameters['Fd'] = pattern_params['Fd']
+            orbital_parameters['Fh'] = pattern_params['Fh']
             
         return num_satellites, orbital_parameters, pattern_params
     
@@ -658,7 +680,8 @@ class ConstellationOptimizer:
             bounds.append((1, 49))   # Nd (days). Varies, usually equal to 1 or in combination with Fd to get Nd * Fd = num sat
             bounds.append((1, 99))   # Fn (satellite phasing). Varies largely, unpredictable
             bounds.append((1, 100))   # Fd (day phasing). Varies largely in combination with Nd and num sat
-            bounds.append((0, 0))    # Fh (step phasing). Used for combinations. Usually zero
+            # Allow Fh to vary between 0 and Nd-1 (upper bound will be clamped after sampling)
+            bounds.append((0, 48))    # Fh (step phasing). Usually in range [0, Nd-1]
         
         # Select optimization algorithm
         if method == 'differential_evolution':
@@ -1144,8 +1167,7 @@ class ConstellationOptimizer:
         - If no inputs are provided, returns 0.0.
         """
         def to_musd_2025(cost_k_fy04: float) -> float:
-            inflation_2004_to_2025 = 1.70
-            return (cost_k_fy04 / 1000.0) * inflation_2004_to_2025
+            return (cost_k_fy04 / 1000.0) * constants.INFLATION_2004_TO_2025
 
         def check_positive(name, value):
             if value is None:
@@ -1196,13 +1218,14 @@ class ConstellationOptimizer:
         Spacecraft cost CERs (M$), driven by total spacecraft mass (kg).
         Returns (NRE_musd, tfu_musd).
 
-        NRE (M$): 3.424 * mass^0.5
-        TFU (M$): 0.151 * mass^0.7
+        NRE from SSCM 1996 (old) (FY10$K): 1064 + 35.5*mass^1.261
+        TFU (STILL NEED A REFERENCE FOR THIS) (M$): 0.151 * mass^0.7
         """
         m = float(self.sat_mass_kg if mass_kg is None else mass_kg)
         if m <= 0:
             raise ValueError("spacecraft mass must be > 0 kg")
-        nre_musd = 3.424 * (m ** 0.5)
+        nre_k2010usd = 1064 + 35.5 * (m ** 1.261)
+        nre_musd = nre_k2010usd/1000 * constants.INFLATION_2010_TO_2025
         tfu_musd = 0.151 * (m ** 0.7)
         return nre_musd, tfu_musd
         
