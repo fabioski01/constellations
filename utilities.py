@@ -371,7 +371,8 @@ class CoordinateConversion:
     def ECI_cartesian_to_geographic(positions, times, reference_time=None):
         """
         Convert Cartesian positions to geographic latitude, longitude, and radial distance,
-        accounting for Earth's rotation using ERA and GMST.
+        accounting for Earth's rotation using ERA and GMST (spherical Earth, not geodetic
+        with ellipsoid Earth model).
         
         Args:
             positions (np.ndarray): Nx3 array of Cartesian positions (x, y, z) in km.
@@ -468,8 +469,9 @@ class CoordinateConversion:
         """
 
         if reference_time is None:
-            reference_time = datetime.utcnow()
-        
+            # reference_time = datetime.utcnow()
+            raise ValueError("Reference time must be provided")
+
         # print(f"Reference time: {reference_time}")
         # print(f"First time value: {times[0]} seconds")
         # print(f"Last time value: {times[-1]} seconds")
