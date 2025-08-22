@@ -804,7 +804,8 @@ def get_ground_station_coordinates(station_name):
         "AFB_Elmendorf": (61.2, -149.9, 0.0),
         "Svalbard": (78.2, 15.6, 0.0),
         "Troll_Antarctica": (-72.0, 2.5, 0.0),
-        "Fucino": (42.0, 13.6, 0.0)
+        "Fucino": (42.0, 13.6, 0.0),
+        "Sumatra_EQ": (3.295, 95.982, 0.0)
     }
     
     if station_name in ground_stations:
