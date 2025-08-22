@@ -26,26 +26,26 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 ### INPUTS ###
 ### SELECT TOTAL NUMBER OF SATELLITES ###
 # Switches for plotting
-PLOT_GROUND_TRACKS = False
+PLOT_GROUND_TRACKS = True
 PLOT_INERTIAL_GROUND_TRACKS = False
-n_periods_ground_tracks = 1
+n_periods_ground_tracks = 3
 PLOT_INERTIAL_3D = False
-n_periods_3d = 2
+n_periods_3d = 1
 PLOT_ECEF_3D = False
 n_periods_ecef3d = n_periods_3d
 ANIMATE_CONSTELLATION = False # needs PLOT_ECEF_3D to be True
-COMPUTE_GLOBAL_COVERAGE = True
+COMPUTE_GLOBAL_COVERAGE = False
 masking_angles = [10.0]  # degrees, the larger the smaller the coverage area. Same as elevation angle threshold. Usually 10-15 deg min
 fovs = [160] # degrees, field of view of the sensor. If too low is limiting, if it's large then the masking angle is limiting
-n_periods_global_coverage = 1
-COMPUTE_REGIONAL_COVERAGE = True
+n_periods_global_coverage = 2
+COMPUTE_REGIONAL_COVERAGE = False
 # regions_to_analyze = ["Western_US", "Europe", "Japan"]
 regions_to_analyze = ["Western_US", "Eastern_US", "Continental_US", "Europe", "East_Asia", "South_America", "Africa", "Australia", "Arctic", "Antarctica", "Japan", "Italy", "United_Kingdom", "India", "Brazil", "Turkey", "Central_Mexico", "Alaska", "Hawaii", "Iran", "Nepal", "Philippines", "New_Zealand", "Chile", "Indonesia", "Greece", "Central_China", "Kamchatka", "Caribbean", "Eastern_Europe", "Central_Asia_Eastern_China", "Western_South_America_Coast", "West_Coast_US", "California", "Mediterranean", "Iberian_Peninsula", "Southeast_Asia", "Middle_East", "North_Africa", "Great_Lakes"]
 n_periods_regional_coverage = n_periods_global_coverage
 PLOT_COVERAGE = False
 n_periods_plot_coverage = n_periods_global_coverage
 COMPUTE_VISIBILITY = False
-gs = "Fucino"  # Ground station location INPUT
+gs = "Sumatra_EQ"  # Ground station location INPUT
 n_periods_compute_visibility = 1
 PLOT_VISIBILITY = False # needs COMPUTE_VISIBILITY to be True
 PLOT_DATA_COMPARISON = False # needs COMPUTE_VISIBILITY to be True
@@ -55,16 +55,16 @@ PLOT_PATTERN_VISIBILITY_COMPARISON = False # needs COMPUTE_VISIBILITY to be True
 # num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for walker P=3
 # num_satellites_list = [77] # Flower
 # num_satellites_list = list(range(1, 101))
-num_satellites_list = [1]
+num_satellites_list = [4]
 
 ## SELECT ORBITAL PARAMETERS ###
 orbital_parameters = {
-    'semi_major_axis':     6800.0,    # km
+    'semi_major_axis':     6875.59534135,    # km
     'eccentricity':        0.00,    # unitless
-    'inclination':         51.0,     # deg
-    'RAAN':                0,     # deg
-    'argument_of_periapsis': 250.0,  # deg     
-    'true_anomaly':        0.0,      # deg
+    'inclination':         51.447684794794995,     # deg
+    'RAAN':                322.206710,     # deg
+    'argument_of_periapsis': 0,  # deg     
+    'true_anomaly':        175.813353,      # deg
     'ndot':                1e-8,     # rev/day² # Includes derivatives
     'nddot':               1e-12,    # rev/day³
     'bstar':               2e-5      # 1/er
@@ -204,7 +204,7 @@ FLOWER_CONSTELLATIONS = {
 # print(f'Target e given hp of {h_perigee} km and a of {orbital_parameters["semi_major_axis"]} km', {1-((constants.EARTH_RADIUS + h_perigee) / orbital_parameters["semi_major_axis"])})
 
 ### SELECT EPOCH ###
-epoch = datetime(2025,5,5,0,0,0)
+epoch = datetime(2025,5,5,12,0,0, tzinfo=timezone.utc)
 
 # ### SELECT A PATTERN ###
 # pattern_list = []
@@ -223,20 +223,20 @@ epoch = datetime(2025,5,5,0,0,0)
 #     pattern_list = []
 #     for P in range(1, 10):  # P values from 1 to 10
 #         for F in range(1, P):  # F values from 1 to P-1 (F must be less than P)
-#             pattern_list.append(("Walker-Delta", {"P": P, "F": F}))
+#             pattern_list.append(("Walker-Delta", n{"P": P, "F": F}))
 
 #     # For P=1, there's no valid F value, so add this manually
 #     pattern_list.append(("Walker-Delta", {"P": 1, "F": 1}))
 
 #     pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
-pattern_list = [("Walker-Delta", {"P": 1, "F": 1}),]
+pattern_list = [("Walker-Delta", {"P": 4, "F": 1}),]
 
 pattern_params = {} # saving parameters for each pattern for plotting outside the pattern loop
 
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
 start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
 end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-step =  501 # Time step input
+step =  100 # Time step input
 
 # Estimate one period index to stop ground track after one orbit
 a = orbital_parameters['semi_major_axis']  # km from Earth's center
@@ -416,7 +416,7 @@ if __name__ == "__main__":
                     satellite_considered = satellite
                     # geographic_orbit = CoordinateConversion.ECI_cartesian_to_geographic(positions[satellite_considered, :idx_max, :], time_stamps[:idx_max]) # A list of tuples (time, latitude, longitude, radial_distance)
 
-                    ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(positions[satellite_considered, :idx_max, :]*1000, time_stamps[:idx_max]) # A list of tuples (time, x, y, z), km to m
+                    ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(positions[satellite_considered, :idx_max, :]*1000, time_stamps[:idx_max], reference_time=epoch) # A list of tuples (time, x, y, z), km to m
                     ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) for x, y, z in ECEF_cartesian_orbit] # A list of tuples (latitude, longitude, altitude)
 
                     # # Extract data
@@ -455,8 +455,8 @@ if __name__ == "__main__":
                 elif num_satellites > 49:
                     plt.tight_layout(rect=[0, -0.03, 1, 0.95])  # Leave less space at the bottom for the legend
                 else:
-                    plt.tight_layout(rect=[0, 0.00, 1, 0.95])  # Does not leave space at the bottom for the legend
-
+                    # plt.tight_layout(rect=[0.0, 0.00, 1, 0.95])  # Does not leave space at the bottom for the legend
+                    plt.subplots_adjust(left=0, bottom=0.15, right=1, top=0.85)
                 # Dynamically include orbital parameters in the title and filename
                 orbital_params_str = (
                     f"a={orbital_parameters['semi_major_axis']:.0f}km / h_p={((1-orbital_parameters['eccentricity'])*orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS):.0f} km, "
@@ -469,7 +469,7 @@ if __name__ == "__main__":
 
                 if pattern == 'Walker-Delta':
                     ax.set_title(f"Ground tracks of a {pattern} constellation {orbital_parameters['inclination']}:{num_satellites}/{P}/{F}, during {n_periods} orbital period(s)\n({orbital_params_str})")
-                    filename = f"plots/ground_tracks/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/constellation_ground_tracks_step{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"
+                    filename = f"plots/ground_tracks/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/gt_s{step}_N{num_satellites}-{P}-{F}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}_RAAN{orbital_parameters['RAAN']}.png"
                 elif pattern == 'Walker-Delta-SinglePlane':
                     # Dynamically include orbital parameters in the title and filename
                     orbital_params_str = (
@@ -1021,11 +1021,11 @@ if __name__ == "__main__":
 
                 # Extract orbital parameters for the subtitle
                 orbital_params_str = (
-                    f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
-                    f"e={orbital_parameters['eccentricity']}, "
-                    f"i={orbital_parameters['inclination']}°, "
+                    f"a={orbital_parameters['semi_major_axis']:.1f}km / h={(orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS):.1f} km, "
+                    f"e={orbital_parameters['eccentricity']:.2f}, "
+                    f"i={orbital_parameters['inclination']:.2f}°, "
                     f"RAAN varies, "
-                    f"ω={orbital_parameters['argument_of_periapsis']}°"
+                    f"ω={orbital_parameters['argument_of_periapsis']:.2f}°"
                 )
                 # Define coverage parameters for computation
                 for masking_angle in masking_angles:
@@ -1083,7 +1083,7 @@ if __name__ == "__main__":
                             filename = f"plots/grid_coverage/global/{pattern}/{orbital_parameters['inclination']}-{P}-{F}/{n_periods}T/mask{masking_angle}_fov{fov}/constellation_coverage_step{step}_N{num_satellites}_a{orbital_parameters['semi_major_axis']}_e{orbital_parameters['eccentricity']}_i{orbital_parameters['inclination']}.png"                            
                         elif pattern == 'Walker-Delta-SinglePlane':
                             orbital_params_str = (
-                                f"a={orbital_parameters['semi_major_axis']}km / h={orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS} km, "
+                                f"a={orbital_parameters['semi_major_axis']:.1f}km / h={(orbital_parameters['semi_major_axis']-constants.EARTH_RADIUS):.1f} km, "
                                 f"e={orbital_parameters['eccentricity']}, "
                                 f"i={orbital_parameters['inclination']}°, "
                                 f"RAAN={orbital_parameters['RAAN']}°, "
