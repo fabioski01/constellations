@@ -1,7 +1,7 @@
 from sgp4.api import Satrec
 import numpy as np
 from datetime import datetime, timezone, timedelta
-from math import trunc
+import math
 import time
 import constants
 
@@ -391,6 +391,7 @@ class CoordinateConversion:
         # Default reference time as current time if not provided
         if reference_time is None:
             reference_time = datetime.utcnow()
+            raise ValueError("reference_time must be provided when times are offsets in seconds.")
 
         # GMST computation for each time step based on the alternative formula
         def calculate_gmst(time_in_seconds):
@@ -450,93 +451,240 @@ class CoordinateConversion:
 
         return results
     
-    @staticmethod
-    def ECI_cartesian_to_ECEF_cartesian(eci_positions, times, reference_time=None):
-        """
-        Convert ECI (Earth-Centered Inertial) Cartesian positions to ECEF (Earth-Centered, Earth-Fixed) Cartesian positions.
+    # @staticmethod
+    # def ECI_cartesian_to_ECEF_cartesian(eci_positions, times, reference_time=None):
+    #     """
+    #     Convert ECI (Earth-Centered Inertial) Cartesian positions to ECEF (Earth-Centered, Earth-Fixed) Cartesian positions.
 
-        Args:
-            eci_positions (np.ndarray): Nx3 array of ECI positions (x, y, z) in meters.
-            times (np.ndarray): 1D array of time values in seconds (since reference_time).
-            reference_time (datetime, optional): The reference time (used to calculate GMST).
+    #     Args:
+    #         eci_positions (np.ndarray): Nx3 array of ECI positions (x, y, z) in meters.
+    #         times (np.ndarray): 1D array of time values in seconds (since reference_time).
+    #         reference_time (datetime, optional): The reference time (used to calculate GMST).
 
-        Returns:
-            np.ndarray: Nx3 array of ECEF positions (x, y, z) in meters.
+    #     Returns:
+    #         np.ndarray: Nx3 array of ECEF positions (x, y, z) in meters.
 
-        Notes:
-            - This function rotates the ECI position vector about the Z-axis by the GMST angle to obtain ECEF coordinates.
-            - Assumes positions are given in meters.
-        """
+    #     Notes:
+    #         - This function rotates the ECI position vector about the Z-axis by the GMST angle to obtain ECEF coordinates.
+    #         - Assumes positions are given in meters.
+    #     """
 
-        if reference_time is None:
-            # reference_time = datetime.utcnow()
-            raise ValueError("Reference time must be provided")
+    #     # if reference_time is None:
+    #     #     # reference_time = datetime.utcnow()
+    #     #     raise ValueError("Reference time must be provided")
 
-        # print(f"Reference time: {reference_time}")
-        # print(f"First time value: {times[0]} seconds")
-        # print(f"Last time value: {times[-1]} seconds")
+    #     # print(f"Reference time: {reference_time}")
+    #     # print(f"First time value: {times[0]} seconds")
+    #     # print(f"Last time value: {times[-1]} seconds")
 
-        # def calculate_gmst(time_in_seconds):
-        #     # Calculate Julian Date (JD)
-        #     jd = 2451545.0 + (time_in_seconds / 86400.0)  # Convert from seconds to Julian days
-        #     D_UT = jd - 2451545.0  # Number of days since J2000.0
-        #     # GMST in hours at 0h UT
-        #     gmst_hours = (constants.GMST_CONSTANT + constants.EARTH_OMEGA * D_UT) % 24.0  # Normalize to [0, 24)
-        #     return gmst_hours
-        def calculate_gmst(dt):
-            """
-            Calculate GMST from a datetime object.
+    #     # def calculate_gmst(time_in_seconds):
+    #     #     # Calculate Julian Date (JD)
+    #     #     jd = 2451545.0 + (time_in_seconds / 86400.0)  # Convert from seconds to Julian days
+    #     #     D_UT = jd - 2451545.0  # Number of days since J2000.0
+    #     #     # GMST in hours at 0h UT
+    #     #     gmst_hours = (constants.GMST_CONSTANT + constants.EARTH_OMEGA * D_UT) % 24.0  # Normalize to [0, 24)
+    #     #     return gmst_hours
+    #     # def calculate_gmst(dt):
+    #     #     """
+    #     #     Calculate GMST from a datetime object.
             
-            Args:
-                dt (datetime): The datetime object
+    #     #     Args:
+    #     #         dt (datetime): The datetime object
                 
-            Returns:
-                float: GMST in hours
-            """
-            # Calculate Julian Date (JD) from datetime
-            jd, fr = TimeConversion.datetime_to_sgp4time(dt)
-            jd_total = jd + fr
+    #     #     Returns:
+    #     #         float: GMST in hours
+    #     #     """
+    #     #     # Calculate Julian Date (JD) from datetime
+    #     #     jd, fr = TimeConversion.datetime_to_sgp4time(dt)
+    #     #     jd_total = jd + fr
             
-            # Days since J2000.0
-            D_UT = jd_total - 2451545.0
+    #     #     # Days since J2000.0
+    #     #     D_UT = jd_total - 2451545.0
             
-            # GMST in hours at 0h UT
-            gmst_hours = (constants.GMST_CONSTANT + constants.EARTH_OMEGA * D_UT) % 24.0
-            return gmst_hours
+    #     #     # GMST in hours at 0h UT
+    #     #     gmst_hours = (constants.GMST_CONSTANT + constants.EARTH_OMEGA * D_UT) % 24.0
+    #     #     return gmst_hours
         
-        # Ensure positions is a 2D array
-        eci_positions = np.atleast_2d(eci_positions)
-        # Ensure times is a 1D array
-        times = np.atleast_1d(times)
-        if len(eci_positions) != len(times):
-            raise ValueError("Positions and times must have the same length")
+    #     # # Ensure positions is a 2D array
+    #     # eci_positions = np.atleast_2d(eci_positions)
+    #     # # Ensure times is a 1D array
+    #     # times = np.atleast_1d(times)
+    #     # if len(eci_positions) != len(times):
+    #     #     raise ValueError("Positions and times must have the same length")
 
-        ecef_positions = np.zeros_like(eci_positions)
+    #     # ecef_positions = np.zeros_like(eci_positions)
 
-        for i, position in enumerate(eci_positions):
-            # Calculate the absolute time for this time step
-            absolute_time = reference_time + timedelta(seconds=times[i])
+    #     # for i, position in enumerate(eci_positions):
+    #     #     # Calculate the absolute time for this time step
+    #     #     absolute_time = reference_time + timedelta(seconds=times[i])
             
-            # Calculate GMST for the absolute time (not the relative time)
-            gmst = calculate_gmst(absolute_time)  # Pass datetime object, not seconds
+    #     #     # Calculate GMST for the absolute time (not the relative time)
+    #     #     gmst = calculate_gmst(absolute_time)  # Pass datetime object, not seconds
 
-            # print(f"Time {i}: {times[i]}s, Absolute time: {absolute_time}, GMST: {gmst:.6f} hours")
+    #     #     # print(f"Time {i}: {times[i]}s, Absolute time: {absolute_time}, GMST: {gmst:.6f} hours")
 
-            # Convert GMST (in hours) to radians (1 hour = 15 degrees)
-            theta = np.radians(gmst * 15.0)
-            # print(f"Rotation angle: {np.degrees(theta):.6f} degrees")
+    #     #     # Convert GMST (in hours) to radians (1 hour = 15 degrees)
+    #     #     theta = np.radians(gmst * 15.0)
+    #     #     # print(f"Rotation angle: {np.degrees(theta):.6f} degrees")
 
-            # Rotation matrix about Z-axis
-            R = np.array([
-                [np.cos(theta), np.sin(theta), 0],
-                [-np.sin(theta), np.cos(theta), 0],
-                [0, 0, 1]
-            ])
-            # Apply rotation
-            ecef_positions[i] = R @ position
+    #     #     # Rotation matrix about Z-axis
+    #     #     R = np.array([
+    #     #         [np.cos(theta), np.sin(theta), 0],
+    #     #         [-np.sin(theta), np.cos(theta), 0],
+    #     #         [0, 0, 1]
+    #     #     ])
+    #     #     # Apply rotation
+    #     #     ecef_positions[i] = R @ position
 
-        return ecef_positions
+    #     # return ecef_positions
+    #     def _gmst_vallado(dt):
+    #         # Use UTC (UT1≈UTC for this purpose)
+    #         if dt.tzinfo is None:
+    #             dt = dt.replace(tzinfo=timezone.utc)  # assume UTC if naive
+    #         else:
+    #             dt = dt.astimezone(timezone.utc)
 
+    #         y, m, d = dt.year, dt.month, dt.day
+    #         hr = dt.hour + dt.minute/60.0 + (dt.second + dt.microsecond*1e-6)/3600.0
+
+    #         a = (14 - m) // 12
+    #         y2 = y + 4800 - a
+    #         m2 = m + 12*a - 3
+    #         JDN = d + (153*m2 + 2)//5 + 365*y2 + y2//4 - y2//100 + y2//400 - 32045
+    #         JD = JDN + hr/24.0
+    #         Tu = (JD - 2451545.0) / 36525.0
+    #         gmst_deg = 280.46061837 + 360.98564736629*(JD - 2451545.0) + 0.000387933*Tu**2 - (Tu**3)/38710000.0
+    #         return math.radians(gmst_deg % 360.0)
+
+    #     # Normalize inputs
+    #     r_in = np.asarray(eci_positions, dtype=float)
+    #     if r_in.ndim == 1:
+    #         r_in = r_in[np.newaxis, :]
+    #     if reference_time is None:
+    #         raise ValueError("reference_time must be provided when times are offsets in seconds.")
+    #     t_arr = np.atleast_1d(times)
+
+    #     ecef = np.zeros_like(r_in)
+    #     for i in range(r_in.shape[0]):
+    #         # Pick corresponding time (last value if scalar provided)
+    #         tsec = float(t_arr[min(i, len(t_arr)-1)])
+    #         dt_abs = reference_time + timedelta(seconds=tsec)
+    #         theta = _gmst_vallado(dt_abs)
+    #         c, s = math.cos(theta), math.sin(theta)
+    #         R = np.array([[ c,  s, 0.0],
+    #                       [-s,  c, 0.0],
+    #                       [0.0, 0.0, 1.0]], dtype=float)
+    #         ecef[i] = R @ r_in[i]
+
+    #     return ecef if ecef.shape[0] > 1 else ecef[0]
+    from typing import Union, Sequence
+
+    def ECI_cartesian_to_ECEF_cartesian(
+        eci_positions: Union[np.ndarray, Sequence[float]],
+        times: Union[float, datetime, Sequence[float], Sequence[datetime]],
+        reference_time: datetime = None,
+    ):
+        """
+        Convert ECI (Earth-Centered Inertial) Cartesian positions to ECEF (Earth-Fixed) positions.
+
+        Parameters
+        ----------
+        eci_positions : array_like, shape (3,) or (N,3)
+            ECI positions (meters).
+        times : float | datetime | sequence
+            - If float or array of floats: seconds since `reference_time` (UT1≈UTC).
+            - If datetime or array of datetimes: absolute times (UTC recommended).
+        reference_time : datetime, optional
+            Required when `times` is/are seconds offsets. Ignored when `times` are datetimes.
+
+        Returns
+        -------
+        np.ndarray
+            ECEF positions, shape (3,) if a single vector was provided, else (N,3).
+
+        Notes
+        -----
+        - Uses GMST (UT1≈UTC) and a pure R3(θ) rotation: r_ecef = R3(θ) r_eci with
+        R3(θ) = [[ cosθ,  sinθ, 0],
+                [-sinθ,  cosθ, 0],
+                [   0 ,    0 , 1]]
+        - Ignores precession/nutation, polar motion, and UT1–UTC; good for ground tracks.
+        - Earth sidereal rotation rate Ω ≈ 7.2921150e-5 rad/s.
+        """
+
+        # --- normalize positions to (N,3) ---
+        r = np.asarray(eci_positions, dtype=float)
+        single_vec = False
+        if r.ndim == 1:
+            if r.size != 3:
+                raise ValueError("eci_positions must have 3 elements or be an (N,3) array.")
+            r = r[np.newaxis, :]
+            single_vec = True
+        elif r.ndim != 2 or r.shape[1] != 3:
+            raise ValueError("eci_positions must be shape (3,) or (N,3).")
+        N = r.shape[0]
+
+        # --- helpers ---
+        OMEGA_EARTH_SID = 7.2921150e-5  # rad/s
+
+        def _to_utc(dt: datetime) -> datetime:
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+
+        def _gmst_rad(dt: datetime) -> float:
+            """GMST (rad) via compact ERA/GMST-like formula; dt treated as UTC."""
+            dt = _to_utc(dt)
+            y, m = dt.year, dt.month
+            D = dt.day + (dt.hour + (dt.minute + (dt.second + dt.microsecond/1e6)/60)/60)/24.0
+            if m <= 2:
+                y -= 1
+                m += 12
+            A = y // 100
+            B = 2 - A + A // 4
+            JD = int(365.25 * (y + 4716)) + int(30.6001 * (m + 1)) + D + B - 1524.5
+            # GMST angle (rad), wrap to [0, 2π)
+            theta = 2.0 * math.pi * (0.7790572732640 + 1.00273781191135448 * (JD - 2451545.0))
+            return theta % (2.0 * math.pi)
+
+        # --- build θ for each sample ---
+        # Case A: times are datetime(s) → compute absolute GMST for each.
+        if isinstance(times, datetime) or (
+            isinstance(times, (list, tuple, np.ndarray)) and len(times) > 0 and isinstance(times[0], datetime)
+        ):
+            t_list = times if isinstance(times, (list, tuple, np.ndarray)) else [times]
+            if len(t_list) not in (1, N):
+                raise ValueError("When using datetimes, provide one time for all positions or one per position.")
+            if len(t_list) == 1:
+                theta = np.full(N, _gmst_rad(t_list[0]), dtype=float)
+            else:
+                theta = np.array([_gmst_rad(ti) for ti in t_list], dtype=float)
+
+        # Case B: times are seconds since reference_time → propagate with sidereal rate.
+        else:
+            t_arr = np.atleast_1d(np.asarray(times, dtype=float))
+            if t_arr.size not in (1, N):
+                raise ValueError("`times` (seconds) must be scalar or have same length as positions.")
+            if reference_time is None:
+                raise ValueError("`reference_time` is required when `times` are seconds offsets.")
+            theta0 = _gmst_rad(reference_time)  # GMST at reference epoch
+            if t_arr.size == 1:
+                theta = (theta0 + OMEGA_EARTH_SID * t_arr[0]) % (2.0 * math.pi)
+                theta = np.full(N, theta, dtype=float)
+            else:
+                theta = (theta0 + OMEGA_EARTH_SID * t_arr) % (2.0 * math.pi)
+
+        # --- rotate ECI → ECEF (vectorized) ---
+        c = np.cos(theta)
+        s = np.sin(theta)
+        x, y, z = r[:, 0], r[:, 1], r[:, 2]
+        ecef = np.empty_like(r)
+        ecef[:, 0] = c * x + s * y
+        ecef[:, 1] = -s * x + c * y
+        ecef[:, 2] = z
+
+        return ecef[0] if single_vec else ecef
+    
     @staticmethod
     def ECI_cartesian_to_ECI_geodetic(eci_positions):
         """
