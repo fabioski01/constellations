@@ -3,7 +3,7 @@ from utilities_constellations import Constellation, create_label_from_satrec
 from utilities_coverage import Coverage, get_ground_station_coordinates, get_available_regions
 import constants
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import numpy as np
 from sgp4.api import Satrec, jday, WGS84
 
@@ -28,7 +28,7 @@ warnings.filterwarnings("ignore", category=UserWarning, message="This figure inc
 # Switches for plotting
 PLOT_GROUND_TRACKS = True
 PLOT_INERTIAL_GROUND_TRACKS = False
-n_periods_ground_tracks = 3
+n_periods_ground_tracks = 1
 PLOT_INERTIAL_3D = False
 n_periods_3d = 1
 PLOT_ECEF_3D = False
@@ -55,14 +55,14 @@ PLOT_PATTERN_VISIBILITY_COMPARISON = False # needs COMPUTE_VISIBILITY to be True
 # num_satellites_list = [3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57,60,66,72,78,84,90,96,99] # compatible for walker P=3
 # num_satellites_list = [77] # Flower
 # num_satellites_list = list(range(1, 101))
-num_satellites_list = [4]
+num_satellites_list = [1]
 
 ## SELECT ORBITAL PARAMETERS ###
 orbital_parameters = {
-    'semi_major_axis':     6875.59534135,    # km
+    'semi_major_axis':     6882.732340969999,    # km
     'eccentricity':        0.00,    # unitless
     'inclination':         51.447684794794995,     # deg
-    'RAAN':                322.206710,     # deg
+    'RAAN':                354.870847,     # deg
     'argument_of_periapsis': 0,  # deg     
     'true_anomaly':        175.813353,      # deg
     'ndot':                1e-8,     # rev/day² # Includes derivatives
@@ -204,7 +204,9 @@ FLOWER_CONSTELLATIONS = {
 # print(f'Target e given hp of {h_perigee} km and a of {orbital_parameters["semi_major_axis"]} km', {1-((constants.EARTH_RADIUS + h_perigee) / orbital_parameters["semi_major_axis"])})
 
 ### SELECT EPOCH ###
-epoch = datetime(2025,5,5,12,0,0, tzinfo=timezone.utc)
+# epoch = datetime(2025,5,5,12,0,0, tzinfo=timezone.utc)
+# epoch =datetime(2025, 5, 10, 0, 48, 8, 679437, tzinfo=timezone.utc) # v1
+epoch = datetime(2025, 5, 6, 14, 6, 23, tzinfo=timezone.utc) #  v2
 
 # ### SELECT A PATTERN ###
 # pattern_list = []
@@ -229,13 +231,15 @@ epoch = datetime(2025,5,5,12,0,0, tzinfo=timezone.utc)
 #     pattern_list.append(("Walker-Delta", {"P": 1, "F": 1}))
 
 #     pattern_list = [ "Walker-Delta", "Walker-Delta-SingleSatPerPlane", "Walker-Delta-SinglePlane"]
-pattern_list = [("Walker-Delta", {"P": 4, "F": 1}),]
+pattern_list = [("Walker-Delta", {"P": 1, "F": 1}),]
 
 pattern_params = {} # saving parameters for each pattern for plotting outside the pattern loop
 
 # Define propagation window & step. Make sure is at least the number of periods to be plotted
-start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
-end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
+# start_time_datetime = datetime(2025, 5, 5, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
+# end_time_datetime =   datetime(2025, 5, 15, 12, 00, 00, 00, tzinfo=timezone.utc) # my input
+start_time_datetime = epoch # my input
+end_time_datetime =  epoch + timedelta(days=10) # my input
 step =  100 # Time step input
 
 # Estimate one period index to stop ground track after one orbit
