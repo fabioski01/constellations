@@ -8,6 +8,11 @@ import os
 from utilities import TimeConversion, CoordinateConversion
 import constants
 import matplotlib.ticker as mticker
+from reconfig_driftANDwaitTime import (
+    Orbit as PlannerOrbit,
+    deg2rad,
+    build_maneuver_sequence_for_visualizer,
+)
 
 class OrbitGroundTrackVisualizer:
     """
@@ -145,16 +150,23 @@ class OrbitGroundTrackVisualizer:
         i    = np.radians(orbital_params['inclination'])
         raan = np.radians(orbital_params['RAAN'])
         argp = np.radians(orbital_params['argument_of_periapsis'])
-        nu   = np.radians(orbital_params['true_anomaly'])
+        # Allow either mean_anomaly or true_anomaly in degrees
+        if 'mean_anomaly' in orbital_params:
+            M = np.radians(float(orbital_params['mean_anomaly']))
+            nu = None
+        else:
+            nu = np.radians(orbital_params['true_anomaly'])
+            M = None
 
         # ν → M (for e>0; for circular it’s the same)
-        if e < 1e-12:
-            M = nu
-        else:
-            beta = np.sqrt((1.0 - e) / (1.0 + e))
-            E = 2.0 * np.arctan(beta * np.tan(nu / 2.0))
-            E = (E + 2.0*np.pi) % (2.0*np.pi)
-            M = (E - e*np.sin(E)) % (2.0*np.pi)
+        if M is None:
+            if e < 1e-12:
+                M = nu
+            else:
+                beta = np.sqrt((1.0 - e) / (1.0 + e))
+                E = 2.0 * np.arctan(beta * np.tan(nu / 2.0))
+                E = (E + 2.0*np.pi) % (2.0*np.pi)
+                M = (E - e*np.sin(E)) % (2.0*np.pi)
 
         # Mean motion for sgp4init (rad/min)
         n_rad_s  = np.sqrt(MU_EARTH / (a_km**3))
@@ -279,101 +291,7 @@ class OrbitGroundTrackVisualizer:
         
         return times, positions, epoch
     
-    def plot_ground_tracks(self, save_path=None, time_step_seconds=10):
-        """
-        Plot ground tracks for all added orbits.
-        
-        Parameters:
-        -----------
-        save_path : str, optional
-            Path to save the plot
-        time_step_seconds : float, optional
-            Time step for propagation in seconds (default: 60s)
-        """
-        if not self.orbits:
-            print("No orbits added. Please add orbits using add_orbit() before plotting.")
-            return
-        
-        # Create figure
-        fig = plt.figure(figsize=(14, 8))
-        ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
-        ax.stock_img()
-        ax.coastlines()
-        ax.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
-        
-        # Collect epoch info for title
-        epochs = [orbit['epoch'] for orbit in self.orbits]
-        min_epoch = min(epochs)
-        max_epoch = max(epochs)
-        
-        # Plot each orbit
-        for i, orbit in enumerate(self.orbits):
-            print(f"Plotting orbit {i+1}/{len(self.orbits)}: {orbit['label']}")
-            print(f"  Epoch: {orbit['epoch'].strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            print(f"  Propagation time: {orbit['propagation_time_hours']:.1f} hours")
-            
-            # Propagate orbit
-            times, positions, epoch = self.propagate_orbit(
-                orbit['params'], 
-                orbit['epoch'],
-                orbit['propagation_time_hours'],
-                time_step_seconds
-            )
-            
-            # Convert ECI to geographic coordinates
-            ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(
-                positions * 1000,  # Convert to meters
-                times.astype(float),
-                reference_time=epoch
-            )
-            
-            ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) 
-                                 for x, y, z in ECEF_cartesian_orbit]
-            
-            # Extract lat/lon
-            lats = [coord[0] for coord in ECEF_geodetic_orbit]  # latitude
-            lons = [coord[1] for coord in ECEF_geodetic_orbit]  # longitude
-            
-            # Handle longitude wrapping
-            unwrapped_lons = np.unwrap(np.radians(lons))
-            normalized_lons = np.degrees(unwrapped_lons)
-            
-            # Plot segments to avoid longitude wrapping issues
-            self._plot_orbit_segments(ax, normalized_lons, lats, orbit['color'], 
-                                    orbit['label'], orbit['linestyle'])
-        
-        # Add legend
-        ax.legend(loc='upper right', fontsize=10)
-        
-        # Add title
-        if min_epoch == max_epoch:
-            title = f'Ground Tracks Comparison\nEpoch: {min_epoch.strftime("%Y-%m-%d %H:%M:%S UTC")}'
-        else:
-            title = f'Ground Tracks Comparison\nEpochs: {min_epoch.strftime("%Y-%m-%d %H:%M")} to {max_epoch.strftime("%Y-%m-%d %H:%M")} UTC'
-        
-        ax.set_title(title, fontsize=14, fontweight='bold')
-        
-        # Add info box
-        info_text = f'Number of orbits: {len(self.orbits)}\n'
-        info_text += f'Time step: {time_step_seconds}s\n'
-        info_text += f'Max propagation: {max([o["propagation_time_hours"] for o in self.orbits]):.1f}h\n'
-        
-        # Add epoch info if different epochs
-        if min_epoch != max_epoch:
-            time_span = max_epoch - min_epoch
-            info_text += f'Epoch span: {time_span.total_seconds()/3600:.1f}h'
-        
-        ax.text(0.02, 0.98, info_text, transform=ax.transAxes, fontsize=9,
-               verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
-        
-        plt.tight_layout()
-        
-        if save_path:
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"Plot saved to: {save_path}")
-        
-        # plt.show()
+    # Removed duplicate plot_ground_tracks definition – keep the richer one below
     
     def _plot_orbit_segments(self, ax, lons, lats, color, label, linestyle):
         """
@@ -427,7 +345,7 @@ class OrbitGroundTrackVisualizer:
                   f"Style: {orbit['linestyle']}")
             print()
 
-    def plot_ground_tracks(self, save_path=None, time_step_seconds=10):
+    def plot_ground_tracks(self, save_path=None, time_step_seconds=10, target_lat_deg=None, target_lon_deg=None):
         """
         Plot ground tracks for all added orbits.
         
@@ -462,7 +380,7 @@ class OrbitGroundTrackVisualizer:
         min_epoch = min(epochs)
         max_epoch = max(epochs)
         
-        # Plot each orbit
+    # Plot each orbit
         for i, orbit in enumerate(self.orbits):
             print(f"Plotting orbit {i+1}/{len(self.orbits)}: {orbit['label']}")
             print(f"  Epoch: {orbit['epoch'].strftime('%Y-%m-%d %H:%M:%S UTC')}")
@@ -540,6 +458,16 @@ class OrbitGroundTrackVisualizer:
                 self._plot_orbit_segments(ax, normalized_lons, lats, orbit['color'], 
                                         orbit['label'], orbit['linestyle'])
         
+        # Target marker (semi-transparent) if provided
+        if target_lat_deg is not None and target_lon_deg is not None:
+            lon_wrapped = ((float(target_lon_deg) + 180.0) % 360.0) - 180.0
+            ax.scatter(
+                [lon_wrapped], [float(target_lat_deg)],
+                s=70, marker='*', color='gold', alpha=0.6,
+                edgecolors='k', linewidths=0.6,
+                transform=ccrs.PlateCarree(), label='Target'
+            )
+        
         # Add legend
         ax.legend(loc='upper right', fontsize=10)
         
@@ -565,7 +493,7 @@ class OrbitGroundTrackVisualizer:
             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
         
         plt.tight_layout()
-        
+
         if save_path:
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -639,201 +567,131 @@ class OrbitGroundTrackVisualizer:
 
 def main():
     """
-    Example usage of the OrbitGroundTrackVisualizer.
+    Use the analytic planner to compute maneuver times and segment orbits,
+    then visualize ground tracks without duplicating inputs.
     """
-
-    t_wait_s = 35984.435
-    t_transfer1_s = 2849.55382
-    t_drift_s = 52300.033
-    t_transfer2_s = 2850.97810
-    
-    M_waiting_GOM_rad = compute_anomaly_change(t_wait_s, 6871, 0)
-    M_transfer1_rad = compute_anomaly_change(t_transfer1_s, 6896, 0.00362529)
-    M_drift_rad = compute_anomaly_change(t_drift_s, 6921, 0.0)
-    M_transfer2_rad = compute_anomaly_change(t_transfer2_s, ((6921+6875.59534135)/2), ((6921-6875.59534135)/(6921+6875.59534135)))
-    M_waiting_GOM_deg = np.degrees(M_waiting_GOM_rad)
-    M_transfer1_deg = np.degrees(M_transfer1_rad)
-    M_drift_deg = np.degrees(M_drift_rad)   
-    M_transfer2_deg = np.degrees(M_transfer2_rad)
-
-    # print('M waiting GOM', compute_anomaly_change(t_wait_s, 6871, 0), np.degrees(compute_anomaly_change(t_wait_s, 6871, 0)))
-    # print('M T1', compute_anomaly_change(t_transfer1_s, 6896, 0.00362529), np.degrees(compute_anomaly_change(t_transfer1_s, 6896, 0.00362529)))
-    # print('M Drift', compute_anomaly_change(t_drift_s, 6921, 0.0), np.degrees(compute_anomaly_change(t_drift_s, 6921, 0.0)))
-    # print('M T2', compute_anomaly_change(t_transfer2_s, ((6921+6875.59534135)/2), ((6921-6875.59534135)/(6921+6875.59534135))), np.degrees(compute_anomaly_change(t_transfer2_s, ((6921+6875.59534135)/2), ((6921-6875.59534135)/(6921+6875.59534135)))))
-
-    visualizer = OrbitGroundTrackVisualizer()
-    
-    # Define different epochs for different orbit phases
+    # 1) Single source of truth: scenario inputs
     base_epoch = datetime(2025, 5, 5, 12, 0, 0, tzinfo=timezone.utc)
+    inc_deg    = 51.447684794794995
+    raan0_deg  = 0.0
+    u0_deg     = 0.0  # for circular, u=M when ω=0
 
-    # transfer1_epoch = base_epoch + timedelta(hours=(0.92823)) # waiting time 0.92823 hr or 3341.63527 s
-    transfer1_epoch = base_epoch + timedelta(hours=(t_wait_s/3600)) # waiting time x hr or 35984.435 s
+    gom_a_km   = constants.EARTH_RADIUS + 500.0
+    rom_a_km   = 6875.59534097
+    delta_a_km = 50.0  # example drift Δa; adjust as needed
 
-    # drift_epoch = base_epoch + timedelta(hours=(0.92823+0.7915555)) # transfer 1 time 2849.55382 s or 0.79154 hr
-    drift_epoch = base_epoch + timedelta(hours=((t_wait_s/3600)+(t_transfer1_s/3600))) # transfer 1 time 2849.55382 s or 0.79154 hr
+    # # sumatra 2004
+    # target_lat_deg = 3.295
+    # target_lon_deg = 95.982
+    # los angeles
+    target_lat_deg = 34.0522
+    target_lon_deg = -118.2437
+    # # Zero target (equator, prime meridian)
+    # target_lat_deg = 0
+    # target_lon_deg = 0
+    # # Rome
+    # target_lat_deg = 41.9028
+    # target_lon_deg = 12.4964
+    # # Hawaii
+    # target_lat_deg = 21.3069
+    # target_lon_deg = -157.8583
+    # # San Francisco
+    # target_lat_deg = 37.7749
+    # target_lon_deg = -122.4194
+    # # San Diego
+    # target_lat_deg = 32.7157
+    # target_lon_deg = -117.1611
+    # # Vancouver
+    # target_lat_deg = 49.2827
+    # target_lon_deg = -123.1207
 
-    # transfer2_epoch = base_epoch + timedelta(hours=(0.92823+0.7915555+193.23699)) # drifting 193.23699 hours or 695653.16822 s
-    transfer2_epoch = base_epoch + timedelta(hours=((t_wait_s/3600)+(t_transfer1_s/3600)+(t_drift_s/3600))) # drifting x hours or 52300.033 s
+    # 2) Build planner Orbit and call helper
+    gom = PlannerOrbit(
+        a_km=gom_a_km,
+        i_rad=deg2rad(inc_deg),
+        Omega_rad=deg2rad(raan0_deg),
+        u_rad=deg2rad(u0_deg),
+        e=0.0,
+    )
 
-    # transfer2_fix_epoch = base_epoch + timedelta(hours=(-0.79194)) # drifting 193.23699 hours or 695653.16822 s
-    # rom_epoch = base_epoch # transfer 2 time 2850.97810 s or 0.79194 hr
-    rom_epoch = datetime(2025, 5, 6, 14, 6, 25, 00, tzinfo=timezone.utc)
+    pkg = build_maneuver_sequence_for_visualizer(
+        gom=gom,
+        rom_a_km=rom_a_km,
+        delta_a_km=delta_a_km,
+        epoch=base_epoch,
+        target_lat_geod_deg=target_lat_deg,
+        target_lon_deg=target_lon_deg,
+        max_wrap=100,
+        drift_time_cap_days=15.0,
+    )
 
-    # rom_orbit_test_epoch = base_epoch + timedelta(hours=(0.92823+0.7915555+193.23699+0.79194))
-    rom_orbit_test_epoch = base_epoch + timedelta(hours=((t_wait_s/3600)+(t_transfer1_s/3600)+(t_drift_s/3600)+(t_transfer2_s/3600)))
+    if not pkg.get('success'):
+        print("Planner failed:", pkg.get('note'))
+        return
 
+    times  = pkg['times']
+    epochs = pkg['epochs']
+    orbits = pkg['orbits']
 
-    # Example orbit 1: GOM orbit (initial)
-    gom_orbit = {
-        'semi_major_axis': 6871.0,    # km (500 km altitude)
-        'eccentricity': 0.0,
-        'inclination': 51.447684794794995,          # degrees
-        'RAAN': 0.0,                  # degrees
-        'argument_of_periapsis': 0.0, # degrees
-        'true_anomaly': 0.0,          # degrees
-    }
-    
-    # Example orbit 2: Transfer orbit 1 (Hohmann to drift)
-    # transfer1_orbit = {
-    #     'semi_major_axis': 6896.0,    # km (elliptical)
-    #     'eccentricity': 0.00362529,        # elliptical
-    #     'inclination': 51.447684794794995,          # degrees
-    #     'RAAN': 0.0,                  # degrees 
-    #     'argument_of_periapsis': 0.0, # degrees
-    #     'true_anomaly': 212.23453773800986,          # degrees, mean anomaly by sat in gom for waiting time, including perturbations 
-    # }
-    
-    transfer1_orbit = {
-        'semi_major_axis': 6896.0,    # km (elliptical)
-        'eccentricity': 0.00362529,        # elliptical
-        'inclination': 51.447684794794995,          # degrees
-        'RAAN': 0.0,                  # degrees 
-        'argument_of_periapsis': 0.0, # degrees
-        'true_anomaly': np.mod(M_waiting_GOM_deg, 360),          # degrees, mean anomaly by sat in gom for waiting time, including perturbations
-    }
+    # 3) Visualize using returned parameters
+    visualizer = OrbitGroundTrackVisualizer()
 
-    # Example orbit 3: Drift orbit (higher altitude)
-    # drift_orbit = {
-    #     'semi_major_axis': 6921.0,    # km (550 km altitude)
-    #     'eccentricity': 0.0,
-    #     'inclination': 51.447684794794995,          # degrees
-    #     'RAAN': 0,                 # degrees 
-    #     'argument_of_periapsis': 0.0, # degrees
-    #     'true_anomaly': np.mod(180.00291705692214+212.23453773800986, 360),         # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time, including perturbations
-    # }
-    drift_orbit = {
-        'semi_major_axis': 6921.0,    # km (550 km altitude)
-        'eccentricity': 0.0,
-        'inclination': 51.447684794794995,          # degrees
-        'RAAN': 0,                 # degrees 
-        'argument_of_periapsis': 0.0, # degrees
-        'true_anomaly': np.mod((M_waiting_GOM_deg + M_transfer1_deg), 360),         # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time, including perturbations
-    }
+    t_wait_h = times['T_wait_s'] / 3600.0
+    t1_h     = times['T1_s'] / 3600.0
+    td_h     = times['T_d_s'] / 3600.0
+    t2_h     = times['T2_s'] / 3600.0
 
-    # Example orbit 4: Transfer orbit 2 (Hohmann to ROM)
-    # transfer2_orbit = {
-    #     'semi_major_axis': 6898.3,    # km (elliptical)
-    #     'eccentricity': ((6921-6875.59534135)/(6921+6875.59534135)),        # elliptical
-    #     'inclination': 51.447684794794995,          # degrees
-    #     'RAAN': 322.207, # degrees 
-    #     'argument_of_periapsis': 0, # degrees
-    #     'true_anomaly': np.mod(212.23453773800986 + 180.00291705692214 + 43704.99084848064, 360),          # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time PLUS sat in drift orbit for drift time, including perturbations
-    #     # 'true_anomaly': np.mod(175.813-179.93824653951972, 360),          # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time PLUS sat in drift orbit for drift time, including perturbations
-    # }
-    transfer2_orbit = {
-        'semi_major_axis': 6898.3,    # km (elliptical)
-        'eccentricity': ((6921-6875.59534135)/(6921+6875.59534135)),        # elliptical
-        'inclination': 51.447684794794995,          # degrees
-        'RAAN': 354.882448, # degrees 
-        'argument_of_periapsis': 0, # degrees
-        'true_anomaly': np.mod((M_waiting_GOM_deg + M_transfer1_deg + M_drift_deg), 360),          # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time PLUS sat in drift orbit for drift time, including perturbations
-        # 'true_anomaly': np.mod(175.813-179.93824653951972, 360),          # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time PLUS sat in drift orbit for drift time, including perturbations
-    }
-    
-    # Example orbit 4: Transfer orbit 2 (Hohmann to ROM)
-    # transfer2_orbit_fix = {
-    #     'semi_major_axis': 6898.3,    # km (elliptical)
-    #     'eccentricity': ((6921-6875.59534135)/(6921+6875.59534135)),        # elliptical
-    #     'inclination': 51.447684794794995,          # degrees
-    #     'RAAN': 322.207, # degrees 
-    #     'argument_of_periapsis': 0, # degrees
-    #     # 'true_anomaly': np.mod(212.23453773800986 + 180.00291705692214 + 43704.99084848064, 360),          # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time PLUS sat in drift orbit for drift time, including perturbations
-    #     'true_anomaly': np.mod(175.813-179.93824653951972, 360),          # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time PLUS sat in drift orbit for drift time, including perturbations
-    # }
-    
-    # Example orbit 5: ROM orbit (final RGT)
-    # rom_orbit = {
-    #     'semi_major_axis': 6875.59534135,  # km (specific RGT altitude)
-    #     'eccentricity': 0.0,
-    #     'inclination': 51.447684794794995,               # degrees
-    #     'RAAN': 322.207,                      # degrees (target RAAN)
-    #     'argument_of_periapsis': 0.0,      # degrees
-    #     'true_anomaly': 175.813,              # degrees (target phase)
-    # }
-    rom_orbit = {
-        'semi_major_axis': 6875.59534097,  # km (specific RGT altitude)
-        'eccentricity': 0.0,
-        'inclination': 51.447684794794995,               # degrees
-        'RAAN': 354.882448,                      # degrees (target RAAN)
-        'argument_of_periapsis': 0.0,      # degrees
-        'true_anomaly': 175.813353,              # degrees (target phase)
-    }
+    visualizer.add_orbit(
+        orbits['gom'], epochs['gom_epoch'], f'GOM Orbit (t_wait={t_wait_h:.3f} h)',
+        propagation_time_hours=t_wait_h, color='blue', linestyle='--'
+    )
+    visualizer.add_orbit(
+        orbits['transfer1'], epochs['transfer1_epoch'], f'Transfer 1 (t1={t1_h:.3f} h)',
+        propagation_time_hours=t1_h, color='cyan', linestyle='-.'
+    )
+    # Drift: plot only first and last hour if long
+    drift_segments = None
+    if td_h > 2.0:
+        drift_segments = [(0, 1), (max(0.0, td_h - 1.0), td_h)]
+    visualizer.add_orbit(
+        orbits['drift'], epochs['drift_epoch'], f'Drift Orbit (td={td_h:.3f} h)',
+        propagation_time_hours=td_h, color='green', linestyle=':', plot_segments=drift_segments
+    )
+    visualizer.add_orbit(
+        orbits['transfer2'], epochs['transfer2_epoch'], f'Transfer 2 (t2={t2_h:.3f} h)',
+        propagation_time_hours=t2_h, color='orange', linestyle='-'
+    )
+    visualizer.add_orbit(
+        orbits['rom'], epochs['rom_epoch'], 'ROM RGT Orbit',
+        propagation_time_hours=1.0, color='red', linestyle='--'
+    )
+    # Optional: extra ROM test track at tf
+    visualizer.add_orbit(
+        orbits['rom_test'], epochs['rom_epoch'], 'ROM TEST RGT Orbit',
+        propagation_time_hours=1.0, color='red', linestyle=':'
+    )
 
-    
-    # rom_orbit_test = {
-    #     'semi_major_axis': 6875.59534135,  # km (specific RGT altitude)
-    #     'eccentricity': 0.0,
-    #     'inclination': 51.447684794794995,               # degrees
-    #     'RAAN': 322.207,                      # degrees (target RAAN)
-    #     'argument_of_periapsis': 0.0,      # degrees
-    #     'true_anomaly': np.mod(212.23453773800986 + 180.00291705692214 + 43704.99084848064 + 179.93824653951972, 360), # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time PLUS sat in drift orbit for drift time PLUS transfer2, including perturbations
-    # }
-
-    rom_orbit_test = {
-        'semi_major_axis': 6875.59534135,  # km (specific RGT altitude)
-        'eccentricity': 0.0,
-        'inclination': 51.447684794794995,               # degrees
-        'RAAN': 354.882448,                      # degrees (target RAAN)
-        'argument_of_periapsis': 0.0,      # degrees
-        'true_anomaly': np.mod(M_waiting_GOM_deg + M_transfer1_deg + M_drift_deg + M_transfer2_deg, 360), # degrees, mean anomaly by sat in gom for waiting time PLUS sat in t1 for transfer time PLUS sat in drift orbit for drift time PLUS transfer2, including perturbations
-    }
-    
-    # Add orbits to visualizer with different epochs
-    # visualizer.add_orbit(gom_orbit, base_epoch, 'GOM Orbit (t=0h)', 
-    #                     propagation_time_hours=0.928, color='blue', linestyle='--')
-    visualizer.add_orbit(gom_orbit, base_epoch, f'GOM Orbit (t_wait={t_wait_s/3600:.3f} h)', 
-                        propagation_time_hours=(t_wait_s/3600), color='blue', linestyle='--') # 35984.435/3600 = 9.996 hr something of waiting time
-
-    visualizer.add_orbit(transfer1_orbit, transfer1_epoch, f'Transfer 1 (t1={t_transfer1_s/3600.:3f} h)', 
-                        propagation_time_hours=(t_transfer1_s/3600), color='cyan', linestyle='-.')
-    
-    # # Add drift orbit with only first and last hours plotted
-    # visualizer.add_orbit(drift_orbit, drift_epoch, 'Drift Orbit (first & last hour)', 
-    #                     propagation_time_hours=193.2370, color='green', linestyle=':',
-    #                     plot_segments=[(0, 1), (192.2370, 193.2370)])  # First and last hours
-    visualizer.add_orbit(drift_orbit, drift_epoch, f'Drift Orbit (first last hour only), (td={t_drift_s/3600:.3f} h)', 
-                        propagation_time_hours=(t_drift_s/3600), color='green', linestyle=':',
-                        plot_segments=[(0, 1), (((t_drift_s/3600) -1), (t_drift_s/3600))])  # First and last hours new td 52300.033
-    
-    # visualizer.add_orbit(transfer2_orbit_fix, transfer2_fix_epoch, 'Transfer 2 FIX (t=0.79h)', 
-    #                     propagation_time_hours=0.791444, color='orange', linestyle=':')
-    
-    visualizer.add_orbit(transfer2_orbit, transfer2_epoch, f'Transfer 2 (t2={t_transfer2_s/3600.:3f} h)', 
-                        propagation_time_hours=(t_transfer2_s/3600), color='orange', linestyle='-')
-    
-    visualizer.add_orbit(rom_orbit, rom_epoch, f'ROM RGT Orbit', 
-                        propagation_time_hours=1, color='red', linestyle='--')
-    
-    visualizer.add_orbit(rom_orbit_test, rom_orbit_test_epoch, f'ROM TEST RGT Orbit', 
-                        propagation_time_hours=1, color='red', linestyle=':')
-    
-    # Print summary
     visualizer.print_orbit_summary()
-    
-    # Create plot
-    save_path = "plots/orbit_comparison/maneuver_sequence_ground_tracks.png"
-    visualizer.plot_ground_tracks(save_path=save_path, time_step_seconds=30)
-    
+
+    # Dynamic filename based on maneuver details (include target coords)
+    tgt_lat_fmt = f"{target_lat_deg:+.3f}".replace("+", "p").replace("-", "m")
+    tgt_lon_fmt = f"{target_lon_deg:+.3f}".replace("+", "p").replace("-", "m")
+    fname = (
+        f"maneuver_GOM{gom_a_km:.1f}km_"
+        f"ROM{rom_a_km:.1f}km_"
+        f"dA{delta_a_km:+.1f}km_"
+        f"inc{inc_deg:.3f}deg_"
+        f"tgtLat{tgt_lat_fmt}_tgtLon{tgt_lon_fmt}_"
+        f"epoch{base_epoch.strftime('%Y%m%dT%H%M%SZ')}"
+        ".png"
+    )
+    save_path = os.path.join("plots", "orbit_comparison", fname)
+    visualizer.plot_ground_tracks(
+        save_path=save_path,
+        time_step_seconds=30,
+        target_lat_deg=target_lat_deg,
+        target_lon_deg=target_lon_deg,
+    )
     print("Maneuver sequence ground track visualization complete!")
 
 def compute_anomaly_change(dt, a, e):

@@ -596,6 +596,507 @@ def plot_ground_tracks_simple(planner: AnalyticRaanPhasingPlanner,
     plt.show()
 
 # ---------------------------
+# Glue for maneuver visualizer
+# ---------------------------
+
+def build_maneuver_sequence_for_visualizer(
+    gom: Orbit,
+    rom_a_km: float,
+    delta_a_km: float,
+    epoch: datetime,
+    target_lat_geod_deg: float,
+    target_lon_deg: float,
+    max_wrap: int = 300,
+    drift_time_cap_days: float = 30.0
+) -> Dict[str, Any]:
+    """
+    Run the analytic planner once and return a compact package with:
+      - times: T_wait, T1, T_d, T2, total_time_s
+      - epochs: base, transfer1, drift, transfer2, rom (tf)
+      - angles: initial RAAN (deg), final RAAN (deg), final M/true anomaly (deg)
+      - orbit dicts for each segment in the visualizer's expected format
+
+    The visualizer sets segment "true_anomaly" to the cumulative mean-anomaly
+    progress at the start of each segment (circular uses ν≈M; for ellipses we
+    still use M increment from mean motion).
+    """
+    planner = AnalyticRaanPhasingPlanner(
+        gom=gom,
+        rom_a_km=rom_a_km,
+        delta_a_km=delta_a_km,
+        epoch_gom=epoch,
+        target_lat_geod_deg=target_lat_geod_deg,
+        target_lon_deg=target_lon_deg,
+        max_wrap=max_wrap,
+        drift_time_cap_days=drift_time_cap_days,
+    )
+    sol = planner.solve_min_time()
+    if not sol.get('success'):
+        return {
+            'success': False,
+            'note': sol.get('note', 'Planner failed to find a solution.')
+        }
+
+    # Times
+    T_wait = float(sol['T_wait'])
+    T1     = float(sol['T1'])
+    T_d    = float(sol['T_d'])
+    T2     = float(sol['T2'])
+    Ttot   = float(sol['total_time_s'])
+
+    # Orbits (semi-major axes of segments)
+    aG   = planner.a_G
+    aD   = planner.a_D
+    aT1  = planner.aT1
+    eT1  = planner.eT1
+    aT2  = planner.aT2
+    eT2  = planner.eT2
+
+    # Mean anomaly increments by segment (rad)
+    dM_G   = mean_motion(aG)  * T_wait
+    dM_T1  = mean_motion(aT1) * T1
+    dM_D   = mean_motion(aD)  * T_d
+    dM_T2  = mean_motion(aT2) * T2
+
+    # Cumulative starts for each segment (deg), wrapped to [0,360)
+    M_waiting_deg   = (rad2deg(dM_G)) % 360.0
+    M_T1_start_deg  = (rad2deg(dM_G + dM_T1)) % 360.0
+    M_D_start_deg   = M_T1_start_deg
+    M_T2_start_deg  = (rad2deg(dM_G + dM_T1 + dM_D)) % 360.0
+    M_ROM_start_deg = (rad2deg(dM_G + dM_T1 + dM_D + dM_T2)) % 360.0
+
+    # Epochs per segment start
+    epoch_T1 = epoch + timedelta(seconds=T_wait)
+    epoch_D  = epoch_T1 + timedelta(seconds=T1)
+    epoch_T2 = epoch_D  + timedelta(seconds=T_d)
+    epoch_ROM= epoch_T2 + timedelta(seconds=T2)  # should match sol['tf']
+
+    # Angles/RAANs
+    RAAN0_deg = rad2deg(planner.Omega0)
+    RAANf_deg = rad2deg(sol['Omega_f_rad'])
+    i_deg     = rad2deg(planner.i)
+
+    # Package orbit dictionaries for the visualizer API
+    gom_orbit = {
+        'semi_major_axis': aG,
+        'eccentricity': 0.0,
+        'inclination': i_deg,
+        'RAAN': RAAN0_deg,
+        'argument_of_periapsis': 0.0,
+        'true_anomaly': 0.0,
+    }
+    transfer1_orbit = {
+        'semi_major_axis': aT1,
+        'eccentricity': eT1,
+        'inclination': i_deg,
+        'RAAN': RAAN0_deg,  # small ΔΩ over T1 neglected for this visualizer
+        'argument_of_periapsis': 0.0,
+        'true_anomaly': M_waiting_deg,
+    }
+    drift_orbit = {
+        'semi_major_axis': aD,
+        'eccentricity': 0.0,
+        'inclination': i_deg,
+        'RAAN': RAAN0_deg,  # small ΔΩ over drift ignored here; use sgp4/J2 if needed
+        'argument_of_periapsis': 0.0,
+        'true_anomaly': M_T1_start_deg,
+    }
+    transfer2_orbit = {
+        'semi_major_axis': aT2,
+        'eccentricity': eT2,
+        'inclination': i_deg,
+        'RAAN': RAANf_deg,  # match ROM RAAN at tf for continuity in viz
+        'argument_of_periapsis': 0.0,
+        'true_anomaly': M_T2_start_deg,
+    }
+    rom_orbit = {
+        'semi_major_axis': rom_a_km,
+        'eccentricity': 0.0,
+        'inclination': i_deg,
+        'RAAN': RAANf_deg,
+        'argument_of_periapsis': 0.0,
+        'true_anomaly': rad2deg(sol['final_orbit']['M_rad']),
+    }
+    rom_orbit_test = {
+        'semi_major_axis': rom_a_km,
+        'eccentricity': 0.0,
+        'inclination': i_deg,
+        'RAAN': RAANf_deg,
+        'argument_of_periapsis': 0.0,
+        'true_anomaly': M_ROM_start_deg,
+    }
+
+    return {
+        'success': True,
+        'times': {
+            'T_wait_s': T_wait,
+            'T1_s': T1,
+            'T_d_s': T_d,
+            'T2_s': T2,
+            'total_time_s': Ttot,
+        },
+        'epochs': {
+            'gom_epoch': epoch,
+            'transfer1_epoch': epoch_T1,
+            'drift_epoch': epoch_D,
+            'transfer2_epoch': epoch_T2,
+            'rom_epoch': epoch_ROM,
+        },
+        'angles': {
+            'RAAN0_deg': RAAN0_deg,
+            'RAANf_deg': RAANf_deg,
+            'i_deg': i_deg,
+        },
+        'orbits': {
+            'gom': gom_orbit,
+            'transfer1': transfer1_orbit,
+            'drift': drift_orbit,
+            'transfer2': transfer2_orbit,
+            'rom': rom_orbit,
+            'rom_test': rom_orbit_test,
+        },
+        'solution': sol,
+        'planner': planner,
+    }
+
+def plot_ground_tracks_simple(planner: AnalyticRaanPhasingPlanner,
+                              sol: dict,
+                              hours_gom=1.0, hours_rom=1.0, dt_s=10.0,
+                              target_lat_deg=None, target_lon_deg=None):
+    """
+    Draws GOM track from its epoch and ROM track from final tf (solution).
+    Longitude axis uses a dense grid (major 30°, minor 10°).
+    """
+    # ...existing code...
+    plt.show()
+
+# ---------------------------
+# Sweep Δa and plot times vs Δa
+# ---------------------------
+
+def compute_reconfig_times_vs_delta_a(
+    gom: Orbit,
+    rom_a_km: float,
+    epoch: datetime,
+    target_lat_geod_deg: float,
+    target_lon_deg: float,
+    delta_min_km: float = -200.0,
+    delta_max_km: float =  200.0,
+    delta_step_km: float =  5.0,
+    max_wrap: int = 40,
+    drift_time_cap_days: float = 15.0,
+    verbose: bool = False,
+):
+    """
+    Returns (delta_a_km, total_time_s, wait_time_s, drift_time_s), using NaN where no solution exists.
+    """
+    dAs = np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km, dtype=float)
+    totals = np.full(dAs.shape, np.nan, dtype=float)
+    waits  = np.full(dAs.shape, np.nan, dtype=float)
+    drifts = np.full(dAs.shape, np.nan, dtype=float)
+    if verbose:
+        print(f"[Δa sweep] {len(dAs)} steps from {delta_min_km} to {delta_max_km} km (step {delta_step_km})...", flush=True)
+    # Determine progress granularity (~10% of steps)
+    progress_step = max(1, len(dAs)//10)
+
+    for idx, dA in enumerate(dAs):
+        if verbose and ((idx % progress_step) == 0 or idx == 0):
+            print(f"[Δa sweep] starting {idx+1}/{len(dAs)}: Δa={dA:g} km", flush=True)
+        # Skip unphysical drift SMA
+        if gom.a_km + dA <= 0.0:
+            continue
+        planner = AnalyticRaanPhasingPlanner(
+            gom=gom,
+            rom_a_km=rom_a_km,
+            delta_a_km=float(dA),
+            epoch_gom=epoch,
+            target_lat_geod_deg=target_lat_geod_deg,
+            target_lon_deg=target_lon_deg,
+            max_wrap=max_wrap,
+            drift_time_cap_days=drift_time_cap_days
+        )
+        sol = planner.solve_min_time()
+        if sol.get('success'):
+            totals[idx] = sol['total_time_s']
+            waits[idx]  = sol['T_wait']
+            drifts[idx] = sol['T_d']
+        if verbose:
+            # Print every ~10% progress
+            if (idx + 1) % progress_step == 0 or (idx + 1) == len(dAs):
+                pct = 100.0 * (idx + 1) / len(dAs)
+                print(f"[Δa sweep] {idx+1}/{len(dAs)} ({pct:.0f}%)", flush=True)
+    if verbose:
+        print("[Δa sweep] done.", flush=True)
+    return dAs, totals, waits, drifts
+
+def plot_reconfig_times_vs_delta_a(
+    gom: Orbit,
+    rom_a_km: float,
+    epoch: datetime,
+    target_lat_geod_deg: float,
+    target_lon_deg: float,
+    delta_min_km: float = -200.0,
+    delta_max_km: float =  200.0,
+    delta_step_km: float =  5.0,
+    max_wrap: int = 40,
+    drift_time_cap_days: float = 15.0,
+    verbose: bool = False,
+):
+    dAs, totals, waits, drifts = compute_reconfig_times_vs_delta_a(
+        gom, rom_a_km, epoch, target_lat_geod_deg, target_lon_deg,
+        delta_min_km, delta_max_km, delta_step_km, max_wrap, drift_time_cap_days, verbose
+    )
+    if verbose:
+        print("[plot] Rendering figure...", flush=True)
+
+    fig, axs = plt.subplots(3, 1, sharex=True, figsize=(10, 9))
+
+    axs[0].plot(dAs, totals, color='k', lw=1.8)
+    axs[0].set_ylabel("Total time [s]")
+    axs[0].grid(True, which='both', alpha=0.3)
+
+    axs[1].plot(dAs, waits, color='tab:blue', lw=1.8)
+    axs[1].set_ylabel("Wait time [s]")
+    axs[1].grid(True, which='both', alpha=0.3)
+
+    axs[2].plot(dAs, drifts, color='tab:orange', lw=1.8)
+    axs[2].set_ylabel("Drift time [s]")
+    axs[2].set_xlabel("Δa [km]")
+    axs[2].grid(True, which='both', alpha=0.3)
+
+    axs[2].set_xlim([delta_min_km, delta_max_km])
+
+    # Optional reference at Δa=0
+    for ax in axs:
+        ax.axvline(0.0, color='0.7', lw=1, ls='--')
+
+    # Title and subtitle with scenario details
+    inc_deg = rad2deg(gom.i_rad)
+    alt_gom_km = gom.a_km - R_EARTH
+    alt_rom_km = rom_a_km - R_EARTH
+    dA_points = len(dAs)
+    title_main = "Reconfiguration times vs Δa (best branch, J2 analytic planner)"
+    title_line1 = (
+        f"GOM alt {alt_gom_km:.1f} km, ROM alt {alt_rom_km:.1f} km, inc {inc_deg:.3f}°, "
+        f"target ({target_lat_geod_deg:+.3f}°, {target_lon_deg:+.3f}°), "
+        f"epoch {epoch.strftime('%Y%m%dT%H%M%SZ')}"
+    )
+    title_line2 = (
+        f"Δa {delta_min_km:g}..{delta_max_km:g} km, step {delta_step_km:g} km (N={dA_points}), "
+        f"max_wrap {max_wrap}, drift_cap {drift_time_cap_days:g} days"
+    )
+    fig.suptitle(f"{title_main}\n{title_line1}\n{title_line2}")
+    plt.tight_layout()
+
+    # Dynamic filename based on scenario
+    try:
+        import os
+        tgt_lat_fmt = f"{target_lat_geod_deg:+.3f}".replace("+", "p").replace("-", "m")
+        tgt_lon_fmt = f"{target_lon_deg:+.3f}".replace("+", "p").replace("-", "m")
+        inc_deg = rad2deg(gom.i_rad)
+        fname = (
+            f"reconfigTimes_GOM{gom.a_km:.1f}km_"
+            f"ROM{rom_a_km:.1f}km_"
+            f"inc{inc_deg:.3f}deg_"
+            f"tgtLat{tgt_lat_fmt}_tgtLon{tgt_lon_fmt}_"
+            f"epoch{epoch.strftime('%Y%m%dT%H%M%SZ')}_"
+            f"dAstep{delta_step_km:g}"
+            f".png"
+        )
+        outdir = "results"
+        os.makedirs(outdir, exist_ok=True)
+        fig.savefig(os.path.join(outdir, fname), dpi=200, bbox_inches='tight')
+    except Exception:
+        pass
+
+    plt.show()
+
+# ---------------------------
+# Averaged sweep over altitude and phases
+# ---------------------------
+
+def plot_reconfig_times_vs_delta_a_averaged(
+    epoch: datetime,
+    target_lat_geod_deg: float,
+    target_lon_deg: float,
+    rom_a_km: float,
+    # Δa sweep
+    delta_min_km: float = -200.0,
+    delta_max_km: float = 200.0,
+    delta_step_km: float = 5.0,
+    # Averaging over GOM altitude
+    gom_alt_min_km: float = 400.0,
+    gom_alt_max_km: float = 800.0,
+    n_alt_samples: int = 9,                # e.g., 400..800 every 50 km
+    # Averaging over initial RAAN/true anomaly
+    n_phase_samples: int = 16,             # number of (Ω,u) samples per altitude/inclination
+    phase_seed: int = 42,                  # RNG seed for reproducibility
+    # Inclination handling (set one fixed value, or average over a range)
+    i_deg: float | None = None,            # if None and no range given, defaults to 51.4476847948°
+    inc_min_deg: float | None = None,
+    inc_max_deg: float | None = None,
+    inc_samples: int = 1,
+    # Planner knobs
+    max_wrap: int = 40,
+    drift_time_cap_days: float = 15.0,
+    verbose: bool = False,
+):
+    """
+    Produce the same 3-panel plot (total/wait/drift vs Δa), but with values
+    averaged over:
+      - GOM altitude in [gom_alt_min_km, gom_alt_max_km]
+      - random initial RAAN and true anomaly (uniform on [0, 2π))
+      - optional inclination range (if inc_samples > 1 and bounds provided)
+
+    Notes on efficiency:
+      - For each sample, we reuse the existing vectorized Δa sweep function.
+      - Use a moderate number of samples (e.g., 9 altitudes × 16 phases = 144 sweeps).
+      - For faster convergence with fewer samples, consider quasi-Monte Carlo
+        (Sobol/Latin Hypercube). Here we use a reproducible RNG by default.
+    """
+    rng = np.random.default_rng(phase_seed)
+
+    # Δa grid
+    dAs = np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km, dtype=float)
+    n_pts = dAs.size
+
+    # Decide which inclinations to use
+    if inc_samples > 1 and (inc_min_deg is not None) and (inc_max_deg is not None):
+        inc_list_deg = np.linspace(inc_min_deg, inc_max_deg, inc_samples)
+    else:
+        base_i_deg = 51.4476847948 if i_deg is None else i_deg
+        inc_list_deg = np.array([base_i_deg], dtype=float)
+
+    # Altitude samples (uniform grid)
+    altitudes_km = np.linspace(gom_alt_min_km, gom_alt_max_km, n_alt_samples)
+
+    # Accumulators
+    sum_totals = np.zeros(n_pts, dtype=float)
+    sum_waits  = np.zeros(n_pts, dtype=float)
+    sum_drifts = np.zeros(n_pts, dtype=float)
+    counts     = np.zeros(n_pts, dtype=int)
+
+    total_cases = len(inc_list_deg) * n_alt_samples * n_phase_samples
+    if verbose:
+        print(
+            f"[AVG] Starting averaged sweep: incl {len(inc_list_deg)} × alt {n_alt_samples} × phases {n_phase_samples} = {total_cases} sweeps; Δa points per sweep: {n_pts}.",
+            flush=True,
+        )
+
+    # Loop over inclination, altitude, and phase samples
+    cases_done = 0
+    for inc_deg in inc_list_deg:
+        i_rad_val = deg2rad(inc_deg)
+
+        for alt_km in altitudes_km:
+            a_gom = R_EARTH + float(alt_km)
+
+            # Sample (Ω,u) pairs uniformly on [0, 2π)
+            phases = rng.random((n_phase_samples, 2)) * (2.0 * pi)
+
+            for k in range(n_phase_samples):
+                Om0 = float(phases[k, 0])
+                u0  = float(phases[k, 1])
+
+                gom = Orbit(a_km=a_gom, i_rad=i_rad_val, Omega_rad=Om0, u_rad=u0)
+
+                _, totals, waits, drifts = compute_reconfig_times_vs_delta_a(
+                    gom=gom,
+                    rom_a_km=rom_a_km,
+                    epoch=epoch,
+                    target_lat_geod_deg=target_lat_geod_deg,
+                    target_lon_deg=target_lon_deg,
+                    delta_min_km=delta_min_km,
+                    delta_max_km=delta_max_km,
+                    delta_step_km=delta_step_km,
+                    max_wrap=max_wrap,
+                    drift_time_cap_days=drift_time_cap_days,
+                    verbose=verbose,
+                )
+
+                # Accumulate where we have valid solutions
+                mask = ~np.isnan(totals)
+                sum_totals[mask] += totals[mask]
+                sum_waits[mask]  += waits[mask]
+                sum_drifts[mask] += drifts[mask]
+                counts[mask]     += 1
+
+                cases_done += 1
+                if verbose:
+                    # Update every ~5% or on completion
+                    step = max(1, total_cases // 20)
+                    if (cases_done % step == 0) or (cases_done == total_cases):
+                        pct = 100.0 * cases_done / total_cases
+                        print(f"[AVG] Completed {cases_done}/{total_cases} sweeps ({pct:.0f}%)", flush=True)
+
+    # Compute averages (avoid division by zero)
+    with np.errstate(invalid='ignore', divide='ignore'):
+        avg_totals = np.where(counts > 0, sum_totals / counts, np.nan)
+        avg_waits  = np.where(counts > 0, sum_waits  / counts, np.nan)
+        avg_drifts = np.where(counts > 0, sum_drifts / counts, np.nan)
+
+    # Plot
+    if verbose:
+        print("[AVG] Computing averages and plotting...", flush=True)
+    fig, axs = plt.subplots(3, 1, sharex=True, figsize=(10, 9))
+
+    axs[0].plot(dAs, avg_totals, color='k', lw=1.8)
+    axs[0].set_ylabel("Total time [s]")
+    axs[0].grid(True, which='both', alpha=0.3)
+
+    axs[1].plot(dAs, avg_waits, color='tab:blue', lw=1.8)
+    axs[1].set_ylabel("Wait time [s]")
+    axs[1].grid(True, which='both', alpha=0.3)
+
+    axs[2].plot(dAs, avg_drifts, color='tab:orange', lw=1.8)
+    axs[2].set_ylabel("Drift time [s]")
+    axs[2].set_xlabel("Δa [km]")
+    axs[2].grid(True, which='both', alpha=0.3)
+    axs[2].set_xlim([delta_min_km, delta_max_km])
+
+    for ax in axs:
+        ax.axvline(0.0, color='0.7', lw=1, ls='--')
+
+    title_suffix = f"avg over alt {gom_alt_min_km:.0f}-{gom_alt_max_km:.0f} km, phases N={n_phase_samples}"
+    if len(inc_list_deg) > 1:
+        title_suffix += f", incl {inc_min_deg:.1f}-{inc_max_deg:.1f}° (N={len(inc_list_deg)})"
+    else:
+        title_suffix += f", incl {inc_list_deg[0]:.3f}°"
+
+    fig.suptitle(f"Reconfiguration times vs Δa (averaged)\n{title_suffix}")
+    plt.tight_layout()
+
+    # Save under results with a descriptive name
+    try:
+        import os
+        tgt_lat_fmt = f"{target_lat_geod_deg:+.3f}".replace("+", "p").replace("-", "m")
+        tgt_lon_fmt = f"{target_lon_deg:+.3f}".replace("+", "p").replace("-", "m")
+
+        if len(inc_list_deg) > 1:
+            inc_tag = f"incAvg{inc_min_deg:.0f}-{inc_max_deg:.0f}"
+        else:
+            inc_tag = f"inc{inc_list_deg[0]:.3f}"
+
+        fname = (
+            f"reconfigTimes_AVG_"
+            f"GOMalt{gom_alt_min_km:.0f}-{gom_alt_max_km:.0f}km_"
+            f"{inc_tag}_"
+            f"phN{n_phase_samples}_altN{n_alt_samples}_"
+            f"ROM{rom_a_km:.1f}km_"
+            f"tgtLat{tgt_lat_fmt}_tgtLon{tgt_lon_fmt}_"
+            f"epoch{epoch.strftime('%Y%m%dT%H%M%SZ')}_"
+            f"dAstep{delta_step_km:g}"
+            f".png"
+        )
+        outdir = "results"
+        os.makedirs(outdir, exist_ok=True)
+        fig.savefig(os.path.join(outdir, fname), dpi=200, bbox_inches='tight')
+    except Exception:
+        pass
+
+    plt.show()
+
+# ---------------------------
 # Example usage
 # ---------------------------
 
@@ -611,50 +1112,171 @@ if __name__ == "__main__":
         u_rad     = deg2rad(0.0)
     )
 
-    planner = AnalyticRaanPhasingPlanner(
-        gom=gom,
-        rom_a_km=R_EARTH + 504.59534097,
-        delta_a_km=50.0,
-        epoch_gom=epoch,
-        target_lat_geod_deg=3.295,   # geodetic latitude
-        target_lon_deg=95.982,       # east-positive
-        max_wrap=100                 # search breadth for (m,k)
-    )
+    # plot_reconfig_times_vs_delta_a(
+    #     gom=gom,
+    #     rom_a_km=R_EARTH + 504.59534097,
+    #     epoch=epoch,
+    #     target_lat_geod_deg=3.295,
+    #     target_lon_deg=95.982,
+    #     delta_min_km=-100,
+    #     delta_max_km=200,
+    #     delta_step_km=10,
+    #     max_wrap=150,              # keep modest for speed during sweep
+    #     drift_time_cap_days=15.0,  # cap drift to avoid very long solutions
+    #     verbose=True
+    # )
 
-    sol = planner.solve_min_time()
-    print("\n==== Solver output (best branch) ====")
-    print(sol)
+    # # Also produce the averaged plot across GOM altitudes (400–800 km)
+    # Targets list: add as many (lat_deg, lon_deg) pairs as you like
+    targets = [
+        # sumatra 2004
+        (3.295, 95.982),
+        # los angeles
+        (34.0522, -118.2437),
+        # # Zero target (equator, prime meridian)
+        (0.0, 0.0),
+        # Rome
+        (41.9028, 12.4964),
+        # Hawaii
+        (21.3069, -157.8583),
+        # San Francisco
+        (37.7749, -122.4194),
+        # San Diego
+        (32.7157, -117.1611),
+        # Vancouver
+        (49.2827, -123.1207),
+        # New York City
+        (40.7128, -74.0060),
+        # London
+        (51.5074, -0.1278),
+        # Sydney
+        (-33.8688, 151.2093),
+        # Cape Town
+        (-33.9249, 18.4241),
+        # Buenos Aires
+        (-34.6037, -58.3816),
+        # Moscow
+        (55.7558, 37.6173),
+        # Tokyo
+        (35.6895, 139.6917),
+        # Singapore
+        (1.3521, 103.8198),
+        # Mumbai
+        (19.0760, 72.8777),
+        # Cairo
+        (30.0444, 31.2357),
+        # Nairobi
+        (-1.2921, 36.8219),
+        # Antarctica (McMurdo Station)
+        (-77.8419, 166.6863),
+        # Easter Island
+        (-27.1127, -109.3497),
+        # Tel Aviv
+        (32.0853, 34.7818),
+        # Miami
+        (25.7617, -80.1918),
+        # Athens
+        (37.9838, 23.7275),
+        # Bejing
+        (39.9042, 116.4074),
+        # Mexico City
+        (19.4326, -99.1332),
+        # Rio de Janeiro
+        (-22.9068, -43.1729)
+    ]
 
-    if sol.get('success', False):
-        print("\nTimes (seconds):")
-        print(f"  T_wait = {sol['T_wait']:.3f}")
-        print(f"  T1     = {sol['T1']:.3f}")
-        print(f"  T_d    = {sol['T_d']:.3f}")
-        print(f"  T2     = {sol['T2']:.3f}")
-        print(f"  Total  = {sol['total_time_s']:.3f}")
-        print(f"Final epoch tf: {sol['tf'].isoformat()}")
+    for t_idx, (tlat, tlon) in enumerate(targets, start=1):
+        print(f"\n[MAIN] Target {t_idx}/{len(targets)}: lat={tlat:+.3f} deg, lon={tlon:+.3f} deg", flush=True)
 
-        print("\nROM orbital parameters (radians + epoch):")
-        print(sol['final_orbit'])
-        print("\nROM orbital parameters (degrees, human-friendly):")
-        print(sol['final_orbit_deg'])
+        # Single-scenario Δa sweep
+        plot_reconfig_times_vs_delta_a(
+            gom=gom,
+            rom_a_km=R_EARTH + 504.59534097,
+            epoch=epoch,
+            target_lat_geod_deg=tlat,
+            target_lon_deg=tlon,
+            delta_min_km=-150,
+            delta_max_km=200,
+            delta_step_km=10,
+            max_wrap=200,              # search breadth for (m,k)
+            drift_time_cap_days=15.0,  # cap drift to avoid very long solutions
+            verbose=True
+        )
 
-        # Also print the other branch, for comparison
-        print("\n---- Ascending solution ----")
-        print(sol['ascending'])
-        print("\n---- Descending solution ----")
-        print(sol['descending'])
+        # # Averaged plot across GOM altitudes (400–800 km) and random phases
+        # plot_reconfig_times_vs_delta_a_averaged(
+        #     epoch=epoch,
+        #     target_lat_geod_deg=tlat,
+        #     target_lon_deg=tlon,
+        #     rom_a_km=R_EARTH + 504.59534097,
+        #     delta_min_km=-200,
+        #     delta_max_km=200,
+        #     delta_step_km=10,
+        #     gom_alt_min_km=400.0,
+        #     gom_alt_max_km=800.0,
+        #     n_alt_samples=9,
+        #     n_phase_samples=16,
+        #     phase_seed=42,
+        #     i_deg=i_deg,              # keep inclination fixed; set inc_min/max to average over it
+        #     max_wrap=80,
+        #     drift_time_cap_days=15.0,
+        #     verbose=True,
+        # )
 
-        # Optional quick stub to avoid NameError if you call the plotter.
-        simple_plotter_GOM_ROM(planner, sol, 3.295, 95.982)
+    #     # # Also print the other branch, for comparison
+    #     # print("\n---- Ascending solution ----")
+    #     # print(sol['ascending'])
+    #     # print("\n---- Descending solution ----")
+    #     # print(sol['descending'])
 
-        if sol.get('success', False):
-            # … your prints …
-            plot_ground_tracks_simple(
-                planner, sol,
-                hours_gom=1.0, hours_rom=1.0, dt_s=10.0,
-                target_lat_deg=planner.target_lat_deg,
-                target_lon_deg=np.degrees(planner.target_lon_rad)
-    )
-    else:
-        print("\nNo solution from planner; cannot plot ROM ground track.")
+    #     simple_plotter_GOM_ROM(planner, sol, 3.295, 95.982)
+
+    # else:
+    #     print("\nNo solution from planner; cannot plot ROM ground track.")
+    # planner = AnalyticRaanPhasingPlanner(
+    #     gom=gom,
+    #     rom_a_km=R_EARTH + 504.59534097,
+    #     delta_a_km=50.0,
+    #     epoch_gom=epoch,
+    #     target_lat_geod_deg=3.295,   # geodetic latitude
+    #     target_lon_deg=95.982,       # east-positive
+    #     max_wrap=100                 # search breadth for (m,k)
+    # )
+
+    # sol = planner.solve_min_time()
+    # print("\n==== Solver output (best branch) ====")
+    # print(sol)
+
+    # if sol.get('success', False):
+    #     print("\nTimes (seconds):")
+    #     print(f"  T_wait = {sol['T_wait']:.3f}")
+    #     print(f"  T1     = {sol['T1']:.3f}")
+    #     print(f"  T_d    = {sol['T_d']:.3f}")
+    #     print(f"  T2     = {sol['T2']:.3f}")
+    #     print(f"  Total  = {sol['total_time_s']:.3f}")
+    #     print(f"Final epoch tf: {sol['tf'].isoformat()}")
+
+    #     print("\nROM orbital parameters (radians + epoch):")
+    #     print(sol['final_orbit'])
+    #     print("\nROM orbital parameters (degrees, human-friendly):")
+    #     print(sol['final_orbit_deg'])
+
+    #     # Also print the other branch, for comparison
+    #     print("\n---- Ascending solution ----")
+    #     print(sol['ascending'])
+    #     print("\n---- Descending solution ----")
+    #     print(sol['descending'])
+
+    #     # Optional quick stub to avoid NameError if you call the plotter.
+    #     simple_plotter_GOM_ROM(planner, sol, 3.295, 95.982)
+
+    #     if sol.get('success', False):
+    #         # … your prints …
+    #         plot_ground_tracks_simple(
+    #             planner, sol,
+    #             hours_gom=1.0, hours_rom=1.0, dt_s=10.0,
+    #             target_lat_deg=planner.target_lat_deg,
+    #             target_lon_deg=np.degrees(planner.target_lon_rad)
+    # )
+        # else:
+        #     print("\nNo solution from planner; cannot plot ROM ground track.")
