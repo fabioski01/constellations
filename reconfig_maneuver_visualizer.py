@@ -81,59 +81,6 @@ class OrbitGroundTrackVisualizer:
         
         self.orbits.append(orbit)
     
-    # def create_satellite(self, orbital_params, epoch):
-    #     """
-    #     Create a Satrec object from orbital parameters and epoch.
-        
-    #     Parameters:
-    #     -----------
-    #     orbital_params : dict
-    #         Orbital parameters dictionary
-    #     epoch : datetime
-    #         Epoch for this satellite
-            
-    #     Returns:
-    #     --------
-    #     Satrec
-    #         SGP4 satellite object
-    #     """
-    #     # Convert datetime to SGP4 epoch
-    #     jd, fr = TimeConversion.datetime_to_sgp4time(epoch)
-    #     epoch_days = (jd + fr) - 2433281.5
-        
-    #     # Convert angles to radians
-    #     inclination = np.radians(orbital_params['inclination'])
-    #     raan = np.radians(orbital_params['RAAN'])
-    #     arg_perigee = np.radians(orbital_params['argument_of_periapsis'])
-        
-    #     # Convert true anomaly to mean anomaly (assuming circular orbit for simplicity)
-    #     # For more accurate conversion, implement eccentric anomaly calculation
-    #     mean_anomaly = np.radians(orbital_params['true_anomaly'])  # Simplified
-        
-    #     # Compute mean motion from semi-major axis
-    #     n_rad_s = np.sqrt(constants.GRAVITATIONAL_CONSTANT / orbital_params['semi_major_axis']**3)
-    #     no_kozai = n_rad_s * 60.0  # Convert to rad/min for SGP4
-        
-    #     # Create Satrec object
-    #     sat = Satrec()
-    #     sat.sgp4init(
-    #         WGS84,                                      # gravity model
-    #         'i',                                        # opsmode
-    #         0,                                          # satnum
-    #         epoch_days,                                 # epoch
-    #         orbital_params['bstar'],                    # bstar
-    #         orbital_params['ndot'] / (24*60*60),        # ndot (convert from rev/day² to rev/min²)
-    #         orbital_params['nddot'] / (24*60*60)**2,    # nddot (convert from rev/day³ to rev/min³)
-    #         orbital_params['eccentricity'],             # eccentricity
-    #         arg_perigee,                                # argument of periapsis (radians)
-    #         inclination,                                # inclination (radians)
-    #         mean_anomaly,                               # mean anomaly (radians)
-    #         no_kozai,                                   # mean motion (rad/min)
-    #         raan                                        # RAAN (radians)
-    #     )
-        
-    #     return sat
-    
     def create_satellite(self, orbital_params, epoch):
         """
         Create a Satrec from classical elements at the given epoch.
@@ -321,6 +268,81 @@ class OrbitGroundTrackVisualizer:
                 ax.plot(segment_lons, segment_lats, 
                        color=color, linestyle=linestyle, linewidth=2,
                        label=segment_label, transform=ccrs.PlateCarree())
+
+    def _plot_orbit_segments_with_fade(self, ax, lons, lats, color, label, linestyle, is_first_segment=False, is_last_segment=False):
+        """
+        Plot orbit segments with fade effects at the ends for partial orbit visualization.
+        """
+        import matplotlib.pyplot as plt
+        import matplotlib.colors as mcolors
+        from matplotlib.collections import LineCollection
+        
+        # Convert to numpy arrays
+        lons = np.array(lons)
+        lats = np.array(lats)
+        
+        # Find discontinuities (longitude jumps > 180 degrees)
+        lon_diff = np.diff(lons)
+        breaks = np.where(np.abs(lon_diff) > 180)[0]
+        
+        # Add start and end indices
+        segment_starts = np.concatenate(([0], breaks + 1))
+        segment_ends = np.concatenate((breaks + 1, [len(lons)]))
+        
+        # Plot each continuous segment
+        for i, (start, end) in enumerate(zip(segment_starts, segment_ends)):
+            if start < end:
+                segment_lons = lons[start:end]
+                segment_lats = lats[start:end]
+                
+                # Only show label for first segment
+                segment_label = label if i == 0 else None
+                
+                # Create fade effect if this is a first or last segment
+                if (is_first_segment or is_last_segment) and len(segment_lons) > 10:
+                    # Create points for LineCollection
+                    points = np.array([segment_lons, segment_lats]).T.reshape(-1, 1, 2)
+                    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+                    
+                    # Create alpha values for fade effect
+                    n_points = len(segment_lons)
+                    alphas = np.ones(n_points - 1)
+                    
+                    fade_length = min(20, n_points // 4)  # Fade over 20 points or 1/4 of segment
+                    
+                    if is_first_segment:
+                        # Fade at the end of first segment
+                        for j in range(fade_length):
+                            alphas[-(j+1)] = (j + 1) / fade_length * 0.3  # Fade to 30% opacity
+                    
+                    if is_last_segment:
+                        # Fade at the beginning of last segment (smoother fade)
+                        for j in range(fade_length):
+                            alphas[j] = (j + 1) / fade_length * 0.7 + 0.3  # Fade from 30% to full opacity more gradually
+                    
+                    # Create LineCollection with varying alpha
+                    lc = LineCollection(segments, colors=[color]*len(segments), 
+                                      linestyle=linestyle, linewidths=2, alpha=1.0,
+                                      transform=ccrs.PlateCarree())
+                    
+                    # Set individual alpha values using proper color handling
+                    lc.set_alpha(None)  # Remove global alpha
+                    base_rgba = mcolors.to_rgba(color)
+                    colors_with_alpha = [(base_rgba[0], base_rgba[1], base_rgba[2], alpha) 
+                                       for alpha in alphas]
+                    lc.set_color(colors_with_alpha)
+                    
+                    ax.add_collection(lc)
+                    
+                    # Add invisible line for legend
+                    if segment_label:
+                        ax.plot([], [], color=color, linestyle=linestyle, linewidth=2, 
+                               label=segment_label, transform=ccrs.PlateCarree())
+                else:
+                    # Regular plot without fade
+                    ax.plot(segment_lons, segment_lats, 
+                           color=color, linestyle=linestyle, linewidth=2,
+                           label=segment_label, transform=ccrs.PlateCarree())
     
     def print_orbit_summary(self):
         """
@@ -345,7 +367,7 @@ class OrbitGroundTrackVisualizer:
                   f"Style: {orbit['linestyle']}")
             print()
 
-    def plot_ground_tracks(self, save_path=None, time_step_seconds=10, target_lat_deg=None, target_lon_deg=None):
+    def plot_ground_tracks(self, save_path=None, time_step_seconds=10, target_lat_deg=None, target_lon_deg=None, tolerance_deg=None, lon_err_deg=None):
         """
         Plot ground tracks for all added orbits.
         
@@ -363,8 +385,14 @@ class OrbitGroundTrackVisualizer:
         # Create figure
         fig = plt.figure(figsize=(14, 8))
         ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
-        ax.stock_img()
-        ax.coastlines()
+        
+        # Set global extent to show the entire Earth
+        ax.set_global()
+        
+        # Use grayscale map instead of colored stock image
+        ax.add_feature(cfeature.LAND, color='lightgray')
+        ax.add_feature(cfeature.OCEAN, color='white')
+        ax.coastlines(color='black', linewidth=0.5)
         # ax.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
         gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
                   color="gray", alpha=0.5, linestyle="--",
@@ -422,11 +450,33 @@ class OrbitGroundTrackVisualizer:
                     
                     # Create segment label
                     start_hour, end_hour = orbit['plot_segments'][j]
-                    segment_label = f"{orbit['label']} (t={start_hour:.1f}-{end_hour:.1f}h)" if j == 0 else None
                     
-                    # Plot segments to avoid longitude wrapping issues
-                    self._plot_orbit_segments(ax, normalized_lons, lats, orbit['color'], 
-                                            segment_label, orbit['linestyle'])
+                    # Check if this is GOM or Drift orbit for fade effect
+                    is_gom_or_drift = 'GOM' in orbit['label'] or 'Drift' in orbit['label']
+                    
+                    # For GOM and Drift orbits, remove time notation from legend
+                    if j == 0:  # Only create label for first segment
+                        if is_gom_or_drift:
+                            # Remove the time part from the label for GOM/Drift orbits
+                            base_label = orbit['label'].split(' (t=')[0]  # Get part before time notation
+                            segment_label = base_label
+                        else:
+                            segment_label = f"{orbit['label']} (t={start_hour:.1f}-{end_hour:.1f}h)"
+                    else:
+                        segment_label = None
+                    
+                    is_first_segment = j == 0  # First segment (first hour)
+                    is_last_segment = j == len(orbit['plot_segments']) - 1  # Last segment (last hour)
+                    
+                    # Plot segments with fade effect for GOM/Drift orbits
+                    if is_gom_or_drift and len(orbit['plot_segments']) > 1:
+                        self._plot_orbit_segments_with_fade(ax, normalized_lons, lats, orbit['color'], 
+                                                          segment_label, orbit['linestyle'],
+                                                          is_first_segment, is_last_segment)
+                    else:
+                        # Regular plotting for other orbits or single segments
+                        self._plot_orbit_segments(ax, normalized_lons, lats, orbit['color'], 
+                                                segment_label, orbit['linestyle'])
             else:
                 # Propagate full orbit (existing code)
                 times, positions, epoch = self.propagate_orbit(
@@ -458,13 +508,13 @@ class OrbitGroundTrackVisualizer:
                 self._plot_orbit_segments(ax, normalized_lons, lats, orbit['color'], 
                                         orbit['label'], orbit['linestyle'])
         
-        # Target marker (semi-transparent) if provided
+        # Target marker (more visible) if provided
         if target_lat_deg is not None and target_lon_deg is not None:
             lon_wrapped = ((float(target_lon_deg) + 180.0) % 360.0) - 180.0
             ax.scatter(
                 [lon_wrapped], [float(target_lat_deg)],
-                s=70, marker='*', color='gold', alpha=0.6,
-                edgecolors='k', linewidths=0.6,
+                s=100, marker='*', color='gold', alpha=0.9,
+                edgecolors='black', linewidths=1.2,
                 transform=ccrs.PlateCarree(), label='Target'
             )
         
@@ -473,9 +523,9 @@ class OrbitGroundTrackVisualizer:
         
         # Add title
         if min_epoch == max_epoch:
-            title = f'Ground Tracks Comparison\nEpoch: {min_epoch.strftime("%Y-%m-%d %H:%M:%S UTC")}'
+            title = f'Reconfiguration Visualization\nEpoch: {min_epoch.strftime("%Y-%m-%d %H:%M:%S UTC")}'
         else:
-            title = f'Ground Tracks Comparison\nEpochs: {min_epoch.strftime("%Y-%m-%d %H:%M")} to {max_epoch.strftime("%Y-%m-%d %H:%M")} UTC'
+            title = f'Reconfiguration Visualization\nEpochs: {min_epoch.strftime("%Y-%m-%d %H:%M")} to {max_epoch.strftime("%Y-%m-%d %H:%M")} UTC'
         
         ax.set_title(title, fontsize=14, fontweight='bold')
         
@@ -483,6 +533,14 @@ class OrbitGroundTrackVisualizer:
         info_text = f'Number of orbits: {len(self.orbits)}\n'
         info_text += f'Time step: {time_step_seconds}s\n'
         info_text += f'Max propagation: {max([o["propagation_time_hours"] for o in self.orbits]):.1f}h\n'
+        
+        # Add longitude error if provided
+        if lon_err_deg is not None:
+            info_text += f'Longitude error: {lon_err_deg:.3f}°\n'
+        
+        # Add tolerance info if provided
+        if tolerance_deg is not None:
+            info_text += f'ROM tolerance: {tolerance_deg:.3f}°\n'
         
         # Add epoch info if different epochs
         if min_epoch != max_epoch:
@@ -580,31 +638,6 @@ def main():
     rom_a_km   = 6875.59534097
     delta_a_km = 50.0  # example drift Δa; adjust as needed
 
-    # # sumatra 2004
-    # target_lat_deg = 3.295
-    # target_lon_deg = 95.982
-    # los angeles
-    target_lat_deg = 34.0522
-    target_lon_deg = -118.2437
-    # # Zero target (equator, prime meridian)
-    # target_lat_deg = 0
-    # target_lon_deg = 0
-    # # Rome
-    # target_lat_deg = 41.9028
-    # target_lon_deg = 12.4964
-    # # Hawaii
-    # target_lat_deg = 21.3069
-    # target_lon_deg = -157.8583
-    # # San Francisco
-    # target_lat_deg = 37.7749
-    # target_lon_deg = -122.4194
-    # # San Diego
-    # target_lat_deg = 32.7157
-    # target_lon_deg = -117.1611
-    # # Vancouver
-    # target_lat_deg = 49.2827
-    # target_lon_deg = -123.1207
-
     # 2) Build planner Orbit and call helper
     gom = PlannerOrbit(
         a_km=gom_a_km,
@@ -614,85 +647,143 @@ def main():
         e=0.0,
     )
 
-    pkg = build_maneuver_sequence_for_visualizer(
-        gom=gom,
-        rom_a_km=rom_a_km,
-        delta_a_km=delta_a_km,
-        epoch=base_epoch,
-        target_lat_geod_deg=target_lat_deg,
-        target_lon_deg=target_lon_deg,
-        max_wrap=100,
-        drift_time_cap_days=15.0,
-    )
+    # Helper to run one target and save a plot
+    def run_one(name: str, target_lat_deg: float, target_lon_deg: float):
+        pkg = build_maneuver_sequence_for_visualizer(
+            gom=gom,
+            rom_a_km=rom_a_km,
+            delta_a_km=delta_a_km,
+            epoch=base_epoch,
+            target_lat_geod_deg=target_lat_deg,
+            target_lon_deg=target_lon_deg,
+            max_wrap=500,
+            drift_time_cap_days=(1000.0/24),
+        )
+        if not pkg.get('success'):
+            print(f"[{name}] Planner failed:", pkg.get('note'))
+            return
 
-    if not pkg.get('success'):
-        print("Planner failed:", pkg.get('note'))
-        return
+        from reconfig_driftANDwaitTime import print_solution_summary
+        sol = pkg['solution']
+        print_solution_summary(sol)
 
-    times  = pkg['times']
-    epochs = pkg['epochs']
-    orbits = pkg['orbits']
+        times  = pkg['times']
+        epochs = pkg['epochs']
+        orbits = pkg['orbits']
 
-    # 3) Visualize using returned parameters
-    visualizer = OrbitGroundTrackVisualizer()
+        # Extract tolerance information from solution metadata
+        solution = pkg['solution']
+        selection_meta = solution.get('selection_meta', {})
+        tolerance_deg = selection_meta.get('tolerance_used_deg')
+        
+        # Extract longitude error from solution
+        lon_err_deg = solution.get('lon_err_deg')
+        
+        # Also print what we found for debugging
+        print(f"[TOLERANCE DEBUG] tolerance_deg = {tolerance_deg}")
+        print(f"[TOLERANCE DEBUG] lon_err_deg = {lon_err_deg}")
+        print(f"[TOLERANCE DEBUG] selection_meta keys = {list(selection_meta.keys())}")
+        
+        tol_str = f"{tolerance_deg:.3f}" if tolerance_deg is not None else "fallback"
+        print(f"[TOLERANCE DEBUG] final tol_str = '{tol_str}'")
 
-    t_wait_h = times['T_wait_s'] / 3600.0
-    t1_h     = times['T1_s'] / 3600.0
-    td_h     = times['T_d_s'] / 3600.0
-    t2_h     = times['T2_s'] / 3600.0
+        visualizer = OrbitGroundTrackVisualizer()
 
-    visualizer.add_orbit(
-        orbits['gom'], epochs['gom_epoch'], f'GOM Orbit (t_wait={t_wait_h:.3f} h)',
-        propagation_time_hours=t_wait_h, color='blue', linestyle='--'
-    )
-    visualizer.add_orbit(
-        orbits['transfer1'], epochs['transfer1_epoch'], f'Transfer 1 (t1={t1_h:.3f} h)',
-        propagation_time_hours=t1_h, color='cyan', linestyle='-.'
-    )
-    # Drift: plot only first and last hour if long
-    drift_segments = None
-    if td_h > 2.0:
-        drift_segments = [(0, 1), (max(0.0, td_h - 1.0), td_h)]
-    visualizer.add_orbit(
-        orbits['drift'], epochs['drift_epoch'], f'Drift Orbit (td={td_h:.3f} h)',
-        propagation_time_hours=td_h, color='green', linestyle=':', plot_segments=drift_segments
-    )
-    visualizer.add_orbit(
-        orbits['transfer2'], epochs['transfer2_epoch'], f'Transfer 2 (t2={t2_h:.3f} h)',
-        propagation_time_hours=t2_h, color='orange', linestyle='-'
-    )
-    visualizer.add_orbit(
-        orbits['rom'], epochs['rom_epoch'], 'ROM RGT Orbit',
-        propagation_time_hours=1.0, color='red', linestyle='--'
-    )
-    # Optional: extra ROM test track at tf
-    visualizer.add_orbit(
-        orbits['rom_test'], epochs['rom_epoch'], 'ROM TEST RGT Orbit',
-        propagation_time_hours=1.0, color='red', linestyle=':'
-    )
+        t_wait_h = times['T_wait_s'] / 3600.0
+        t1_h     = times['T1_s'] / 3600.0
+        td_h     = times['T_d_s'] / 3600.0
+        t2_h     = times['T2_s'] / 3600.0
 
-    visualizer.print_orbit_summary()
+        # For GOM orbit, if wait time > 2h, plot only first and last hour
+        gom_segments = None
+        if t_wait_h > 2.0:
+            gom_segments = [(0, 1), (max(0.0, t_wait_h - 1.0), t_wait_h)]
+        
+        visualizer.add_orbit(
+            orbits['gom'], epochs['gom_epoch'], f'GOM Orbit (t_wait={t_wait_h:.3f} h)',
+            propagation_time_hours=t_wait_h, color='blue', linestyle='--', plot_segments=gom_segments
+        )
+        visualizer.add_orbit(
+            orbits['transfer1'], epochs['transfer1_epoch'], f'Transfer 1 (t1={t1_h:.3f} h)',
+            propagation_time_hours=t1_h, color='cyan', linestyle='-.'
+        )
+        drift_segments = None
+        if td_h > 2.0:
+            drift_segments = [(0, 1), (max(0.0, td_h - 1.0), td_h)]
+        visualizer.add_orbit(
+            orbits['drift'], epochs['drift_epoch'], f'Drift Orbit (td={td_h:.3f} h)',
+            propagation_time_hours=td_h, color='green', linestyle=':', plot_segments=drift_segments
+        )
+        visualizer.add_orbit(
+            orbits['transfer2'], epochs['transfer2_epoch'], f'Transfer 2 (t2={t2_h:.3f} h)',
+            propagation_time_hours=t2_h, color='orange', linestyle='-'
+        )
+        visualizer.add_orbit(
+            orbits['rom'], epochs['rom_epoch'], 'ROM Theoretical Orbit',
+            propagation_time_hours=1.0, color='red', linestyle='--'
+        )
+        visualizer.add_orbit(
+            orbits['rom_test'], epochs['rom_epoch'], 'ROM Propagated Orbit',
+            propagation_time_hours=1.0, color='red', linestyle=':'
+        )
 
-    # Dynamic filename based on maneuver details (include target coords)
-    tgt_lat_fmt = f"{target_lat_deg:+.3f}".replace("+", "p").replace("-", "m")
-    tgt_lon_fmt = f"{target_lon_deg:+.3f}".replace("+", "p").replace("-", "m")
-    fname = (
-        f"maneuver_GOM{gom_a_km:.1f}km_"
-        f"ROM{rom_a_km:.1f}km_"
-        f"dA{delta_a_km:+.1f}km_"
-        f"inc{inc_deg:.3f}deg_"
-        f"tgtLat{tgt_lat_fmt}_tgtLon{tgt_lon_fmt}_"
-        f"epoch{base_epoch.strftime('%Y%m%dT%H%M%SZ')}"
-        ".png"
-    )
-    save_path = os.path.join("plots", "orbit_comparison", fname)
-    visualizer.plot_ground_tracks(
-        save_path=save_path,
-        time_step_seconds=30,
-        target_lat_deg=target_lat_deg,
-        target_lon_deg=target_lon_deg,
-    )
-    print("Maneuver sequence ground track visualization complete!")
+        tgt_lat_fmt = f"{target_lat_deg:+.6f}".replace("+", "p").replace("-", "m")
+        tgt_lon_fmt = f"{target_lon_deg:+.6f}".replace("+", "p").replace("-", "m")
+        fname = (
+            f"{name}_GOM{gom_a_km:.1f}km_ROM{rom_a_km:.1f}km_"
+            f"dA{delta_a_km:+.1f}km_inc{inc_deg:.3f}deg_"
+            f"tgtLat{tgt_lat_fmt}_tgtLon{tgt_lon_fmt}_"
+            f"tol{tol_str}deg.png"
+        )
+        save_path = os.path.join("plots", "reconfig_groundtracks", fname)
+        visualizer.plot_ground_tracks(
+            save_path=save_path,
+            time_step_seconds=30,
+            target_lat_deg=target_lat_deg,
+            target_lon_deg=target_lon_deg,
+            tolerance_deg=tolerance_deg,
+            lon_err_deg=lon_err_deg,
+        )
+        print(f"[{name}] Plot saved: {save_path}")
+    
+    # 1) Pre-existing targets
+    targets = [
+        ("LosAngeles", 34.0522, -118.2437),
+        ("Sumatra_2004", 3.295, 95.982),
+        ("Zero_0_0", 0.0, 0.0),
+        ("Rome", 41.9028, 12.4964),
+        ("Hawaii", 21.3069, -157.8583),
+        ("SanFrancisco", 37.7749, -122.4194),
+        ("SanDiego", 32.7157, -117.1611),
+        ("Vancouver", 49.2827, -123.1207),
+        ("Sydney", -33.8688, 151.2093),
+        ("Beijing", 39.9042, 116.4074),
+        ("Tokyo", 35.6895, 139.6917),
+    ]
+    for name, lat, lon in targets:
+        run_one(f"case_{name}", lat, lon)
+
+    # # 2) Los Angeles variations (separate loop): Δ from −1.000° to +1.000° in 0.001° steps
+    # la_lat0 = 34.0522
+    # la_lon0 = -118.2437
+    # step_deg = 0.5
+    # max_delta = 10.0
+
+    # # lat+Δ, lon+Δ
+    # delta = -max_delta
+    # while delta <= max_delta + 1e-12:
+    #     lat = la_lat0 + delta
+    #     lon = la_lon0 + delta
+    #     run_one(f"LA_var_add_d{delta:+.3f}".replace("+", "p").replace("-", "m"), lat, lon)
+    #     delta = round(delta + step_deg, 6)  # avoid FP drift
+
+    # # lat+Δ, lon−Δ
+    # delta = -max_delta
+    # while delta <= max_delta + 1e-12:
+    #     lat = la_lat0 + delta
+    #     lon = la_lon0 - delta
+    #     run_one(f"LA_var_sub_d{delta:+.3f}".replace("+", "p").replace("-", "m"), lat, lon)
+    #     delta = round(delta + step_deg, 6)
 
 def compute_anomaly_change(dt, a, e):
         """
