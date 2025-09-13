@@ -820,6 +820,22 @@ if __name__ == "__main__":
         # ("Tokyo", 35.6895, 139.6917),
     ]
 
+    FLAG_TIMES_VS_DELTA_A = False
+    FLAG_TIMES_VS_TOLERANCE = False
+    FLAG_AVG_VS_DELTA_A = False
+    FLAG_AVG_VS_TOLERANCE = False
+    FLAG_HEATMAP = False
+
+    # Diagnostics
+    FLAG_PARETO_TIME_VS_DV    = False # works
+    FLAG_ISO_TIME_CONTOURS    = True # works, to be detailed and expand with avg
+    FLAG_CHOSEN_VS_TOL        = False # works
+    FLAG_TOL_SENSITIVITY      = False # doesnt work, type error
+    FLAG_TARGET_JITTER        = False # doesnt work, type error
+    FLAG_EPOCH_SENSITIVITY    = False # works, need to expand with avg and detail
+    FLAG_RESIDUAL_CURVES      = False # doesnt work, name error
+
+
     # Common knobs
     max_wrap = 200
     drift_time_cap_days = 200.0/24.0  # ~200 hr
@@ -830,87 +846,154 @@ if __name__ == "__main__":
     tol_ladder  = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]
     delta_a_fixed_km = 50.0
 
-    # ------------------------
-    # 1) Per-target case plots
-    # ------------------------
-    for (target_name, tlat, tlon) in targets:
-        print(f"\n[CASE] {target_name} ({tlat:+.3f}°, {tlon:+.3f}°)")
+    # Diagnostics params
+    iso_levels_hours = [12.0, 24.0, 48.0, 72.0, 96.0]
+    tol_sens_series  = (True, True, True)  # plot total/wait/drift
+    jitter_radius_deg = 1.0
+    jitter_samples    = 200
+    jitter_seed       = 7
+    jitter_tol_deg    = 0.25
+    epoch_window_hours = 24.0
+    epoch_samples      = 49
+    epoch_tol_deg      = 0.25
+    # residuals: leave branch/m/k None to auto-pick best solution, or set explicitly
+    residual_branch    = None   # 'ascending' or 'descending' or None
+    residual_m         = None
+    residual_k         = None
+    residual_nsamples  = 600
 
-        # Reconfig time vs Δa (case study)
-        run_reconfig_plots(
-            gom=gom,
-            rom_a_km=rom_a_km,
-            epoch=epoch,
-            target_name=target_name,
-            target_lat_geod_deg=tlat,
-            target_lon_deg=tlon,
-            flags=PlotFlags(times_vs_delta_a=True, times_vs_tolerance=True,  # both case plots
-                            avg_vs_delta_a=False, avg_vs_tolerance=False, heatmap=False),
-            # Δa sweep params
-            delta_min_km=delta_range["delta_min_km"],
-            delta_max_km=delta_range["delta_max_km"],
-            delta_step_km=delta_range["delta_step_km"],
-            # tolerance sweep params
-            delta_a_fixed_km=delta_a_fixed_km,
-            tolerances_deg=tol_ladder,
-            # solver knobs
-            max_wrap=max_wrap,
-            drift_time_cap_days=drift_time_cap_days,
-            verbose=verbose,
-        )
+    # ===============================
+    # 1) Per-target case study plots
+    # ===============================
+    if any([FLAG_TIMES_VS_DELTA_A, FLAG_TIMES_VS_TOLERANCE,
+            FLAG_PARETO_TIME_VS_DV, FLAG_CHOSEN_VS_TOL,
+            FLAG_TOL_SENSITIVITY, FLAG_TARGET_JITTER,
+            FLAG_EPOCH_SENSITIVITY, FLAG_RESIDUAL_CURVES]):
+        for (target_name, tlat, tlon) in targets:
+            print(f"\n[CASE] {target_name} ({tlat:+.3f}°, {tlon:+.3f}°)")
+
+            run_reconfig_plots(
+                gom=gom,
+                rom_a_km=rom_a_km,
+                epoch=epoch,
+                target_name=target_name,
+                target_lat_geod_deg=tlat,
+                target_lon_deg=tlon,
+
+                flags=PlotFlags(
+                    times_vs_delta_a=FLAG_TIMES_VS_DELTA_A,
+                    times_vs_tolerance=FLAG_TIMES_VS_TOLERANCE,
+                    avg_vs_delta_a=False,
+                    avg_vs_tolerance=False,
+                    heatmap=False,
+                    # diagnostics
+                    pareto_time_vs_dv=FLAG_PARETO_TIME_VS_DV,
+                    iso_time_contours=False,              # iso-time is grid-wide, see section 3
+                    chosen_vs_tolerance=FLAG_CHOSEN_VS_TOL,
+                    tolerance_sensitivity=FLAG_TOL_SENSITIVITY,
+                    target_jitter=FLAG_TARGET_JITTER,
+                    epoch_sensitivity=FLAG_EPOCH_SENSITIVITY,
+                    residual_curves=FLAG_RESIDUAL_CURVES,
+                ),
+
+                # Δa sweep (case + pareto)
+                delta_min_km=delta_range["delta_min_km"],
+                delta_max_km=delta_range["delta_max_km"],
+                delta_step_km=delta_range["delta_step_km"],
+
+                # tolerance sweep (case + chosen_vs_tolerance + tol sensitivity)
+                delta_a_fixed_km=delta_a_fixed_km,
+                tolerances_deg=tol_ladder,
+
+                # diagnostics knobs
+                pareto_include_wait=True,
+                tol_sens_include_series=tol_sens_series,
+                jitter_radius_deg=jitter_radius_deg,
+                jitter_samples=jitter_samples,
+                jitter_seed=jitter_seed,
+                jitter_tolerance_deg=jitter_tol_deg,
+                epoch_window_hours=epoch_window_hours,
+                epoch_samples=epoch_samples,
+                epoch_tolerance_deg=epoch_tol_deg,
+                residual_branch=residual_branch,
+                residual_m=residual_m,
+                residual_k=residual_k,
+                residual_nsamples=residual_nsamples,
+
+                # solver
+                max_wrap=max_wrap,
+                drift_time_cap_days=drift_time_cap_days,
+                verbose=verbose,
+            )
+
 
     # ---------------------------------------------------------
     # 2) Averaged plots across a latitude band & all longitudes
     #    (no target loop; this averages over many targets)
     # ---------------------------------------------------------
-    lat_band_deg = i_deg -1.0         # must be < inclination to ensure access
-    n_lat = 10                   # number of latitude samples in [-band,+band]
-    n_lon = 30                   # number of longitudes in [-180,180)
+    if FLAG_AVG_VS_DELTA_A or FLAG_AVG_VS_TOLERANCE:
+        # Latitude band (deg): must be < inclination to ensure access
+        lat_band_deg = i_deg -1.0         # must be < inclination to ensure access
+        n_lat = 2                   # number of latitude samples in [-band,+band]
+        n_lon = 3                   # number of longitudes in [-180,180)
 
-    print("\n[AVG] Generating averaged plots across target grid...")
-    run_reconfig_plots(
-        gom=gom,
-        rom_a_km=rom_a_km,
-        epoch=epoch,
-        target_name="AVG",               # not used by averaged plots
-        target_lat_geod_deg=0.0,         # not used by averaged plots
-        target_lon_deg=0.0,              # not used by averaged plots
-        flags=PlotFlags(times_vs_delta_a=False, times_vs_tolerance=False,
-                        avg_vs_delta_a=True, avg_vs_tolerance=True, heatmap=False),
-        delta_min_km=delta_range["delta_min_km"],
-        delta_max_km=delta_range["delta_max_km"],
-        delta_step_km=delta_range["delta_step_km"],
-        delta_a_fixed_km=delta_a_fixed_km,
-        tolerances_deg=tol_ladder,
-        inclination_deg=i_deg,
-        lat_band_deg=lat_band_deg,
-        n_lat=n_lat, n_lon=n_lon,
-        max_wrap=max_wrap,
-        drift_time_cap_days=drift_time_cap_days,
-        verbose=verbose,
-    )
+        print("\n[AVG] Generating averaged plots across target grid...")
+        run_reconfig_plots(
+            gom=gom,
+            rom_a_km=rom_a_km,
+            epoch=epoch,
+            target_name="AVG",               # not used by averaged plots
+            target_lat_geod_deg=0.0,         # not used by averaged plots
+            target_lon_deg=0.0,              # not used by averaged plots
+            flags=PlotFlags(times_vs_delta_a=False, times_vs_tolerance=False,
+                            avg_vs_delta_a=FLAG_AVG_VS_DELTA_A, avg_vs_tolerance=FLAG_AVG_VS_TOLERANCE, heatmap=False),
+            delta_min_km=delta_range["delta_min_km"],
+            delta_max_km=delta_range["delta_max_km"],
+            delta_step_km=delta_range["delta_step_km"],
+            delta_a_fixed_km=delta_a_fixed_km,
+            tolerances_deg=tol_ladder,
+            inclination_deg=i_deg,
+            lat_band_deg=lat_band_deg,
+            n_lat=n_lat, n_lon=n_lon,
+            max_wrap=max_wrap,
+            drift_time_cap_days=drift_time_cap_days,
+            verbose=verbose,
+        )
 
-    # -------------------------
-    # 3) Heatmaps for one case
-    # -------------------------
-    print("\n[HEATMAP] Generating world heatmaps...")
-    run_reconfig_plots(
-        gom=gom,
-        rom_a_km=rom_a_km,
-        epoch=epoch,
-        target_name="HEAT",               # not used by heatmap
-        target_lat_geod_deg=0.0,          # not used by heatmap
-        target_lon_deg=0.0,               # not used by heatmap
-        flags=PlotFlags(times_vs_delta_a=False, times_vs_tolerance=False,
-                        avg_vs_delta_a=False, avg_vs_tolerance=False, heatmap=True),
-        delta_a_fixed_km=delta_a_fixed_km,
-        tolerances_deg=[0.25],            # pick a single tolerance for the map
-        inclination_deg=i_deg,
-        lat_band_deg=lat_band_deg,
-        n_lat=n_lat, n_lon=n_lon,
-        max_wrap=max_wrap,
-        drift_time_cap_days=drift_time_cap_days,
-        verbose=verbose,
-    )
+    # ==========================
+    # 3) Heatmaps & Iso-time map
+    # ==========================
+    if FLAG_HEATMAP or FLAG_ISO_TIME_CONTOURS:
+        lat_band_deg = i_deg - 1.0
+        n_lat_heatmap = 11           # across inclination band
+        n_long_heatmap = 36          # around Earth
 
-    print("\nAll plots saved under results/plots_case, results/plots_avg, and results/plots_heatmaps.")
+        print("\n[GRID] Generating world maps...")
+        run_reconfig_plots(
+            gom=gom,
+            rom_a_km=rom_a_km,
+            epoch=epoch,
+            target_name="GRID",               # not used by grid plots
+            target_lat_geod_deg=0.0,
+            target_lon_deg=0.0,
+            flags=PlotFlags(
+                times_vs_delta_a=False,
+                times_vs_tolerance=False,
+                avg_vs_delta_a=False,
+                avg_vs_tolerance=False,
+                heatmap=FLAG_HEATMAP,
+                iso_time_contours=FLAG_ISO_TIME_CONTOURS
+            ),
+            delta_a_fixed_km=delta_a_fixed_km,
+            tolerances_deg=[0.25],            # a single tolerance for the heatmap
+            inclination_deg=i_deg,
+            lat_band_deg=lat_band_deg,
+            n_lat=n_lat_heatmap,
+            n_lon=n_long_heatmap,
+            iso_levels_hours=iso_levels_hours,
+            max_wrap=max_wrap,
+            drift_time_cap_days=drift_time_cap_days,
+            verbose=verbose,
+        )
+
+        print("\nAll plots saved under results/reconfig")
