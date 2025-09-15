@@ -822,13 +822,13 @@ if __name__ == "__main__":
 
     FLAG_TIMES_VS_DELTA_A = False
     FLAG_TIMES_VS_TOLERANCE = False
-    FLAG_AVG_VS_DELTA_A = False
-    FLAG_AVG_VS_TOLERANCE = False
-    FLAG_HEATMAP = False
+    FLAG_AVG_VS_DELTA_A = True
+    FLAG_AVG_VS_TOLERANCE = True
+    FLAG_HEATMAP = True
 
     # Diagnostics
     FLAG_PARETO_TIME_VS_DV    = False # works
-    FLAG_ISO_TIME_CONTOURS    = True # works, to be detailed and expand with avg
+    FLAG_ISO_TIME_CONTOURS    = False # works, to be detailed and expand with avg
     FLAG_CHOSEN_VS_TOL        = False # works
     FLAG_TOL_SENSITIVITY      = False # doesnt work, type error
     FLAG_TARGET_JITTER        = False # doesnt work, type error
@@ -842,7 +842,7 @@ if __name__ == "__main__":
     verbose = True
 
     # Plot parameter sets
-    delta_range = dict(delta_min_km=-100, delta_max_km=200, delta_step_km=100)
+    delta_range = dict(delta_min_km=-100, delta_max_km=200, delta_step_km=10)
     tol_ladder  = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]
     delta_a_fixed_km = 50.0
 
@@ -934,8 +934,8 @@ if __name__ == "__main__":
     if FLAG_AVG_VS_DELTA_A or FLAG_AVG_VS_TOLERANCE:
         # Latitude band (deg): must be < inclination to ensure access
         lat_band_deg = i_deg -1.0         # must be < inclination to ensure access
-        n_lat = 2                   # number of latitude samples in [-band,+band]
-        n_lon = 3                   # number of longitudes in [-180,180)
+        n_lat = 5                   # number of latitude samples in [-band,+band]
+        n_lon = 18                   # number of longitudes in [-180,180)
 
         print("\n[AVG] Generating averaged plots across target grid...")
         run_reconfig_plots(
@@ -965,8 +965,8 @@ if __name__ == "__main__":
     # ==========================
     if FLAG_HEATMAP or FLAG_ISO_TIME_CONTOURS:
         lat_band_deg = i_deg - 1.0
-        n_lat_heatmap = 11           # across inclination band
-        n_long_heatmap = 36          # around Earth
+        n_lat_heatmap = 12           # across inclination band
+        n_long_heatmap = 42          # around Earth
 
         print("\n[GRID] Generating world maps...")
         run_reconfig_plots(
