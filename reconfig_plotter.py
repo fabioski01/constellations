@@ -32,15 +32,31 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, timezone
 
 # pull in your solver & helpers
-from reconfig_driftANDwaitTime import (
-    AnalyticRaanPhasingPlanner,
-    Orbit,
-    deg2rad, rad2deg,
-    R_EARTH,
-    compute_reconfig_times_vs_delta_a,  # reuse your existing sweep
-    gmst_rad,                           # for ground track
-    j2_rates,
-)
+# Prefer multicore solver if available, fall back to single-core
+try:
+    from reconfig_driftANDwaitTime_multicore import (
+        AnalyticRaanPhasingPlanner,
+        Orbit,
+        deg2rad, rad2deg,
+        R_EARTH,
+        compute_reconfig_times_vs_delta_a,  # multicore-aware sweep
+        gmst_rad,                           # for ground track
+        j2_rates,
+        u_required_branches,
+    )
+    _USING_MULTICORE_SOLVER = True
+except Exception:
+    from reconfig_driftANDwaitTime import (
+        AnalyticRaanPhasingPlanner,
+        Orbit,
+        deg2rad, rad2deg,
+        R_EARTH,
+        compute_reconfig_times_vs_delta_a,  # single-core sweep (fallback)
+        gmst_rad,                           # for ground track
+        j2_rates,
+        u_required_branches,
+    )
+    _USING_MULTICORE_SOLVER = False
 
 MU_EARTH = constants.GRAVITATIONAL_CONSTANT  # km^3/s^2
 
@@ -357,7 +373,6 @@ def _avg_over_targets_delta_a(
     """
     Average (per Δa) across the target set (lat x lon).
     """
-    from reconfig_driftANDwaitTime import compute_reconfig_times_vs_delta_a
     dAs = np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km, dtype=float)
     n = dAs.size
     sum_tot = np.zeros(n); sum_wait = np.zeros(n); sum_drift = np.zeros(n); counts = np.zeros(n, dtype=int)
