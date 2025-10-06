@@ -1,3 +1,43 @@
+"""Reconfiguration Maneuver / Ground Track Visualizer
+
+Short Description
+    Generate ground track PNGs for analytic reconfiguration phases
+    (GOM wait, transfers, drift, final ROM) for multiple target sites.
+
+Core Scenario Inputs (edit in main or adapt programmatically)
+    base_epoch : UTC start datetime
+    inc_deg    : inclination (deg)
+    gom_a_km   : initial (GOM) semi-major axis (km)
+    rom_a_km   : target (ROM) semi-major axis (km)
+    delta_a_km : drift Δa used by planner (km, can be ±)
+    targets    : list of (name, lat_deg, lon_deg)
+
+Derived From Planner (build_maneuver_sequence_for_visualizer)
+    times   : dict with T_wait_s, T1_s, T_d_s, T2_s
+    epochs  : phase epoch datetimes
+    orbits  : dict of orbital element dicts (gom, transfer1, drift, transfer2, rom, rom_test)
+
+Visualizer add_orbit(...) Key Args
+    orbital_params (dict) : semi_major_axis, eccentricity, inclination, RAAN,
+                                                    argument_of_periapsis, true_anomaly (+ optional bstar/ndot/nddot)
+    epoch (datetime)      : orbit epoch
+    label (str)           : legend label
+    propagation_time_hours: span to propagate
+    plot_segments         : optional list of (start_h, end_h) for partial + fade
+
+Plot Controls (plot_ground_tracks)
+    save_path, time_step_seconds, target_lat_deg/target_lon_deg, tolerance_deg, lon_err_deg
+
+Output
+    PNG: plots/reconfig_groundtracks/<auto_named>.png
+
+Quick Example
+    python reconfig_maneuver_visualizer.py  (generates multiple target figures)
+
+Author
+Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs

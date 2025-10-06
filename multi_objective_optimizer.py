@@ -44,6 +44,57 @@ module configures the population size, sampling, crossover and mutation
 probabilities to balance exploration and exploitation for the constellation
 design problem.
 
+Configurable Inputs (quick reference)
+------------------------------------
+High-level knobs you can (and most likely will) change when calling
+`run_multi_objective_optimization(...)` or using the CLI:
+
+Required / Core
+    pattern_type          : str  ("Walker-Delta" | "Flower" | future patterns)
+    gs                    : str  Ground station identifier (affects coverage models)
+
+Mission / System Weights (all floats in [0,1], any can be zero)
+    local_weight          : weight for local coverage metric
+    regional_weight       : weight for regional coverage metric
+    global_weight         : weight for global coverage metric
+    science_weight        : weight for science requirement score
+
+Design Seeding / Physical Parameters
+    target_altitude       : km (used to seed semi-major axis for initial sampling)
+    sat_mass_kg           : satellite wet mass for cost model
+    payloads              : list[dict] optional payload definitions (type, mass_kg, power_w, cat)
+    step                  : seconds between propagated samples (coverage fidelity vs speed)
+    evaluation_hours      : simulation horizon length (trade accuracy vs runtime)
+
+Evolutionary Algorithm (NSGA-II)
+    pop_size              : population size per generation
+    n_gen                 : number of generations
+    seed                  : RNG seed for reproducibility
+
+Parallel / Runtime Controls
+    n_cores               : int | None  (None => auto detect / SLURM_CPUS_PER_TASK if cluster_mode)
+    cluster_mode          : bool (enables parallel batch evaluation path + size adjustments)
+
+File & Output
+    output_dir            : base results directory (plots + CSV go under pattern/weight str)
+
+Returned Results Dict Keys
+    pareto_front          : ndarray shape (k,2) [cost, -performance]
+    pareto_solutions      : ndarray shape (k,n_var)
+    costs / performances  : convenience 1D arrays extracted from `pareto_front`
+    csv_filename          : full path to written CSV file
+    plot_filename         : full path to Pareto front PNG
+    optimizer             : the configured MultiObjectiveConstellationOptimizer instance
+
+Pattern-Specific Design Variables (bounds internally enforced)
+    Walker-Delta : [N_sats, perigee_h(km), ecc, inc(deg), RAAN(deg), argp(deg), P, F]
+    Flower       : [T (≈num_sats), perigee_h(km), ecc, inc, RAAN, argp, Np, Nd, Fn, Fd, Fh]
+
+Cost Model Weights (currently fixed to zero in runner but exposed in optimizer kwargs)
+    satellite_cost_weight, operational_cost_weight, launch_cost_weight
+
+Tip: start with small pop_size / n_gen (e.g. 10 / 5) to validate setup, then scale.
+
 Usage example
 -------------
 >>> from multi_objective_optimizer import run_multi_objective_optimization
@@ -57,10 +108,6 @@ Usage example
 
 The returned `results` dictionary contains keys such as `pareto_front`,
 `pareto_solutions`, `csv_filename` and `plot_filename` for easy post-processing.
-
-References
-----------
--
 
 Author
 ------

@@ -1,3 +1,20 @@
+"""
+utilities.py - orbit & frame utilities
+
+Compact toolkit for:
+  * Loading & propagating TLEs (SGP4)
+  * Time conversions (Julian / MJD helpers)
+  * Cartesian ↔ Keplerian conversion
+  * ECI ↔ geographic / ECEF transforms (simplified Earth rotation model)
+  * Simple numerical propagators (Euler, RK4 prototype) with point-mass gravity
+  * Common perturbations: J2, SRP (with shadow model), atmospheric drag, third-body (Sun/Moon)
+
+Units: SI (meters, seconds) for dynamics; some element functions return a in km for legacy compatibility.
+
+## Author
+Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
+"""
+
 from sgp4.api import Satrec
 import numpy as np
 from datetime import datetime, timezone, timedelta
@@ -164,14 +181,13 @@ class TimeConversion:
         MJD = JD - 2400000.5
         '''
         Y, M, D, F = datetime.year, datetime.month, datetime.day, datetime.hour/24
-        C = trunc((M - 14)/12)
-        JD0 = D - 32075 + trunc(1461 * (Y + 4800 + C)/4)
-        JD0 += trunc(367 * (M - 2 - C * 12)/12)
-        JD0 -= trunc(3 * (trunc((Y + 4900 + C)/100))/4)
-        # JD0, F = datetime_to_sgp4time(datetime)
+        from math import trunc as _trunc
+        C = _trunc((M - 14)/12)
+        JD0 = D - 32075 + _trunc(1461 * (Y + 4800 + C)/4)
+        JD0 += _trunc(367 * (M - 2 - C * 12)/12)
+        JD0 -= _trunc(3 * (_trunc((Y + 4900 + C)/100))/4)
         JD = JD0 + F - 0.5
         MJD = JD - 2400000.5
-
         return MJD
 
 class CoordinateConversion:
@@ -608,7 +624,7 @@ class CoordinateConversion:
         R3(θ) = [[ cosθ,  sinθ, 0],
                 [-sinθ,  cosθ, 0],
                 [   0 ,    0 , 1]]
-        - Ignores precession/nutation, polar motion, and UT1–UTC; good for ground tracks.
+        - Ignores precession/nutation, polar motion, and UT1-UTC; good for ground tracks.
         - Earth sidereal rotation rate Ω ≈ 7.2921150e-5 rad/s.
         """
 

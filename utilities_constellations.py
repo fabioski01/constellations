@@ -1,3 +1,61 @@
+"""Constellation Utilities
+
+Provides the `Constellation` class and helpers to construct & propagate simple
+constellation layouts using SGP4 (Walker-Delta variants and Flower patterns).
+
+Quick Reference
+---------------
+Supported patterns:
+    Walker-Delta-SinglePlane          : One orbital plane, phased by mean anomaly.
+    Walker-Delta                      : Multiple planes (T satellites, P planes, F phasing).
+    Walker-Delta-SingleSatPerPlane    : Simplified per-plane RAAN spacing.
+    Flower                            : Mortari-style repeating ground-track constellation.
+
+Constructor (`Constellation.__init__`)
+    num_satellites (int)            : Total satellites (T or Ns).
+    orbital_parameters (dict)       : Keys (required):
+            semi_major_axis (km), eccentricity, inclination (deg), RAAN (deg),
+            argument_of_periapsis (deg), true_anomaly (deg)
+        Optional SGP4 terms: ndot (rev/day^2), nddot (rev/day^3), bstar.
+        For Flower: Np, Nd, Fn, Fd, Fh (integer phasing) – all required.
+    epoch (datetime UTC)            : Common epoch for orbital elements.
+    pattern (str)                   : One of the supported pattern names.
+    Walker params (if pattern == "Walker-Delta"): P (planes), F (phasing integer 0..P-1).
+
+Key Methods
+    generate_positions_with_time(start_time, end_time, step_s) -> dict
+            Returns: positions[num_sat, N, 3] km, velocities[num_sat, N, 3] km/s,
+                             time_stamps[N] seconds since epoch.
+    estimate_anomalistic_period() -> float (seconds) (J2-corrected approximation).
+    create_animation(...) -> matplotlib Animation (ECEF 3D or topdown, with tails).
+
+Internal
+    _build_satrecs() constructs one `sgp4.api.Satrec` per satellite applying phasing.
+    satrecs property exposes the list for custom propagation if needed.
+
+Usage Example
+-------------
+from datetime import datetime
+from utilities_constellations import Constellation
+params = dict(semi_major_axis=6778.0, eccentricity=0.0, inclination=51.6,
+                            RAAN=0.0, argument_of_periapsis=0.0, true_anomaly=0.0)
+const = Constellation(num_satellites=24, orbital_parameters=params,
+                                            epoch=datetime(2025,5,5), pattern="Walker-Delta", P=6, F=1)
+res = const.generate_positions_with_time(start_time=const.epoch,
+                                                                                 end_time=const.epoch.replace(hour=const.epoch.hour+3),
+                                                                                 time_step=60)
+positions = res["positions"]
+
+Notes
+-----
+- SGP4 expects mean motion & elements in specific units; conversion handled internally.
+- Flower pattern validation enforces relative primality and phasing bounds.
+- For large constellations propagation is O(num_sat * num_steps); adjust time_step accordingly.
+
+Author
+Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
+"""
+
 from utilities import CoordinateConversion
 import numpy as np
 from datetime import datetime

@@ -4,8 +4,7 @@ Constellation Revisit Time Calculator
 This script calculates maximum revisit times for satellite constellations
 based on orbital mechanics and coverage geometry.
 
-Author: GitHub Copilot
-Date: 2025
+To be modified, since it is a simplified version based on approximations.
 """
 
 import numpy as np

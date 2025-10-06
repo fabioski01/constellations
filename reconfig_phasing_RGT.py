@@ -1,8 +1,49 @@
-"""
-Reconfiguration Phasing RGT Module
+"""Repeat Ground Track (RGT) Phasing Utilities
 
-This module provides the PhasingRGT class for computing repeat ground track orbits
-and solving for semi-major axes given orbital parameters and repeat ground track ratios.
+Provides the `PhasingRGT` class plus convenience module functions for designing
+repeat ground track (RGT) orbits under J2 perturbation.
+
+Quick Reference
+---------------
+Goal: find semi-major axis a (and implied altitude) that satisfies a desired
+repeat ratio No/Nd (satellite revolutions per sidereal day) given (inclination i, eccentricity e).
+
+Core Class: PhasingRGT(J2=None, Rearth=None, mu=None, rotation_rate_earth=None)
+    J2, Rearth, mu            : Earth constants (defaults pulled from `constants`).
+    rotation_rate_earth       : Earth's sidereal rotation rate (rad/s), default 7.2921159e-5.
+
+Key Methods
+    compute_meanmotion(a)                     -> n (rad/s)
+    compute_precession_Omega_RAAN(i,a,e)      -> Ω̇ (rad/s)
+    compute_precession_omega_argperiapsis(i,a,e) -> ω̇ (rad/s)
+    compute_precession_M(i,a,e)               -> Ṁ (rad/s)
+    target_function(a,i,e,No,Nd)              -> residual for RGT condition
+    solve_for_semi_major_axis(i,e,No,Nd, ...) -> (a_km, converged_bool, iterations)
+    find_a_for_ratio_at_inclination(i_deg,e,ratio, ...) -> (altitude_km, a_km or None)
+    plot_rgt_vs_inclinations(ratios, ...)     -> saves altitude vs inclination curves
+    validate_solution(a,i,e,No,Nd)            -> prints diagnostic check of closure
+
+RGT Condition Implemented
+    (Ṁ + ω̇) / (Ω_E - Ω̇) ≈ No / Nd
+    where Ω_E is Earth's rotation rate.
+
+Typical Use
+-----------
+from reconfig_phasing_RGT import PhasingRGT
+ph = PhasingRGT()
+alt_km, a_km = ph.find_a_for_ratio_at_inclination(i_deg=51.6, e=0.0, ratio=15.0)
+print(f"Target altitude ≈ {alt_km:.1f} km (a = {a_km:.1f} km)")
+
+Outputs
+    Altitude (km)  : a - Rearth
+    Semi-major axis: solution a (km)
+    Convergence meta: iterations + boolean (from solver)
+
+Module-Level Convenience Functions
+    compute_meanmotion, compute_precession_* wrappers use a default singleton instance.
+
+Author
+Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
 """
 
 import numpy as np

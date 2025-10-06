@@ -1,17 +1,29 @@
-# -*- coding: utf-8 -*-
-"""
-Analytic J2 phasing with wait + Hohmann-to-drift + drift + Hohmann-to-ROM.
+"""Analytic J2 Reconfiguration Planner (single-core)
 
-- Propagates secular J2 for Ω, ω, M across each segment (GOM wait, T1, drift, T2)
-- Uses mean longitude ℓ = Ω + ω + M so circular segments are handled cleanly
-- Enforces final-pass geometry exactly:
-    latitude:  sin φ_t = sin i * sin u_f  (two branches: asc/desc)
-    longitude: Ω_f + atan2(cos i sin u_f, cos u_f) - θ_G(tf) = λ_t + 2π k
-- Solves for T_wait and T_d (drift time) per branch and wrap integers (m,k)
-- Includes the finite durations of both Hohmann halves (T1 and T2)
-- Reports final ROM elements at tf (circular: ω=0, M = u_f mod 2π)
+Phases: GOM wait → Hohmann (T1) → Drift → Hohmann (T2) → ROM pass.
+Closed-form secular J2 propagation (Ω, ω, M) per segment; uses mean longitude
+ℓ = Ω + ω + M for clean handling of circular portions. Enforces final pass
+latitude and longitude simultaneously by solving for (T_wait, T_d) across
+ascending & descending branches and wrap integers (m,k) with finite transfer
+durations included.
 
-No external deps beyond Python stdlib.
+Core Inputs (AnalyticRaanPhasingPlanner)
+    gom (Orbit), rom_a_km, delta_a_km, epoch_gom (UTC), target_lat_geod_deg, target_lon_deg,
+    max_wrap (legacy bounding), drift_time_cap_days (search cap)
+
+Output Dict (success path)
+    T_wait, T1, T_d, T2, total_time_s, branch, m_u_wrap, k_lon_wrap,
+    lon_err_deg, Omega_f_rad, u_f_rad, final_orbit, selection_meta
+
+Helper Exports
+    build_maneuver_sequence_for_visualizer(...)  -> plotting package
+    compute_reconfig_times_vs_delta_a(...)       -> Δa sweep timing arrays
+    print_solution_summary(sol)                  -> human readable summary
+
+See reconfig_driftANDwaitTime_multicore.py for multiprocessing variant.
+
+Author
+Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
 """
 from __future__ import annotations
 from dataclasses import dataclass

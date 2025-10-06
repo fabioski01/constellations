@@ -1,19 +1,48 @@
-# -*- coding: utf-8 -*-
-"""
-Plotting utilities for the analytic reconfiguration planner.
+"""Reconfiguration Plotting Utilities
 
-This module depends on your solver module `reconfig_driftANDwaitTime` and
-now lives separately so you can delete plot code from the solver.
+Generates analytical reconfiguration performance figures using the J2 planner
+(single or multicore). Central entry point: run_reconfig_plots(...).
 
-Provided plots (enable via flags in run_reconfig_plots):
-  1) Reconfig time vs Δa (case study)
-  2) Reconfig time vs tolerance (case study)
-  3) Reconfig time vs Δa averaged across a target grid
-  4) Reconfig time vs tolerance averaged across a target grid
-  5) Heatmaps over the world (within a latitude band) for total / wait / drift
-     at a fixed (Δa, tolerance), with the first hour of the GOM ground track overlaid.
+Provided Plot Types (toggle via PlotFlags)
+    times_vs_delta_a      : Case study Δa sweep (total / wait / drift vs Δa)
+    times_vs_tolerance    : Case study tolerance sweep
+    avg_vs_delta_a        : Same Δa sweep averaged over latitude/longitude grid
+    avg_vs_tolerance      : Same tolerance sweep averaged over grid
+    heatmap               : Global (band-limited) heatmaps for total / wait / drift at fixed (Δa, tol)
+    iso_time_contours     : Iso-total-time contour overlay (optional with heatmap)
 
-Author: you :)
+Core Function: run_reconfig_plots Arguments (quick reference)
+    gom (Orbit)                 : Initial orbit (circular) object
+    rom_a_km (float)            : Final ROM semi-major axis (km)
+    epoch (datetime UTC)        : Scenario start epoch
+    target_name (str)           : Label prefix for case-study outputs
+    target_lat_geod_deg (float) : Case-study target latitude (deg)
+    target_lon_deg (float)      : Case-study target longitude (deg)
+    flags (PlotFlags)           : Enables selected plot families (see above)
+    delta_min_km / delta_max_km / delta_step_km : Range for Δa sweep
+    delta_a_fixed_km (float)    : Δa used when sweeping tolerance or making heatmaps
+    tolerances_deg (list[float]): Tolerance ladder for sweeps / heatmaps
+    inclination_deg (float)     : Constellation inclination (deg) (used for grid band cap)
+    lat_band_deg (float)        : Half-width of latitude band for averaging / heatmaps (< inclination)
+    n_lat (int)                 : Number of latitude samples for grid averaging/heatmap
+    n_lon (int)                 : Number of longitude samples ([-180,180))
+    max_wrap (int)              : Pass to planner (legacy constraint / safety bound)
+    drift_time_cap_days (float) : Planner drift-time cap
+    jitter_* (optional)         : Parameters for jitter / sensitivity diagnostics (if implemented)
+    iso_levels_hours (list[float]): Contour levels (hours) for iso-time map
+    verbose (bool)              : Print progress
+    output_dir (str)            : Root directory for saving figures (default 'results')
+
+Important Outputs
+    Figures saved under results/reconfig/<target_name>/ or results/reconfig/avg/ etc.
+    Filenames encode target, Δa range or tolerance, and flags.
+
+Parallelism
+    Uses multicore solver if import succeeds; otherwise falls back to single-core.
+    External parallel control (RECONFIG_N_JOBS, etc.) handled by the solver module.
+
+Author
+Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
 """
 
 from __future__ import annotations

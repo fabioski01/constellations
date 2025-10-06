@@ -1,3 +1,47 @@
+"""Constellation Analysis & Visualization Driver
+
+Purpose
+    Unified script to configure a constellation scenario (Walker / Flower / custom),
+    propagate satellite states (SGP4), compute coverage & visibility metrics, and
+    generate multiple plot/animation products controlled by top-level flags.
+
+Quick Start
+    1. Set orbital_parameters and num_satellites_list.
+    2. Choose pattern (standard Walker / Flower via FLOWER_CONSTELLATIONS or custom).
+    3. Toggle desired PLOT_/COMPUTE_ flags below.
+    4. Run: python main.py (figures & data written under ./plots or ./results subfolders).
+
+Primary Switch Groups (set True/False)
+    PLOT_GROUND_TRACKS              : Ground track map (PlateCarree)
+    PLOT_INERTIAL_GROUND_TRACKS     : Inertial projection ground tracks
+    PLOT_INERTIAL_3D / PLOT_ECEF_3D : 3D orbit plots (inertial / Earth-fixed)
+    ANIMATE_CONSTELLATION           : Requires PLOT_ECEF_3D; produces mp4 animation
+    COMPUTE_GLOBAL_COVERAGE         : Global coverage (uses masking_angles, fovs)
+    COMPUTE_REGIONAL_COVERAGE       : Regional coverage for regions_to_analyze
+    PLOT_COVERAGE                   : Coverage footprint plot(s)
+    COMPUTE_VISIBILITY              : Link geometry to ground station (gs)
+    PLOT_VISIBILITY / PLOT_DATA_COMPARISON / PLOT_PATTERN_VISIBILITY_COMPARISON
+                                                                     : Post-processing of visibility results
+
+Key User Inputs
+    num_satellites_list   : List of T values (satellite counts) to iterate over.
+    orbital_parameters    : Dict (a, e, inclination, RAAN, argument_of_periapsis, true_anomaly, ndot, nddot, bstar).
+    FLOWER_CONSTELLATIONS : Library of predefined Flower pattern parameter sets (select one to override base parameters).
+    regions_to_analyze    : Regional coverage catalogs (see utilities_coverage for definitions).
+    masking_angles (deg)  : Elevation mask(s) for coverage (>= reduces coverage area).
+    fovs (deg)            : Sensor field-of-view assumptions.
+    gs                    : Ground station key (visibility calculations).
+
+Time Span Controls
+    n_periods_* variables scale propagation length per analysis type (e.g., n_periods_global_coverage).
+
+Outputs
+    ./plots/...           : Figures (ground tracks, coverage maps, animations).
+
+Author
+Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
+"""
+
 from utilities import CoordinateConversion, orbiter, TimeConversion
 from utilities_constellations import Constellation, create_label_from_satrec
 from utilities_coverage import Coverage, get_ground_station_coordinates, get_available_regions

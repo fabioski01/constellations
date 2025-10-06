@@ -1,123 +1,103 @@
-# Satellite Constellation Modeling, Analysis, and Optimization Framework
-High-level constellation design and optimization
+# Satellite Constellation Modeling, Analysis & Reconfiguration Framework
 
-## Overview
+High-level design, performance evaluation, cost / science multi‑objective optimization, and reconfiguration analytics for constellations (Walker / Flower / variants) with J2 phasing.
 
-This codebase provides comprehensive tools for designing, analyzing, and optimizing satellite constellations for various space missions. It features robust simulation capabilities for evaluating coverage, visibility patterns, and performance metrics across different constellation architectures, with particular focus on Walker-Delta patterns.
+---
+## Table of Contents
+1. Purpose & Scope
+2. End‑to‑End Workflow (Recommended Procedure)
+3. Script Catalogue (14 Python files)
+4. Typical Outputs & Directory Structure
+5. Installation & Quick Start
+6. Minimal Usage Examples
+7. Author & License
 
-## Key Components
+---
+## 1. Purpose & Scope
+This repository (~13.5k lines, 14 Python modules) provides a modular toolkit to: (a) generate constellation layouts, (b) quantify coverage / visibility / cost / science metrics, (c) optimize architectures (Pareto front), and (d) analyze & visualize time, ΔV, and geometry for single-satellite reconfiguration to regional (RGT) or global orbits.
 
-### 1. Constellation Generation (utilities_constellations.py)
-- Creates various constellation types including Walker-Delta patterns
-- Supports multiple satellite distribution strategies
-- Integrates with SGP4 propagator for fast orbits
+---
+## 2. End‑to‑End Workflow (Recommended Procedure)
+Step 1 – Architecture Exploration: Run `multi_objective_optimizer.py` to obtain a Pareto front (cost vs performance weights). Exported CSV contains orbital & pattern parameters of optimal candidates.
 
-### 2. Coverage Analysis (utilities_coverage.py)
-- Calculates ground station visibility and access times
-- Determines regional and global coverage metrics
-- Evaluates field-of-view and elevation angle constraints
-- Simulates coverage footprints with configurable parameters
+Step 2 – Post Processing: Use `csv_postprocess.py` on the produced CSV(s) to generate comparative plots (cost vs altitude, performance vs inclination, trade studies) and summary statistics.
 
-### 3. Constellation Optimization (utilities_optimization.py)
-- Multi-objective optimization of the initial conditions of the constellation for trade-off of:
-  - Coverage (local, regional, global)
-  - Cost factors (satellite manufacturing, launch, operations)
-  - Science requirements (altitude, inclination preferences, other mission requirements)
-- User can select algorithms for parameter optimization
-- Provides component score breakdowns and visualizations
+Step 3 – Detailed Coverage & Visibility: Select one (or a few) candidate architectures from the Pareto front and run `main.py` to produce ground tracks, 3D orbit views, coverage maps (global/regional), visibility time series and animations.
 
-### 4. Coordinate Transformations (utilities.py)
-- Conversions between coordinate systems (ECI, ECEF, geodetic)
-- Time transformations and orbit propagation utilities
-- Keplerian to Cartesian conversions and vice versa
+Step 4 – RGT / Regional Orbit Tuning: If a repeat ground track (RGT) regional mode is desired, use `reconfig_phasing_RGT.py` to identify altitude / semi-major axis satisfying a specified repeat ratio for the given inclination.
 
-### 5. Main Application (main.py)
-- Performs comparative analysis across multiple constellation configurations
-- Visualizes ground tracks, coverage areas, and visibility metrics
-- Generates comprehensive performance comparison plots
+Step 5 – Reconfiguration Analysis (Parametric): With global (GOM) and selected regional (ROM / RGT) orbits defined, use `reconfig_plotter.py` to sweep Δa and tolerance parameters and produce timing & minimum ΔV style figures (wait, drift, total times; averaged heatmaps; iso-time contours) to choose an operational Δa (e.g., 50 km) and tolerance strategy.
 
-## Usage Examples
+Step 6 – Maneuver Sequence Visualization: Use `reconfig_maneuver_visualizer.py` to render ground track evolution for a specific reconfiguration (GOM wait → Hohmann 1 → drift → Hohmann 2 → target pass) across multiple ground targets.
 
-### Constellation Coverage Analysis
+Iterate: Adjust weights, architectural parameters, or Δa / tolerance and repeat steps as needed.
 
-```python
-# Create a Walker-Delta constellation
-const = Constellation(60, orbital_parameters, epoch, "Walker-Delta", P=5, F=1)
+---
+## 3. Script Catalogue
+Below each module is listed with a concise role and typical invocation context.
 
-# Generate positions over time
-result = const.generate_positions_with_time(start_time, end_time, step)
+| File | Purpose (Short) | Typical User Action |
+|------|-----------------|---------------------|
+| `multi_objective_optimizer.py` | High-level multi-objective (cost / coverage / science) optimizer. Produces Pareto CSV + plots. | Edit weights & limits, run to generate new Pareto set. |
+| `csv_postprocess.py` | Post-processing & visualization of Pareto CSV (cost vs performance, altitude/inclination trade-offs, correlation). | Provide CSV path, run to produce `postprocessing/` figures. |
+| `main.py` | Comprehensive analysis & visualization driver (ground tracks, coverage, visibility, animations). | Set flags & constellation parameters; run for diagnostics & figures. |
+| `utilities_constellations.py` | Constellation object: builds Walker / Flower patterns (SGP4-based propagation). | Imported by higher-level scripts. |
+| `utilities_coverage.py` | Grid-based global/regional coverage & visibility utilities + region & ground station lookups. | Imported; rarely run standalone. |
+| `utilities_optimization.py` | Foundational (earlier) optimization utilities (weights & scoring components). | Internal support / legacy reference. |
+| `utilities.py` | Core coordinate & time conversions; orbital element transforms; basic propagators; perturbations. | Imported widely. |
+| `reconfig_plotter.py` | Parametric reconfiguration timing & Δa/tolerance sweeps; heatmaps / iso-time plots; auto-selects multicore planner. | Provide GOM & ROM parameters; choose sweeps; run for `results/reconfig/` figures. |
+| `reconfig_driftANDwaitTime_multicore.py` | J2 analytic reconfiguration planner (multicore); solves for wait & drift times across wrap branches. | Imported by plotter / visualizer; not typically executed directly. |
+| `reconfig_driftANDwaitTime.py` | Single-core variant (fallback) of the analytic planner. | Automatic fallback if multicore import fails. |
+| `reconfig_maneuver_visualizer.py` | Builds maneuver phase orbital segments & ground track PNGs for a specific reconfiguration scenario. | Edit scenario block or call programmatically; produces `plots/reconfig_groundtracks/`. |
+| `reconfig_phasing_RGT.py` | Repeat Ground Track (RGT) altitude solver under J2 (semi-major axis for No/Nd ratio). | Use to determine ROM altitude satisfying repeat ratio. |
+| `revisit.py` | Simplified analytic revisit-time estimation (coverage geometry approximations). | Run interactively for quick early analysis. |
+| `constants.py` | Physical / economic constants (μ, R⊕, J2, inflation factors, etc.). | Internal. |
 
-# Analyze visibility from ground station
-visibility_data = compute_visibility(result["positions"], result["time_stamps"], 
-                                   gs_coordinates, elevation_threshold=10.0)
+---
+### Cross-Module Data Flow (Conceptual)
+Optimizer → (select candidate) → Main (detailed coverage) → RGT (derive regional orbit) → Reconfig Plotter (Δa/tolerance trade) → Maneuver Visualizer (sequence depiction).
+
+---
+## 4. Typical Outputs & Directory Structure
+```
+results/                  # Aggregated analysis outputs
+  walker-delta/           # Example constellation comparison outputs
+  reconfig/               # Reconfiguration timing / heatmaps
+plots/                    # General plotting products
+  ground_tracks/          # Ground track figures
+  coverage/               # Coverage maps
+  animations/             # MP4 animations
+postprocessing/           # CSV post-processing figures (cost/performance trade-offs)
+hpc_downloads/            # (Optional) HPC-produced optimization results or plots
 ```
 
-### Constellation Optimization
+---
+## 5. Installation & Quick Start
+1. Clone repository.
+2. Create Python >=3.10 environment (recommended).
+3. Install core dependencies:
+    ```bash
+    pip install numpy scipy matplotlib cartopy sgp4 pandas seaborn tqdm
+    ```
+4. (Optional) For optimization extras: `pip install pymoo` (if used in `multi_objective_optimizer.py`).
+5. Run optimizer example:
+    ```bash
+    python multi_objective_optimizer.py
+    ```
+6. Post-process a generated CSV:
+    ```bash
+    python csv_postprocess.py path/to/pareto_solutions.csv
+    ```
 
-```python
-# Configure optimizer for regional coverage
-optimizer = ConstellationOptimizer(
-    pattern_type="Walker-Delta",
-    regional_weight=0.6,     # Emphasize regional coverage
-    global_weight=0.2,       # Some global coverage
-    local_weight=0.2,        # Ground station visibility
-    satellite_cost_weight=0.4,
-    operational_cost_weight=0.3,
-    launch_cost_weight=0.3,
-)
+Cartopy may require PROJ / GEOS system libraries (on Windows, wheels usually bundle them; on Linux use system package manager if needed).
 
-# Run optimization
-params = optimizer.optimize(max_iter=150, popsize=15)
+## 6. Minimal Usage Examples
+Refer to examples in each script. Most should be ready to run without changes. Some have flags
+to active functionalities, such as plots.
 
-# Analyze component scores
-optimizer.analyze_component_scores(plot=True)
-```
+---
 
-### Comparative Pattern Analysis
+## 7. Author & License
+Author: Fabio Meloni – TU Delft MSc Student – NASA Jet Propulsion Laboratory Visiting Researcher
 
-```python
-# Define patterns to compare
-pattern_list = [
-    ("Walker-Delta", {"P": 5, "F": 1}),
-    ("Walker-Delta", {"P": 6, "F": 1}),
-    ("Walker-Delta-SinglePlane", {})
-]
-
-# Run comparison with varying satellite counts
-for pattern in pattern_list:
-    for num_satellites in range(1, 101):
-        # Analyze and store visibility metrics
-```
-
-## Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```
-   pip install numpy matplotlib scipy cartopy sgp4
-   ```
-
-## Key Features
-
-- **Multiple Constellation Patterns**: Walker-Delta, Single Plane, Custom distributions
-- **Fast/Precise Orbit Propagation**: SGP4 integration for fast medium-fidelity orbit modeling, custom propagator and disturbances for high-fidelity
-- **Comprehensive Metrics**: Coverage, revisit time, visibility duration, overlap
-- **Advanced Visualization**: Ground tracks, coverage maps, time-series analysis
-- **Multi-Objective Optimization**: Balanced design for multiple mission requirements (work in progress)
-- **Cost Modeling**: Satellite manufacturing, launch, and operational cost estimates (work in progress)
-
-## Dependencies
-
-- NumPy: Numerical operations and array handling
-- SciPy: Optimization algorithms
-- Matplotlib: Plotting and visualization
-- Cartopy: Geographical plotting
-- SGP4: Satellite orbit propagation
-
-## License
-
-This project is proprietary research code developed for satellite constellation analysis.
-
-## Author
-
-Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
+License: Not for public distribution.

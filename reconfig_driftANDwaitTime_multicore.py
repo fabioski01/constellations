@@ -1,17 +1,42 @@
-# -*- coding: utf-8 -*-
-"""
-Analytic J2 phasing with wait + Hohmann-to-drift + drift + Hohmann-to-ROM.
+"""Analytic J2 Reconfiguration Planner (multicore version)
 
-- Propagates secular J2 for Ω, ω, M across each segment (GOM wait, T1, drift, T2)
-- Uses mean longitude ℓ = Ω + ω + M so circular segments are handled cleanly
-- Enforces final-pass geometry exactly:
-    latitude:  sin φ_t = sin i * sin u_f  (two branches: asc/desc)
-    longitude: Ω_f + atan2(cos i sin u_f, cos u_f) - θ_G(tf) = λ_t + 2π k
-- Solves for T_wait and T_d (drift time) per branch and wrap integers (m,k)
-- Includes the finite durations of both Hohmann halves (T1 and T2)
-- Reports final ROM elements at tf (circular: ω=0, M = u_f mod 2π)
+Phases: GOM wait -> Hohmann (T1) -> Drift -> Hohmann (T2) -> ROM pass over target.
+Solves closed-form secular J2 phasing for required final overflight latitude / longitude
+by scanning wrap integers (m,k) and solving for (T_wait, T_drift) with finite transfer
+durations included.
 
-No external deps beyond Python stdlib.
+What This File Adds vs single-core version
+    - Shared / reuseable ProcessPoolExecutor for per-m candidate solves
+    - n_jobs auto detection (env RECONFIG_N_JOBS or cpu_count)
+    - Optional start method control (env RECONFIG_MP_START)
+    - Thread caps set for BLAS libs (OMP/MKL/OPENBLAS/NUMEXPR)
+    - One-time diagnostic print of core usage + affinity
+
+Core Inputs (AnalyticRaanPhasingPlanner)
+    gom (Orbit)                 : initial circular orbit
+    rom_a_km                    : final (ROM) semi-major axis
+    delta_a_km                  : drift orbit SMA offset (a_G + Δa = a_D)
+    epoch_gom (datetime UTC)    : start epoch
+    target_lat_geod_deg / lon   : desired ground pass (deg)
+    max_wrap                    : bounds integer search if fallback used (mostly unused now)
+    drift_time_cap_days         : cap on drift time to trim search
+
+High-Level Solve Output (dict)
+    success, branch (ascending/descending), T_wait, T1, T_d, T2, total_time_s
+    lon_err_deg, m_u_wrap, k_lon_wrap, Omega_f_rad, u_f_rad
+    final_orbit / final_orbit_deg, selection_meta (diagnostics)
+
+Helper Functions Exposed
+    build_maneuver_sequence_for_visualizer(...) -> package for plotting (maneuver visualizer)
+    compute_reconfig_times_vs_delta_a(...)      -> sweep Δa producing time arrays
+    print_solution_summary(sol)                 -> concise human summary
+
+Parallel Use
+    When imported, create one ProcessPoolExecutor (outside hot loop) and pass
+    into higher-level sweep logic (see multi-core integration code) to amortize spawn cost.
+
+Author
+Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
 """
 from __future__ import annotations
 from dataclasses import dataclass
