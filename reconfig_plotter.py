@@ -1481,8 +1481,8 @@ def run_reconfig_plots(
     # -----------------------------------------
     inclination_deg: Optional[float] = None,    # defaults to gom.i_rad
     lat_band_deg: Optional[float] = None,       # default derived from inc
-    n_lat: int = 10,                            # targets across latitude band
-    n_lon: int = 36,                            # targets across full longitude
+    n_lat: int = 11,                            # targets across latitude band
+    n_lon: int = 360,                            # targets across full longitude
 
     # -------------- diagnostics knobs --------------
     # Pareto time vs ΔV
