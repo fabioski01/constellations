@@ -25,6 +25,7 @@ import constants
 import numpy as np
 import os
 from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 # import matplotlib.pyplot as plt
 # from matplotlib.ticker import MultipleLocator, AutoMinorLocator
 
@@ -208,6 +209,8 @@ class AnalyticRaanPhasingPlanner:
         max_wrap: int = 50,
         drift_time_cap_days: float = 30.0,
         n_jobs: Optional[int] = None,
+        executor: Optional[ProcessPoolExecutor] = None,
+        mp_start: Optional[str] = None,
     ):
         self.gom = gom
         self.rom_a = rom_a_km
@@ -233,16 +236,38 @@ class AnalyticRaanPhasingPlanner:
             self.n_jobs = int(max(1, min(requested, cpu_max)))
         # Info flag to avoid repeating prints during branch solves
         self._printed_cores: bool = False
+        # Optional shared executor and start method
+        self._executor: Optional[ProcessPoolExecutor] = executor
+        self._mp_start = (
+            mp_start or os.getenv("RECONFIG_MP_START") or ("spawn" if os.name == "nt" else "fork")
+        )
+
+        # Reduce risk of oversubscription inside workers
+        os.environ.setdefault("OMP_NUM_THREADS", "1")
+        os.environ.setdefault("MKL_NUM_THREADS", "1")
+        os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+        os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
         # Announce configured core usage once per process
         global _PRINTED_CORE_CONFIG
         if not _PRINTED_CORE_CONFIG:
             try:
+                try:
+                    aff = os.sched_getaffinity(0)
+                    aff_count = len(aff)
+                except Exception:
+                    aff = None
+                    aff_count = os.cpu_count() or 1
                 print(
                     f"[solver] Configured n_jobs={self.n_jobs} "
-                    f"(cpu_max={os.cpu_count()}, requested={requested}, env={env_jobs_val})",
+                    f"(cpu_max={os.cpu_count()}, affinity_count={aff_count}, requested={requested}, env={env_jobs_val}, mp_start={self._mp_start})",
                     flush=True,
                 )
+                if aff is not None:
+                    try:
+                        print(f"[solver] CPU affinity set: {sorted(list(aff))}", flush=True)
+                    except Exception:
+                        pass
             except Exception:
                 pass
             _PRINTED_CORE_CONFIG = True
@@ -394,16 +419,26 @@ class AnalyticRaanPhasingPlanner:
             #     except Exception:
             #         pass
             #     self._printed_cores = True
-            # Fan out per-m solve to processes
-            with ProcessPoolExecutor(max_workers=self.n_jobs) as ex:
-                for chunk in ex.map(_solve_branch_m_task,
-                                    [state]*len(m_list),
-                                    [u_req]*len(m_list),
-                                    [const_u]*len(m_list),
-                                    [branch_name]*len(m_list),
-                                    m_list):
+            # Fan out per-m solve to processes (reuse shared executor when possible)
+            ex = self._executor
+            created_local = False
+            if ex is None:
+                ex = ProcessPoolExecutor(max_workers=self.n_jobs, mp_context=get_context(self._mp_start))
+                created_local = True
+            try:
+                for chunk in ex.map(
+                    _solve_branch_m_task,
+                    [state]*len(m_list),
+                    [u_req]*len(m_list),
+                    [const_u]*len(m_list),
+                    [branch_name]*len(m_list),
+                    m_list,
+                ):
                     if chunk:
                         all_candidates.extend(chunk)
+            finally:
+                if created_local:
+                    ex.shutdown(wait=True)
         else:
             # Sequential evaluation using the same worker
             if not self._printed_cores:
@@ -911,33 +946,57 @@ def compute_reconfig_times_vs_delta_a(
     # Determine progress granularity (~10% of steps)
     progress_step = max(1, len(dAs)//10)
 
-    for idx, dA in enumerate(dAs):
-        if verbose and ((idx % progress_step) == 0 or idx == 0):
-            print(f"[Δa sweep] starting {idx+1}/{len(dAs)}: Δa={dA:g} km", flush=True)
-        # Skip unphysical drift SMA
-        if gom.a_km + dA <= 0.0:
-            continue
-        planner = AnalyticRaanPhasingPlanner(
-            gom=gom,
-            rom_a_km=rom_a_km,
-            delta_a_km=float(dA),
-            epoch_gom=epoch,
-            target_lat_geod_deg=target_lat_geod_deg,
-            target_lon_deg=target_lon_deg,
-            max_wrap=max_wrap,
-            drift_time_cap_days=drift_time_cap_days,
-            n_jobs=n_jobs,
-        )
-        sol = planner.solve_min_time()
-        if sol.get('success'):
-            totals[idx] = sol['total_time_s']
-            waits[idx]  = sol['T_wait']
-            drifts[idx] = sol['T_d']
+    # Resolve worker count and build a shared executor for the sweep
+    cpu_max = os.cpu_count() or 1
+    env_jobs = os.getenv("RECONFIG_N_JOBS")
+    env_jobs_val: Optional[int] = None
+    if env_jobs is not None:
+        try:
+            env_jobs_val = int(env_jobs)
+        except Exception:
+            env_jobs_val = None
+    requested = n_jobs if n_jobs is not None else env_jobs_val
+    use_workers = cpu_max if (requested is None or requested <= 0) else int(max(1, min(requested, cpu_max)))
+    start_method = os.getenv("RECONFIG_MP_START") or ("spawn" if os.name == "nt" else "fork")
+    shared_ex: Optional[ProcessPoolExecutor] = None
+    if use_workers > 1:
         if verbose:
-            # Print every ~10% progress
-            if (idx + 1) % progress_step == 0 or (idx + 1) == len(dAs):
-                pct = 100.0 * (idx + 1) / len(dAs)
-                print(f"[Δa sweep] {idx+1}/{len(dAs)} ({pct:.0f}%)", flush=True)
+            print(f"[Δa sweep] Creating shared pool: workers={use_workers} start={start_method}", flush=True)
+        shared_ex = ProcessPoolExecutor(max_workers=use_workers, mp_context=get_context(start_method))
+
+    try:
+        for idx, dA in enumerate(dAs):
+            if verbose and ((idx % progress_step) == 0 or idx == 0):
+                print(f"[Δa sweep] starting {idx+1}/{len(dAs)}: Δa={dA:g} km", flush=True)
+            # Skip unphysical drift SMA
+            if gom.a_km + dA <= 0.0:
+                continue
+            planner = AnalyticRaanPhasingPlanner(
+                gom=gom,
+                rom_a_km=rom_a_km,
+                delta_a_km=float(dA),
+                epoch_gom=epoch,
+                target_lat_geod_deg=target_lat_geod_deg,
+                target_lon_deg=target_lon_deg,
+                max_wrap=max_wrap,
+                drift_time_cap_days=drift_time_cap_days,
+                n_jobs=use_workers,
+                executor=shared_ex,
+                mp_start=start_method,
+            )
+            sol = planner.solve_min_time()
+            if sol.get('success'):
+                totals[idx] = sol['total_time_s']
+                waits[idx]  = sol['T_wait']
+                drifts[idx] = sol['T_d']
+            if verbose:
+                # Print every ~10% progress
+                if (idx + 1) % progress_step == 0 or (idx + 1) == len(dAs):
+                    pct = 100.0 * (idx + 1) / len(dAs)
+                    print(f"[Δa sweep] {idx+1}/{len(dAs)} ({pct:.0f}%)", flush=True)
+    finally:
+        if shared_ex is not None:
+            shared_ex.shutdown(wait=True)
     if verbose:
         print("[Δa sweep] done.", flush=True)
     return dAs, totals, waits, drifts
@@ -981,14 +1040,14 @@ if __name__ == "__main__":
 
     FLAG_TIMES_VS_DELTA_A = False
     FLAG_TIMES_VS_TOLERANCE = False
-    FLAG_AVG_VS_DELTA_A = True
-    FLAG_AVG_VS_TOLERANCE = True
-    FLAG_HEATMAP = True
+    FLAG_AVG_VS_DELTA_A = False
+    FLAG_AVG_VS_TOLERANCE = False
+    FLAG_HEATMAP = False
 
     # Diagnostics
-    FLAG_PARETO_TIME_VS_DV    = False # works
+    FLAG_PARETO_TIME_VS_DV    = True # works
     FLAG_ISO_TIME_CONTOURS    = False # works, to be detailed and expand with avg
-    FLAG_CHOSEN_VS_TOL        = False # works
+    FLAG_CHOSEN_VS_TOL        = True # works
     FLAG_TOL_SENSITIVITY      = False # doesnt work, type error
     FLAG_TARGET_JITTER        = False # doesnt work, type error
     FLAG_EPOCH_SENSITIVITY    = False # works, need to expand with avg and detail
@@ -996,7 +1055,7 @@ if __name__ == "__main__":
 
 
     # Common knobs
-    max_wrap = 200
+    max_wrap = 300
     drift_time_cap_days = 200.0/24.0  # ~200 hr
     verbose = True
 
