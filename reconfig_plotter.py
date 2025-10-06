@@ -60,7 +60,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, timezone
 
-# pull in your solver & helpers
+# pull in solver & helpers
 # Prefer multicore solver if available, fall back to single-core
 try:
     from reconfig_driftANDwaitTime_multicore import (
@@ -749,7 +749,7 @@ def plot_pareto_time_vs_dv(
     include_wait_components: bool = True,   # <-- new
     mark_frontier: bool = True,             # optional highlight of Pareto front
 ):
-    # --- safe fallbacks for helpers if not already defined in your module ---
+    # --- safe fallbacks for helpers if not already defined in module ---
     try:
         ensure_dir  # type: ignore[name-defined]
     except NameError:
@@ -787,7 +787,7 @@ def plot_pareto_time_vs_dv(
     try:
         solve_once  # type: ignore[name-defined]
     except NameError:
-        # Fall back to your analytic planner if solve_once isn't available
+        # Fall back to analytic planner if solve_once isn't available
         def solve_once(gom, rom_a_km, epoch, tlat, tlon, delta_a_km,
                        drift_time_cap_days, max_wrap, tolerance_deg=0.25):
             planner = AnalyticRaanPhasingPlanner(
@@ -902,7 +902,7 @@ def plot_pareto_time_vs_dv_avg_targets(
     ±lat_band_deg (|lat| ≤ band < inclination). Plot ⟨time⟩ vs Δv (km/s).
 
     Δv is computed per Δa as: Hohmann(GOM→DRIFT=a_G+Δa) + Hohmann(DRIFT→ROM=a_ROM).
-    Times are the averaged totals/waits/drifts from your existing Δa-AVG routine.
+    Times are the averaged totals/waits/drifts from existing Δa-AVG routine.
     """
     ensure_dir(outdir)
 
@@ -961,7 +961,7 @@ def plot_pareto_time_vs_dv_avg_targets(
     ax.grid(True, which='both', alpha=0.32)
     ax.legend(loc='best')
 
-    # Title/subtitle in the same style as your AVG plots
+    # Title/subtitle in the same style as AVG plots
     inc = inclination_deg
     alt_gom = gom.a_km - R_EARTH
     alt_rom = rom_a_km - R_EARTH
@@ -1105,7 +1105,7 @@ def plot_iso_time_contours_avg_targets(
     ax.set_xlabel("Δa (km)")
     ax.set_ylabel("Tolerance (deg)")
 
-    # ----- Title (styled like your avg Δa plot, but richer) -----
+    # ----- Title (styled like avg Δa plot, but richer) -----
     hG = gom.a_km - R_EARTH
     hR = rom_a_km - R_EARTH
     tol_min, tol_max = np.nanmin(T), np.nanmax(T)

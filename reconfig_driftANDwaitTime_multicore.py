@@ -1034,7 +1034,7 @@ if __name__ == "__main__":
     # Import the new plotter module
     from reconfig_plotter import run_reconfig_plots, PlotFlags
     
-    # Example inputs (your sample)
+    # Example inputs (sample)
     epoch = datetime(2025, 5, 5, 12, 0, 0, tzinfo=timezone.utc)
     i_deg = 51.4476847948
 

@@ -67,7 +67,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
 
-# Import from your existing files
+# Import from existing files
 from utilities_constellations import Constellation
 from utilities_coverage import Coverage, get_ground_station_coordinates
 import constants

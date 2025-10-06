@@ -122,7 +122,7 @@ import csv
 import matplotlib.pyplot as plt
 from types import SimpleNamespace
 
-# Reuse your existing optimizer and utilities
+# Reuse existing optimizer and utilities
 from utilities_optimization import ConstellationOptimizer
 from utilities_constellations import Constellation
 import constants
@@ -459,7 +459,7 @@ class ParallelConstellationOptimizationProblem(Problem):
         self.optimizer = optimizer
         self.n_cores = n_cores or mp.cpu_count()
         
-        # Same bounds as your existing problem
+        # Same bounds as existing problem
         if optimizer.pattern_type == "Walker-Delta":
             bounds_lower = [1, 250, 0, 0, 0, 0, 1, 1]
             bounds_upper = [100, 1000, 0, 90, 360, 360, 20, 20]
@@ -665,7 +665,7 @@ def run_multi_objective_optimization(
             print(f"Adjusted population size from {pop_size} to {adjusted_pop_size} for better load balancing")
             pop_size = adjusted_pop_size
     else:
-        # Use your existing single-threaded problem
+        # Use existing single-threaded problem
         problem = ConstellationOptimizationProblem(optimizer)
     
     # Create algorithm (unchanged)

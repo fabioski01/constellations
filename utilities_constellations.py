@@ -363,7 +363,7 @@ class Constellation:
              argument of periapsis `argpo`, true anomaly `f0` (all in degrees → radians)
         3. Compute the mean motion (rev/day) from µ and `a`.
         4. Convert true anomaly `f0` → eccentric anomaly `E` → mean anomaly `mo`.
-        5. Pull in your derivatives `ndot`, `nddot`, and drag coefficient `bstar` (defaulting to 0 if not specified).
+        5. Pull in derivatives `ndot`, `nddot`, and drag coefficient `bstar` (defaulting to 0 if not specified).
         6. Loop over `num_satellites`, optionally phase each one by tweaking
            `nodeo` or `mo`, then call `sat.sgp4init(...)` with:
              - gravity model (`WGS84`)

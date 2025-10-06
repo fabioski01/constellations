@@ -422,7 +422,6 @@ if __name__ == "__main__":
                 #############################################
                 # Plot ground track for this satellite (in loop)
                 print(f"Plotting ground tracks of {num_satellites} satellites...")
-                    # Add this debug code right after the ECI propagation in your main.py:
                 
                 n_periods = n_periods_ground_tracks  # Number of periods to plot
 
