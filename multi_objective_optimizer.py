@@ -952,9 +952,9 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    args.pattern = 'Flower'
-    
-    args.cluster_mode = True  # Add this line
+    args.pattern = 'Flower' # Override default. Can be Walker-Delta or Flower
+
+    args.cluster_mode = True  # To enable cluster-specific optimizations
     args.n_cores = 4  # Optional: specify number of cores
     
     # Or you can override any other parameters

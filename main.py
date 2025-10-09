@@ -64,6 +64,21 @@ import math
 
 import os # to create directories if they do not exist
 
+# Add robust SSL CA setup (works on macOS/brew/venv)
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+except Exception:
+    pass
+# Helper to add basemap without crashing if offline/SSL blocked
+def _safe_basemap(ax):
+    try:
+        ax.stock_img()
+        ax.coastlines()
+    except Exception as e:
+        print(f"[basemap] Skipping basemap (offline/SSL/data not available): {e}")
+
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="This figure includes Axes that are not compatible with tight_layout")
 
@@ -429,8 +444,9 @@ if __name__ == "__main__":
                 idx_max = n_periods * idx_oneperiod  # Index of total number of time steps to plot
 
                 fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
-                ax.stock_img()
-                ax.coastlines()
+                # ax.stock_img()
+                # ax.coastlines()
+                _safe_basemap(ax)
                 ax.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
 
                 PLOT_GROUND_STATION_MARKER = True  # Show ground station location on ground track plots
@@ -554,8 +570,9 @@ if __name__ == "__main__":
                 idx_max = n_periods * idx_oneperiod
 
                 fig, ax = plt.subplots(figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()})
-                ax.stock_img()
-                ax.coastlines()
+                # ax.stock_img()
+                # ax.coastlines()
+                _safe_basemap(ax)
                 ax.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
 
                 for satellite in range(num_satellites):
