@@ -784,7 +784,8 @@ def run_multi_objective_optimization(
                 'RAAN_deg', 'arg_periapsis_deg', 'P_planes', 'F_phasing',
                 'altitude_km', 'semi_major_axis_km',
                 # Actual cost breakdown
-                'NRE_cost_musd', 'RE_cost_musd', 'launch_cost_musd',
+                'NRE_cost_musd', 'sc_nre_musd', 'payload_nre_musd',
+                'RE_cost_musd', 'launch_cost_musd',
                 'payload_tfu_musd', 'sc_tfu_musd', 'learning_rate',
                 # Launch details (NEW)
                 'launch_num_launches', 'launch_num_groups', 'launch_planes_per_group',
@@ -813,7 +814,8 @@ def run_multi_objective_optimization(
                 'RAAN_deg', 'arg_periapsis_deg', 'Np', 'Nd', 'Fn', 'Fd', 'Fh',
                 'altitude_km', 'semi_major_axis_km',
                 # Costs
-                'NRE_cost_musd', 'RE_cost_musd', 'launch_cost_musd',
+                'NRE_cost_musd', 'sc_nre_musd', 'payload_nre_musd',
+                'RE_cost_musd', 'launch_cost_musd',
                 'payload_tfu_musd', 'sc_tfu_musd', 'learning_rate',
                 # Launch details (add same fields as Walker-Delta)
                 'launch_num_launches', 'launch_num_groups', 'launch_planes_per_group',
