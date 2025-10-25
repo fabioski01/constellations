@@ -38,18 +38,23 @@ class CSVPostProcessor:
         csv_filepath : str
             Path to the CSV file containing optimization results
         output_dir : str
-            Directory to save generated plots
+            Base directory to save generated plots (subdirectory will be created)
         """
         self.csv_filepath = csv_filepath
-        self.output_dir = output_dir
         self.data = None
         self.pattern_type = None
         
+        # Create subdirectory based on CSV filename (without extension)
+        csv_filename = Path(csv_filepath).stem  # Get filename without extension
+        self.output_dir = os.path.join(output_dir, csv_filename)
+        
         # Create output directory
-        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(self.output_dir, exist_ok=True)
+        print(f"Output directory: {self.output_dir}")
         
         # Load and process data
         self.load_data()
+        self.detect_pattern_type()
         self.detect_pattern_type()
         
     def load_data(self):
@@ -137,6 +142,7 @@ class CSVPostProcessor:
         # 3. Cost breakdown analysis
         self.plot_cost_breakdown()
         self.plot_cost_components_vs_satellites()
+        self.plot_nre_re_breakdown()
         
         # 4. Performance component analysis
         self.plot_performance_breakdown()
@@ -155,6 +161,18 @@ class CSVPostProcessor:
         
         # 7. Summary statistics
         self.generate_summary_statistics()
+
+        # 8. Launch and deployment analysis (NEW)
+        print("Generating launch deployment analysis...")
+        self.plot_launch_deployment_analysis()
+        
+        # 9. Launch efficiency analysis (NEW)
+        print("Generating launch efficiency analysis...")
+        self.plot_launch_efficiency()
+        
+        # 10. Deployment constraints analysis (NEW)
+        print("Generating deployment constraints analysis...")
+        self.plot_deployment_constraints()
         
         print(f"\nAll plots saved to: {self.output_dir}/")
         
@@ -1050,6 +1068,433 @@ class CSVPostProcessor:
         
         print(f"Summary statistics saved to: {summary_file}")
 
+    def plot_launch_deployment_analysis(self):
+        """Plot launch and deployment-specific analysis."""
+        plt.figure(figsize=(16, 12))
+        
+        # 1. Deployment delta-V vs number of satellites
+        plt.subplot(3, 3, 1)
+        scatter = plt.scatter(self.data['num_satellites'], self.data['launch_dv_used_m_s'], 
+                            c=self.data['launch_num_launches'], s=50, alpha=0.7, 
+                            cmap='viridis', edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter, label='Number of Launches')
+        plt.xlabel('Number of Satellites')
+        plt.ylabel('Deployment ΔV Used (m/s)')
+        plt.title('Deployment ΔV vs Satellites\n(colored by number of launches)')
+        plt.grid(True, alpha=0.3)
+        
+        # 2. Deployment time vs number of satellites
+        plt.subplot(3, 3, 2)
+        scatter = plt.scatter(self.data['num_satellites'], self.data['launch_T_used_days'], 
+                            c=self.data['P_planes'], s=50, alpha=0.7, 
+                            cmap='plasma', edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter, label='Number of Planes')
+        plt.xlabel('Number of Satellites')
+        plt.ylabel('Deployment Time (days)')
+        plt.title('Deployment Time vs Satellites\n(colored by number of planes)')
+        plt.grid(True, alpha=0.3)
+        
+        # 3. Number of launches vs number of planes
+        plt.subplot(3, 3, 3)
+        scatter = plt.scatter(self.data['P_planes'], self.data['launch_num_launches'], 
+                            c=self.data['num_satellites'], s=60, alpha=0.7, 
+                            cmap='coolwarm', edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter, label='Number of Satellites')
+        plt.xlabel('Number of Planes (P)')
+        plt.ylabel('Number of Launches')
+        plt.title('Launches vs Planes\n(colored by satellites)')
+        plt.grid(True, alpha=0.3)
+        
+        # 4. Launch cost vs deployment delta-V
+        plt.subplot(3, 3, 4)
+        plt.scatter(self.data['launch_dv_used_m_s'], self.data['launch_cost_musd'], 
+                   alpha=0.6, s=40, color='red', edgecolors='black', linewidth=0.3)
+        plt.xlabel('Deployment ΔV Used (m/s)')
+        plt.ylabel('Launch Cost (M$)')
+        plt.title('Launch Cost vs Deployment ΔV')
+        plt.grid(True, alpha=0.3)
+        
+        # Add correlation
+        if len(self.data) > 1:
+            corr, _ = pearsonr(self.data['launch_dv_used_m_s'], self.data['launch_cost_musd'])
+            plt.text(0.05, 0.95, f'r = {corr:.3f}', transform=plt.gca().transAxes,
+                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # 5. Planes per launch group distribution
+        plt.subplot(3, 3, 5)
+        plt.hist(self.data['launch_planes_per_group'], bins=range(1, int(self.data['launch_planes_per_group'].max())+2), 
+                alpha=0.7, color='green', edgecolor='black')
+        plt.xlabel('Planes per Launch Group')
+        plt.ylabel('Frequency')
+        plt.title('Distribution of Planes per Launch Group')
+        plt.grid(True, alpha=0.3)
+        
+        # 6. Delta RAAN analysis
+        plt.subplot(3, 3, 6)
+        plt.scatter(self.data['launch_delta_raan_deployment_deg'], 
+                   self.data['launch_delta_raan_required_deg'], 
+                   alpha=0.6, s=40, color='purple', edgecolors='black', linewidth=0.3)
+        plt.plot([0, self.data['launch_delta_raan_required_deg'].max()], 
+                [0, self.data['launch_delta_raan_required_deg'].max()], 
+                'r--', label='Required = Deployment', linewidth=2)
+        plt.xlabel('Deployment RAAN Spacing (deg)')
+        plt.ylabel('Required RAAN Spacing (deg)')
+        plt.title('RAAN Spacing: Deployment vs Required')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        # 7. Launch vehicle combo frequency
+        plt.subplot(3, 3, 7)
+        # Extract primary vehicle from combo string
+        self.data['primary_vehicle'] = self.data['launch_vehicle_combo'].apply(
+            lambda x: x.split('x')[0].split(':')[1].strip() if isinstance(x, str) else 'Unknown'
+        )
+        vehicle_counts = self.data['primary_vehicle'].value_counts()
+        vehicle_counts.plot(kind='bar', color='orange', alpha=0.7, edgecolor='black')
+        plt.xlabel('Primary Launch Vehicle')
+        plt.ylabel('Frequency')
+        plt.title('Primary Launch Vehicle Usage')
+        plt.xticks(rotation=45)
+        plt.grid(True, alpha=0.3)
+        
+        # 8. Deployment parameter: dv vs time trade-off
+        plt.subplot(3, 3, 8)
+        scatter = plt.scatter(self.data['launch_param_dv_deployment_m_s'], 
+                            self.data['launch_param_T_deployment_days'], 
+                            c=self.data['launch_cost_musd'], s=60, alpha=0.7, 
+                            cmap='viridis', edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter, label='Launch Cost (M$)')
+        plt.xlabel('Deployment ΔV Parameter (m/s)')
+        plt.ylabel('Deployment Time Parameter (days)')
+        plt.title('Deployment Parameters\n(colored by launch cost)')
+        plt.grid(True, alpha=0.3)
+        
+        # 9. Altitude gaps in deployment
+        plt.subplot(3, 3, 9)
+        scatter = plt.scatter(self.data['launch_delta_a_km'], self.data['launch_dv_used_m_s'], 
+                            c=self.data['num_satellites'], s=50, alpha=0.7, 
+                            cmap='plasma', edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter, label='Number of Satellites')
+        plt.xlabel('Altitude Gap (Δa, km)')
+        plt.ylabel('Deployment ΔV Used (m/s)')
+        plt.title('Altitude Gap vs Deployment ΔV\n(colored by satellites)')
+        plt.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(f"{self.output_dir}/launch_deployment_analysis.png", dpi=300, bbox_inches='tight')
+        plt.close()
+        
+    def plot_launch_efficiency(self):
+        """Plot launch efficiency metrics."""
+        plt.figure(figsize=(14, 10))
+        
+        # Calculate efficiency metrics
+        self.data['sats_per_launch'] = self.data['num_satellites'] / self.data['launch_num_launches']
+        self.data['cost_per_launch'] = self.data['launch_cost_musd'] / self.data['launch_num_launches']
+        
+        # 1. Satellites per launch vs total satellites
+        plt.subplot(2, 3, 1)
+        scatter = plt.scatter(self.data['num_satellites'], self.data['sats_per_launch'], 
+                            c=self.data['launch_num_launches'], s=50, alpha=0.7, 
+                            cmap='viridis', edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter, label='Number of Launches')
+        plt.xlabel('Total Number of Satellites')
+        plt.ylabel('Satellites per Launch')
+        plt.title('Launch Efficiency: Satellites per Launch')
+        plt.grid(True, alpha=0.3)
+        
+        # 2. Cost per launch distribution
+        plt.subplot(2, 3, 2)
+        plt.hist(self.data['cost_per_launch'], bins=20, alpha=0.7, color='green', edgecolor='black')
+        plt.xlabel('Cost per Launch (M$)')
+        plt.ylabel('Frequency')
+        plt.title('Distribution of Cost per Launch')
+        plt.grid(True, alpha=0.3)
+        
+        # 3. Number of launch groups analysis
+        plt.subplot(2, 3, 3)
+        plt.scatter(self.data['launch_num_groups'], self.data['launch_cost_musd'], 
+                   alpha=0.6, s=40, color='red', edgecolors='black', linewidth=0.3)
+        plt.xlabel('Number of Launch Groups')
+        plt.ylabel('Total Launch Cost (M$)')
+        plt.title('Launch Cost vs Number of Groups')
+        plt.grid(True, alpha=0.3)
+        
+        # 4. Deployment efficiency: ΔV per satellite
+        self.data['dv_per_sat'] = self.data['launch_dv_used_m_s'] / self.data['num_satellites']
+        plt.subplot(2, 3, 4)
+        plt.scatter(self.data['num_satellites'], self.data['dv_per_sat'], 
+                   alpha=0.6, s=40, color='purple', edgecolors='black', linewidth=0.3)
+        plt.xlabel('Number of Satellites')
+        plt.ylabel('ΔV per Satellite (m/s)')
+        plt.title('Deployment ΔV Efficiency')
+        plt.grid(True, alpha=0.3)
+        
+        # 5. Launch vehicle utilization
+        plt.subplot(2, 3, 5)
+        launch_utilization = self.data.groupby('primary_vehicle').agg({
+            'num_satellites': 'sum',
+            'launch_cost_musd': 'sum',
+            'launch_num_launches': 'sum'
+        })
+        launch_utilization['cost_per_sat'] = launch_utilization['launch_cost_musd'] / launch_utilization['num_satellites']
+        
+        if len(launch_utilization) > 0:
+            launch_utilization['cost_per_sat'].plot(kind='bar', color='orange', alpha=0.7, edgecolor='black')
+            plt.xlabel('Launch Vehicle')
+            plt.ylabel('Average Cost per Satellite (M$)')
+            plt.title('Launch Vehicle Cost Efficiency')
+            plt.xticks(rotation=45)
+            plt.grid(True, alpha=0.3)
+        
+        # 6. Launch vs orbit insertion altitude gap
+        plt.subplot(2, 3, 6)
+        plt.scatter(self.data['launch_a_launch_km'] - 6371, 
+                   self.data['launch_a_target_km'] - 6371, 
+                   alpha=0.6, s=40, c=self.data['launch_dv_used_m_s'], 
+                   cmap='plasma', edgecolors='black', linewidth=0.3)
+        plt.colorbar(label='ΔV Used (m/s)')
+        plt.xlabel('Launch Altitude (km)')
+        plt.ylabel('Target Altitude (km)')
+        plt.title('Launch vs Target Altitude\n(colored by ΔV)')
+        plt.plot([200, 1000], [200, 1000], 'r--', linewidth=2, label='Direct Injection')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(f"{self.output_dir}/launch_efficiency.png", dpi=300, bbox_inches='tight')
+        plt.close()
+        
+    def plot_deployment_constraints(self):
+        """Plot deployment constraints and trade-offs."""
+        plt.figure(figsize=(14, 8))
+        
+        # 1. Deployment time vs ΔV budget
+        plt.subplot(2, 3, 1)
+        scatter = plt.scatter(self.data['launch_dv_used_m_s'], self.data['launch_T_used_days'], 
+                            c=self.data['performance'], s=50, alpha=0.7, 
+                            cmap='viridis', edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter, label='Performance')
+        plt.xlabel('Deployment ΔV Used (m/s)')
+        plt.ylabel('Deployment Time (days)')
+        plt.title('Deployment Time vs ΔV\n(colored by performance)')
+        plt.grid(True, alpha=0.3)
+        
+        # 2. Phasing factor vs deployment complexity
+        plt.subplot(2, 3, 2)
+        scatter = plt.scatter(self.data['F_phasing'], self.data['launch_num_launches'], 
+                            c=self.data['P_planes'], s=50, alpha=0.7, 
+                            cmap='plasma', edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter, label='Number of Planes')
+        plt.xlabel('Phasing Factor (F)')
+        plt.ylabel('Number of Launches')
+        plt.title('Phasing vs Launch Complexity')
+        plt.grid(True, alpha=0.3)
+        
+        # 3. Deployment time constraint analysis
+        plt.subplot(2, 3, 3)
+        # Check if deployment time meets target
+        target_time = self.data['launch_param_T_deployment_days'].iloc[0]
+        on_time = self.data['launch_T_used_days'] <= target_time
+        
+        plt.scatter(self.data[on_time]['num_satellites'], 
+                   self.data[on_time]['launch_T_used_days'], 
+                   alpha=0.6, s=40, color='green', label='Within Budget', edgecolors='black', linewidth=0.3)
+        plt.scatter(self.data[~on_time]['num_satellites'], 
+                   self.data[~on_time]['launch_T_used_days'], 
+                   alpha=0.6, s=40, color='red', label='Over Budget', edgecolors='black', linewidth=0.3)
+        plt.axhline(target_time, color='blue', linestyle='--', linewidth=2, label=f'Target: {target_time:.0f} days')
+        plt.xlabel('Number of Satellites')
+        plt.ylabel('Deployment Time (days)')
+        plt.title('Deployment Time Budget Compliance')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        # 4. ΔV constraint analysis
+        plt.subplot(2, 3, 4)
+        target_dv = self.data['launch_param_dv_deployment_m_s'].iloc[0]
+        within_dv = self.data['launch_dv_used_m_s'] <= target_dv
+        
+        plt.scatter(self.data[within_dv]['num_satellites'], 
+                   self.data[within_dv]['launch_dv_used_m_s'], 
+                   alpha=0.6, s=40, color='green', label='Within Budget', edgecolors='black', linewidth=0.3)
+        plt.scatter(self.data[~within_dv]['num_satellites'], 
+                   self.data[~within_dv]['launch_dv_used_m_s'], 
+                   alpha=0.6, s=40, color='red', label='Over Budget', edgecolors='black', linewidth=0.3)
+        plt.axhline(target_dv, color='blue', linestyle='--', linewidth=2, label=f'Target: {target_dv:.0f} m/s')
+        plt.xlabel('Number of Satellites')
+        plt.ylabel('Deployment ΔV Used (m/s)')
+        plt.title('Deployment ΔV Budget Compliance')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        # 5. Multi-launch coordination complexity
+        plt.subplot(2, 3, 5)
+        plt.scatter(self.data['launch_num_groups'], self.data['launch_delta_raan_required_deg'], 
+                   alpha=0.6, s=40, c=self.data['P_planes'], cmap='coolwarm', edgecolors='black', linewidth=0.3)
+        plt.colorbar(label='Number of Planes')
+        plt.xlabel('Number of Launch Groups')
+        plt.ylabel('Required RAAN Spacing (deg)')
+        plt.title('Launch Coordination Complexity')
+        plt.grid(True, alpha=0.3)
+        
+        # 6. Performance vs deployment cost
+        plt.subplot(2, 3, 6)
+        deployment_cost_fraction = self.data['launch_cost_musd'] / self.data['cost_musd']
+        scatter = plt.scatter(self.data['performance'], deployment_cost_fraction, 
+                            c=self.data['num_satellites'], s=50, alpha=0.7, 
+                            cmap='viridis', edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter, label='Number of Satellites')
+        plt.xlabel('Performance')
+        plt.ylabel('Launch Cost Fraction')
+        plt.title('Performance vs Launch Cost Fraction\n(colored by satellites)')
+        plt.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(f"{self.output_dir}/deployment_constraints.png", dpi=300, bbox_inches='tight')
+        plt.close()
+
+    def plot_nre_re_breakdown(self):
+        """
+        Plot NRE and RE cost breakdown by spacecraft and payload.
+        - Excludes launch.
+        - Zooms into low satellite counts (N ≤ 5) with numeric labels.
+        - Supports both legacy TFU split and new combined recurring model.
+        """
+        df = self.data.copy()
+
+        # Helpers
+        def learning_sum(N, b):
+            N = int(N)
+            if N <= 0:
+                return 0.0
+            b = float(np.clip(b if not pd.isna(b) else 0.9, 0.5, 0.99))
+            s = np.log(b) / np.log(2.0)
+            n = np.arange(1, N + 1, dtype=float)
+            return float(np.sum(n ** s))
+
+        def series_or_default(name: str, default: float = 0.0) -> pd.Series:
+            """Return numeric Series for column if present, else a Series filled with default."""
+            if name in df.columns:
+                return pd.to_numeric(df[name], errors='coerce').fillna(default)
+            return pd.Series(default, index=df.index, dtype=float)
+
+        # Extract NRE splits
+        df['sc_nre'] = series_or_default('sc_nre_musd', 0.0)
+        # Payload NRE may be in 'payload_nre_musd' or 'payload_fac_musd' (new model)
+        if 'payload_nre_musd' in df.columns:
+            df['payload_nre'] = series_or_default('payload_nre_musd', 0.0)
+        else:
+            df['payload_nre'] = series_or_default('payload_fac_musd', 0.0)
+
+        # Detect recurring model
+        has_combined_recurring = (
+            ('combined_unit_recurring_musd' in df.columns) or
+            (('sc_tfu_musd' in df.columns) and ('payload_tfu_musd' in df.columns) and
+            series_or_default('sc_tfu_musd', 0.0).eq(0).all() and
+            series_or_default('payload_tfu_musd', 0.0).eq(0).all())
+        )
+
+        # Compute RE splits
+        if (not has_combined_recurring) and ('sc_tfu_musd' in df.columns) and ('payload_tfu_musd' in df.columns):
+            # Legacy: split RE into spacecraft and payload via TFU
+            S = df.apply(lambda r: learning_sum(r['num_satellites'], r.get('learning_rate', 0.9)), axis=1)
+            sc_tfu = series_or_default('sc_tfu_musd', 0.0)
+            pl_tfu = series_or_default('payload_tfu_musd', 0.0)
+            df['sc_re'] = sc_tfu * S.values
+            df['payload_re'] = pl_tfu * S.values
+            df['re_combined'] = pd.Series(np.nan, index=df.index)
+        else:
+            # New model: combined recurring only
+            df['sc_re'] = pd.Series(np.nan, index=df.index)
+            df['payload_re'] = pd.Series(np.nan, index=df.index)
+            df['re_combined'] = series_or_default('RE_cost_musd', 0.0)
+
+        # Total NRE/RE (excluding launch)
+        df['NRE_total'] = df['sc_nre'].fillna(0.0) + df['payload_nre'].fillna(0.0)
+        if df['re_combined'].notna().any():
+            df['RE_total'] = df['re_combined']
+        else:
+            df['RE_total'] = df['sc_re'].fillna(0.0) + df['payload_re'].fillna(0.0)
+
+        # Figure 1: Low-N stacked bars with numeric labels
+        lowN = df[df['num_satellites'] <= 5].copy()
+        if lowN.empty:
+            print("No low-N solutions (N ≤ 5) found for NRE/RE breakdown.")
+            return
+        # Sort by N then total cost to keep it readable; cap count to avoid clutter
+        if 'cost_musd' in lowN.columns:
+            lowN = lowN.sort_values(['num_satellites', 'cost_musd']).head(30)
+        else:
+            lowN = lowN.sort_values(['num_satellites']).head(30)
+        x = np.arange(len(lowN))
+
+        plt.figure(figsize=(15, 8))
+        bottom = np.zeros(len(lowN), dtype=float)
+
+        # Bars: NRE spacecraft, NRE payload
+        plt.bar(x, lowN['sc_nre'], color='#d62728', alpha=0.85, label='NRE - Spacecraft')
+        bottom += lowN['sc_nre'].values
+        plt.bar(x, lowN['payload_nre'], bottom=bottom, color='#9467bd', alpha=0.85, label='NRE - Payload')
+        bottom += lowN['payload_nre'].values
+
+        # Bars: RE (either split or combined)
+        if df['re_combined'].notna().any():
+            plt.bar(x, lowN['re_combined'], bottom=bottom, color='#1f77b4', alpha=0.85, label='RE - Combined')
+            bottom += lowN['re_combined'].values
+        else:
+            plt.bar(x, lowN['sc_re'], bottom=bottom, color='#1f77b4', alpha=0.85, label='RE - Spacecraft')
+            bottom += lowN['sc_re'].values
+            plt.bar(x, lowN['payload_re'], bottom=bottom, color='#ff7f0e', alpha=0.85, label='RE - Payload')
+            bottom += lowN['payload_re'].values
+
+        # Annotate numeric values (sum) above bars
+        totals = (lowN['NRE_total'] + lowN['RE_total']).values
+        y_offset = (max(totals) * 0.01) if len(totals) else 0.1
+        for i, total in enumerate(totals):
+            plt.text(x[i], bottom[i] + y_offset, f"{total:.1f}", ha='center', va='bottom', fontsize=8)
+
+        # X labels: show N prominently; also show P if present
+        if 'P_planes' in lowN.columns:
+            xticklabels = [f"N={int(n)} | P={int(p)}" for n, p in zip(lowN['num_satellites'], lowN['P_planes'])]
+        else:
+            xticklabels = [f"N={int(n)}" for n in lowN['num_satellites']]
+        plt.xticks(x, xticklabels, rotation=45, ha='right')
+
+        plt.ylabel('Cost (M$) - Excluding Launch')
+        plt.title('NRE and RE Breakdown (Spacecraft vs Payload) – Low N (≤ 5)')
+        plt.legend(ncol=2)
+        plt.grid(True, axis='y', alpha=0.25)
+        plt.tight_layout()
+        plt.savefig(f"{self.output_dir}/nre_re_breakdown_lowN.png", dpi=300, bbox_inches='tight')
+        plt.close()
+
+        # Figure 2: Scatter vs N (overview)
+        plt.figure(figsize=(12, 7))
+        # NRE
+        plt.scatter(df['num_satellites'], df['sc_nre'], c='#d62728', s=35, alpha=0.6,
+                    edgecolors='black', linewidth=0.3, label='NRE - Spacecraft')
+        plt.scatter(df['num_satellites'], df['payload_nre'], c='#9467bd', s=35, alpha=0.6,
+                    edgecolors='black', linewidth=0.3, label='NRE - Payload')
+        # RE
+        if df['re_combined'].notna().any():
+            plt.scatter(df['num_satellites'], df['re_combined'], c='#1f77b4', s=35, alpha=0.6,
+                        edgecolors='black', linewidth=0.3, label='RE - Combined')
+        else:
+            plt.scatter(df['num_satellites'], df['sc_re'], c='#1f77b4', s=35, alpha=0.6,
+                        edgecolors='black', linewidth=0.3, label='RE - Spacecraft')
+            plt.scatter(df['num_satellites'], df['payload_re'], c='#ff7f0e', s=35, alpha=0.6,
+                        edgecolors='black', linewidth=0.3, label='RE - Payload')
+
+        plt.xlabel('Number of Satellites (N)')
+        plt.ylabel('Cost (M$) - Excluding Launch')
+        plt.title('NRE/RE Components vs Number of Satellites')
+        plt.grid(True, alpha=0.3)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(f"{self.output_dir}/nre_re_vs_N_scatter.png", dpi=300, bbox_inches='tight')
+        plt.close()
+
 def main():
     """Main function for command-line usage."""
     parser = argparse.ArgumentParser(description='Post-process multi-objective optimization CSV results')
@@ -1077,8 +1522,9 @@ if __name__ == "__main__":
     # main()
     
     # Option 2: Hardcode the file path (current approach)
-    csv_file = "hpc_downloads/results_multi_seed/walker-delta/AFB_Andersen/L0.1_R0.1_G0.9_Sci0.9/pareto_solutions_walker-delta_gsAFB_Andersen_w0.1-0.1-0.9-0.9_pop640_gen480_step100_seed69_mass130kg_alt500km.csv"
-    
+    # csv_file = "hpc_downloads/results_multi_seed/walker-delta/AFB_Andersen/L0.1_R0.1_G0.9_Sci0.9/pareto_solutions_walker-delta_gsAFB_Andersen_w0.1-0.1-0.9-0.9_pop640_gen480_step100_seed69_mass130kg_alt500km.csv"
+    csv_file = "results/MOEA/walker-delta/L0.0_R0.0_G0.9_Sci0.9/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.9_pop120_gen80_step1500_seed42_mass190kg_alt600kmdv100m_s_T180d.csv"
+
     # Option 3: Interactive input (uncomment next 2 lines)
     # csv_file = input("Enter path to CSV file: ")
     # output_dir = input("Enter output directory (default: postprocessing): ") or "postprocessing"

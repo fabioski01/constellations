@@ -229,9 +229,30 @@ class MultiObjectiveConstellationOptimizer(ConstellationOptimizer):
             Negative performance score (for minimization)
         """
         try:
+            if self.pattern_type == "Walker-Delta":
+                P = max(1, int(round(params[6])))
+                F_raw = int(round(params[7]))
+                
+                # Repair: force N to be multiple of P
+                N_candidate = int(round(params[0]))
+                N = N_candidate - (N_candidate % P) if N_candidate % P != 0 else N_candidate
+                if N < 1: N = P
+                params[0] = N
+                
+                # Repair: force F < P and F divides N
+                F = min(F_raw, P - 1)
+                if F > 0:
+                    while N % F != 0 and F > 0:
+                        F -= 1
+                params[7] = F
+                params[6] = P
+                # print(f"[DEBUG Evalute Obj.] Repaired params for Walker-Delta: N={N}, P={P}, F={F}")
+
             # Create parameter dictionaries
             num_satellites, orbital_parameters, pattern_params = self._create_orbital_parameters(params)
-            
+            # DEBUG: print what we got
+            # print(f"DEBUG eval: N={num_satellites}, P={pattern_params.get('P')}, F={pattern_params.get('F')}, types: P={type(pattern_params.get('P'))}, F={type(pattern_params.get('F'))}")
+                        
             # Validate parameters
             if num_satellites < 1 or num_satellites > 200:
                 return 1e6, 1e6  # Invalid
@@ -247,14 +268,23 @@ class MultiObjectiveConstellationOptimizer(ConstellationOptimizer):
                 P = pattern_params['P']
                 F = pattern_params['F']
 
-                if P < 1 or F < 1 or F >= P:
-                    return 1e6, 1e6
+                # if P < 1 or F < 1 or F >= P:
+                #     return 1e6, 1e6
 
-                if num_satellites < P or num_satellites % P != 0:
-                    return 1e6, 1e6
+                # if num_satellites < P or num_satellites % P != 0:
+                #     return 1e6, 1e6
 
-                if num_satellites % F != 0:
+                # if num_satellites % F != 0:
+                #     return 1e6, 1e6
+
+                if P < 1 or not (0 <= F < P):
                     return 1e6, 1e6
+                if num_satellites < P or (num_satellites % P) != 0:
+                    return 1e6, 1e6    
+                
+                assert P >= 1 and 0 <= F < P, f"Invalid repaired P={P}, F={F}"
+                assert num_satellites >= P and num_satellites % P == 0, f"Invalid N={num_satellites}, P={P}"
+            
             elif self.pattern_type == "Flower":
                 # Expect pattern_params to contain Np, Nd, Fn, Fd, Fh
                 Np = int(round(pattern_params.get('Np', 1)))
@@ -280,6 +310,7 @@ class MultiObjectiveConstellationOptimizer(ConstellationOptimizer):
                     num_satellites, orbital_parameters, epoch, 
                     self.pattern_type, P=pattern_params['P'], F=pattern_params['F']
                 )
+
             elif self.pattern_type == "Flower":
                 # Ensure orbital_parameters dictionary contains Flower-specific keys
                 orbital_parameters = orbital_parameters.copy()
@@ -321,15 +352,21 @@ class MultiObjectiveConstellationOptimizer(ConstellationOptimizer):
                 positions, time_stamps, num_satellites, orbital_period
             )
             
-            regional_score = self._calculate_regional_coverage(
-                const, orbital_parameters, num_satellites, epoch, orbital_period, 
-                positions=positions, time_stamps=time_stamps
-            )
-            
-            global_score = self._calculate_global_coverage(
-                num_satellites, orbital_parameters, positions=positions, time_stamps=time_stamps
-            )
-            
+            if self.regional_weight > 0:
+                regional_score = self._calculate_regional_coverage(
+                    const, orbital_parameters, num_satellites, epoch, orbital_period, 
+                    positions=positions, time_stamps=time_stamps
+                )
+            else:
+                regional_score = 0.0
+
+            if self.global_weight > 0:
+                global_score = self._calculate_global_coverage(
+                    num_satellites, orbital_parameters, positions=positions, time_stamps=time_stamps
+                )
+            else:
+                global_score = 0.0
+
             science_score = self._calculate_science_requirement_score(orbital_parameters)
             
             # Calculate weighted components
@@ -371,6 +408,8 @@ class MultiObjectiveConstellationOptimizer(ConstellationOptimizer):
             
         except Exception as e:
             print(f"Error in evaluation: {str(e)}")
+            import traceback
+            traceback.print_exc()  # Print full stack trace
             return 1e6, 1e6  # Return high values for invalid solutions
         
     def get_cached_details(self, params):
@@ -413,7 +452,7 @@ class ConstellationOptimizationProblem(ElementwiseProblem):
         
         # Define bounds based on pattern type
         if optimizer.pattern_type == "Walker-Delta":
-            bounds_lower = [1, 250, 0, 0, 0, 0, 1, 1]  # [num_sats, perigee_h, ecc, inc, RAAN, argp, P, F]
+            bounds_lower = [1, 250, 0, 0, 0, 0, 1, 0]  # [num_sats, perigee_h, ecc, inc, RAAN, argp, P, F]
             bounds_upper = [100, 1000, 0, 90, 360, 360, 20, 20]
             n_var = 8
         elif optimizer.pattern_type == "Flower":
@@ -461,12 +500,12 @@ class ParallelConstellationOptimizationProblem(Problem):
         
         # Same bounds as existing problem
         if optimizer.pattern_type == "Walker-Delta":
-            bounds_lower = [1, 250, 0, 0, 0, 0, 1, 1]
-            bounds_upper = [100, 1000, 0, 90, 360, 360, 20, 20]
+            bounds_lower = [1, 250, 0, 0, 0, 0, 1, 0] # [N, perigee_h, ecc, inc, RAAN, argp, P, F]
+            bounds_upper = [100, 1200, 0, 90, 360, 360, 50, 49] # [N, perigee_h, ecc, inc, RAAN, argp, P, F]
             n_var = 8
         elif optimizer.pattern_type == "Flower":
-            bounds_lower = [1, 200, 0, 0, 0, 0, 1, 1, 1, 1, 0]
-            bounds_upper = [200, 36000, 0.9, 180, 360, 360, 100, 365, 364, 364, 364]
+            bounds_lower = [1, 200, 0, 0, 0, 0, 1, 1, 1, 1, 0] # [T, perigee_h, ecc, inc, RAAN, argp, Np, Nd, Fn, Fd, Fh]
+            bounds_upper = [200, 36000, 0.9, 180, 360, 360, 100, 365, 364, 364, 364] # [T, perigee_h, ecc, inc, RAAN, argp, Np, Nd, Fn, Fd, Fh]
             n_var = 11
         else:
             raise NotImplementedError(f"Pattern {optimizer.pattern_type} not implemented yet")
@@ -499,7 +538,7 @@ class ParallelConstellationOptimizationProblem(Problem):
 
 def generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, global_weight, 
                             science_weight, pop_size, n_gen, step, seed, sat_mass_kg, 
-                            target_altitude, file_type="csv"):
+                            target_altitude, dv_deployment_m_s, T_deployment_days, file_type="csv"):
     """
     Generate dynamic filename based on optimization parameters.
     
@@ -515,13 +554,14 @@ def generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, g
     """
     # Create parameter string
     param_str = (f"{pattern_type.lower()}_"
-                f"gs{gs}_"
                 f"w{local_weight:.1f}-{regional_weight:.1f}-{global_weight:.1f}-{science_weight:.1f}_"
                 f"pop{pop_size}_gen{n_gen}_"
                 f"step{step}_seed{seed}_"
                 f"mass{sat_mass_kg:.0f}kg_"
-                f"alt{target_altitude:.0f}km")
-    
+                f"alt{target_altitude:.0f}km"
+                f"dv{dv_deployment_m_s:.0f}m_s_"
+                f"T{T_deployment_days:.0f}d")
+
     if file_type == "csv":
         return f"pareto_solutions_{param_str}.csv"
     elif file_type == "png":
@@ -530,7 +570,7 @@ def generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, g
         return f"results_{param_str}.{file_type}"
 
 def generate_dynamic_directory(pattern_type, gs, local_weight, regional_weight, global_weight, 
-                              science_weight, base_dir="results"):
+                              science_weight, base_dir="results/MOEA"):
     """
     Generate dynamic directory structure based on key parameters.
 
@@ -562,11 +602,13 @@ def run_multi_objective_optimization(
     pop_size=100,
     n_gen=50,
     seed=42,
-    output_dir="results",
+    output_dir="results/MOEA",
     step=1000,
     n_cores=None, # for parellelism
     cluster_mode=False, # for parallelism
-    evaluation_hours=24
+    evaluation_hours=24,
+    dv_deployment_m_s: float = 100.0,
+    T_deployment_days: float = 180.0
 ):
     """
     Run a multi-objective NSGA-II optimization for constellation design.
@@ -607,6 +649,10 @@ def run_multi_objective_optimization(
     evaluation_hours : float
         Length of the simulation window in hours used for coverage
         calculations.
+    dv_deployment_m_s : float
+        Delta-V budget for deployment phase in m/s. Higher means launch cost could decrease
+    T_deployment_days: float
+        Max amount of time for constellation deployment after launch. Higher means launch cost could decrease
 
     Returns
     -------
@@ -642,7 +688,9 @@ def run_multi_objective_optimization(
         payloads=payloads,
         step=step,
         start_time=start_time,
-        end_time=end_time
+        end_time=end_time,
+        dv_deployment_m_s=dv_deployment_m_s,
+        T_deployment_days=T_deployment_days
     )
     
     # Determine number of cores
@@ -711,12 +759,12 @@ def run_multi_objective_optimization(
     
     csv_filename = generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, 
                                            global_weight, science_weight, pop_size, n_gen, 
-                                           step, seed, sat_mass_kg, target_altitude, "csv")
+                                           step, seed, sat_mass_kg, target_altitude, dv_deployment_m_s, T_deployment_days, "csv")
     csv_filepath = os.path.join(dynamic_dir, csv_filename)
     
     plot_filename = generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, 
                                             global_weight, science_weight, pop_size, n_gen, 
-                                            step, seed, sat_mass_kg, target_altitude, "png")
+                                            step, seed, sat_mass_kg, target_altitude, dv_deployment_m_s, T_deployment_days, "png")
     plot_filepath = os.path.join(dynamic_dir, plot_filename)
     
     # Save detailed results to CSV
@@ -725,28 +773,32 @@ def run_multi_objective_optimization(
             fieldnames = [
                 # Solution identification
                 'solution_id', 'cost_musd', 'performance', 
-                
                 # Design variables
                 'num_satellites', 'perigee_height_km', 'eccentricity', 'inclination_deg',
                 'RAAN_deg', 'arg_periapsis_deg', 'P_planes', 'F_phasing',
                 'altitude_km', 'semi_major_axis_km',
-                
-                # Actual cost breakdown from economies_of_scale
-                'NRE_cost_musd', 'RE_cost_musd', 'launch_cost_musd', 
+                # Actual cost breakdown
+                'NRE_cost_musd', 'RE_cost_musd', 'launch_cost_musd',
                 'payload_tfu_musd', 'sc_tfu_musd', 'learning_rate',
-                
+                # Launch details (NEW)
+                'launch_num_launches', 'launch_num_groups', 'launch_planes_per_group',
+                'launch_dv_used_m_s', 'launch_T_used_days',
+                'launch_a_target_km', 'launch_a_launch_km',
+                'launch_delta_a_km', 'launch_delta_raan_deployment_deg',
+                'launch_delta_raan_required_deg',
+                'launch_vehicle_combo',
+                'launch_param_dv_deployment_m_s', 'launch_param_T_deployment_days',
                 # Detailed performance breakdown
                 'local_coverage_score', 'regional_coverage_score', 'global_coverage_score',
                 'science_score', 'overlap_penalty',
-                
                 # Weighted performance components
                 'weighted_local', 'weighted_regional', 'weighted_global', 'weighted_science',
-                
                 # Optimization metadata
                 'optimization_params_pop_size', 'optimization_params_n_gen', 
                 'optimization_params_step', 'optimization_params_seed',
                 'optimization_params_sat_mass_kg', 'optimization_params_target_altitude'
             ]
+
         elif pattern_type == "Flower":
             fieldnames = [
                 'solution_id', 'cost_musd', 'performance',
@@ -757,6 +809,14 @@ def run_multi_objective_optimization(
                 # Costs
                 'NRE_cost_musd', 'RE_cost_musd', 'launch_cost_musd',
                 'payload_tfu_musd', 'sc_tfu_musd', 'learning_rate',
+                # Launch details (add same fields as Walker-Delta)
+                'launch_num_launches', 'launch_num_groups', 'launch_planes_per_group',
+                'launch_dv_used_m_s', 'launch_T_used_days',
+                'launch_a_target_km', 'launch_a_launch_km',
+                'launch_delta_a_km', 'launch_delta_raan_deployment_deg',
+                'launch_delta_raan_required_deg',
+                'launch_vehicle_combo',
+                'launch_param_dv_deployment_m_s', 'launch_param_T_deployment_days',
                 # Performance
                 'local_coverage_score', 'regional_coverage_score', 'global_coverage_score',
                 'science_score', 'overlap_penalty',
@@ -797,18 +857,64 @@ def run_multi_objective_optimization(
                 
                 print(f"Using cached results for solution {i}")
             else:
-                # Fallback: recalculate if not in cache (shouldn't happen for Pareto solutions)
-                print(f"Warning: No cached results for solution {i}, recalculating...")
-                cost_breakdown = optimizer.economies_of_scale(
-                    num_satellites, orbital_params, 
-                    getattr(optimizer, 'sat_mass_kg', None), 
-                    pattern_params
+                # Fallback: recompute via optimizer to populate cache in this process
+                print(f"Warning: No cached results for solution {i}, recomputing to populate cache...")
+                try:
+                    _ = optimizer.evaluate_objectives(solution)  # fills optimizer.detailed_cache
+                    rec = optimizer.get_cached_details(solution)
+                    if rec is None:
+                        raise RuntimeError("cache still empty after recompute")
+                    cost_breakdown = rec['cost_breakdown']
+                    local_score = rec['local_score']
+                    regional_score = rec['regional_score']
+                    global_score = rec['global_score']
+                    science_score = rec['science_score']
+                    overlap_penalty = rec['overlap_penalty']
+                    weighted_local = rec['weighted_local']
+                    weighted_regional = rec['weighted_regional']
+                    weighted_global = rec['weighted_global']
+                    weighted_science = rec['weighted_science']
+                except Exception as e:
+                    # Last-resort: try economies_of_scale if available, else write minimal fields
+                    try:
+                        cost_breakdown = optimizer.economies_of_scale(
+                            num_satellites, orbital_params,
+                            getattr(optimizer, 'sat_mass_kg', None), pattern_params
+                        )
+                    except AttributeError:
+                        cost_breakdown = {'total_musd': float(cost)}
+                    # No coverage breakdown available in this path
+                    local_score = regional_score = global_score = science_score = 0.0
+                    overlap_penalty = 1.0
+                    weighted_local = weighted_regional = weighted_global = weighted_science = 0.0
+
+            # Launch details unpack
+            ld = cost_breakdown.get('launch_details') if isinstance(cost_breakdown, dict) else None
+            if isinstance(ld, dict):
+                dep = ld.get('deployment', {}) or {}
+                vlist = ld.get('vehicle_breakdown', []) or []
+                vehicle_combo = "; ".join(
+                    f"G{item.get('group', idx+1)}:{item.get('vehicle','?')} x{item.get('num_launches',1)}"
+                    for idx, item in enumerate(vlist)
                 )
-                # Set default values if recalculating fails
-                local_score = regional_score = global_score = science_score = 0.0
-                overlap_penalty = 1.0
-                weighted_local = weighted_regional = weighted_global = weighted_science = 0.0
-            
+                launch_num_launches = ld.get('num_launches', 0)
+                launch_num_groups = ld.get('num_groups', 0)
+                launch_planes_per_group = dep.get('planes_per_group', None)
+                launch_dv_used_m_s = dep.get('dv_used_m_s', None)
+                launch_T_used_days = dep.get('T_used_days', None)
+                launch_a_target_km = dep.get('a_target_km', None)
+                launch_a_launch_km = dep.get('a_launch_km', None)
+                launch_delta_a_km = dep.get('delta_a_mag_km', None)
+                launch_delta_raan_deployment_deg = dep.get('delta_raan_deployment_deg', None)
+                launch_delta_raan_required_deg = dep.get('delta_raan_required_deg', None)
+            else:
+                vehicle_combo = ""
+                launch_num_launches = launch_num_groups = 0
+                launch_planes_per_group = None
+                launch_dv_used_m_s = launch_T_used_days = None
+                launch_a_target_km = launch_a_launch_km = None
+                launch_delta_a_km = launch_delta_raan_deployment_deg = launch_delta_raan_required_deg = None
+
             row = {
                 # Solution identification
                 'solution_id': i,
@@ -825,13 +931,29 @@ def run_multi_objective_optimization(
                 'altitude_km': altitude,
                 'semi_major_axis_km': orbital_params['semi_major_axis'],
                 
-                # Actual cost breakdown (using correct keys from economies_of_scale)
+                # Cost breakdown
                 'NRE_cost_musd': cost_breakdown.get('NRE_musd', 0),
+                'sc_nre_musd': cost_breakdown.get('sc_nre_musd', 0),
+                'payload_nre_musd': cost_breakdown.get('payload_nre_musd', 0),
                 'RE_cost_musd': cost_breakdown.get('RE_musd', 0),
                 'launch_cost_musd': cost_breakdown.get('launch_musd', 0),
                 'payload_tfu_musd': cost_breakdown.get('payload_tfu_musd', 0),
                 'sc_tfu_musd': cost_breakdown.get('sc_tfu_musd', 0),
-                'learning_rate': cost_breakdown.get('learning_rate', 0.9),
+
+                # Launch details (NEW)
+                'launch_num_launches': launch_num_launches,
+                'launch_num_groups': launch_num_groups,
+                'launch_planes_per_group': launch_planes_per_group,
+                'launch_dv_used_m_s': launch_dv_used_m_s,
+                'launch_T_used_days': launch_T_used_days,
+                'launch_a_target_km': launch_a_target_km,
+                'launch_a_launch_km': launch_a_launch_km,
+                'launch_delta_a_km': launch_delta_a_km,
+                'launch_delta_raan_deployment_deg': launch_delta_raan_deployment_deg,
+                'launch_delta_raan_required_deg': launch_delta_raan_required_deg,
+                'launch_vehicle_combo': vehicle_combo,
+                'launch_param_dv_deployment_m_s': dv_deployment_m_s,
+                'launch_param_T_deployment_days': T_deployment_days,
 
                 # *** DETAILED PERFORMANCE BREAKDOWN FROM CACHE ***
                 'local_coverage_score': local_score,
@@ -879,10 +1001,21 @@ def run_multi_objective_optimization(
     plt.xlabel('Total Mission Cost (M$)', fontsize=12)
     plt.ylabel('Performance Score', fontsize=12)
     
-    # Enhanced title with key parameters
-    title = (f'Pareto Front - {pattern_type} Constellation (GS: {gs})\n'
-             f'Weights: L={local_weight}, R={regional_weight}, G={global_weight}, Sci={science_weight}\n'
-             f'Pop={pop_size}, Gen={n_gen}, Step={step}s, Seed={seed}, Mass={sat_mass_kg}kg')
+    # NEW: compute total payload mass/power for title
+    try:
+        tot_payload_mass_kg = sum(float(p.get('mass_kg', 0.0)) for p in (payloads or []))
+        tot_payload_power_w = sum(float(p.get('power_w', 0.0)) for p in (payloads or []))
+    except Exception:
+        tot_payload_mass_kg, tot_payload_power_w = 0.0, 0.0
+
+    # Enhanced title with key parameters (GS removed)
+    title = (
+        f'Pareto Front - {pattern_type} Constellation\n'
+        f'Weights: L={local_weight}, R={regional_weight}, G={global_weight}, Sci={science_weight}\n'
+        f'Pop={pop_size}, Gen={n_gen}, Step={step}s, Seed={seed}, SatMass={sat_mass_kg}kg; '
+        f'DV_dep={dv_deployment_m_s:.0f} m/s, T_dep={T_deployment_days:.0f} d; '
+        f'Payload={tot_payload_mass_kg:.1f} kg / {tot_payload_power_w:.0f} W'
+    )
     plt.title(title, fontsize=11)
     plt.grid(True, alpha=0.3)
     
@@ -934,17 +1067,21 @@ if __name__ == "__main__":
     parser.add_argument('--pop_size', type=int, default=100, help='Population size')
     parser.add_argument('--n_gen', type=int, default=49, help='Number of generations')
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
-    parser.add_argument('--output_dir', default='results', help='Base output directory')
+    parser.add_argument('--output_dir', default='results/MOEA', help='Base output directory')
     parser.add_argument('--step', type=int, default=1500, help='Time step for propagation (seconds)')
     parser.add_argument('--evaluation_hours', type=float, default=96, help='Evaluation time period in hours')
 
     # Add weight arguments for more control
-    parser.add_argument('--local_weight', type=float, default=0.1, help='Local coverage weight')
-    parser.add_argument('--regional_weight', type=float, default=0.1, help='Regional coverage weight')
+    parser.add_argument('--local_weight', type=float, default=0.0, help='Local coverage weight')
+    parser.add_argument('--regional_weight', type=float, default=0.0, help='Regional coverage weight')
     parser.add_argument('--global_weight', type=float, default=0.9, help='Global coverage weight')
-    parser.add_argument('--science_weight', type=float, default=0.9, help='Science requirement weight')
+    parser.add_argument('--science_weight', type=float, default=0.7, help='Science requirement weight')
+    # Sat system args
+
     parser.add_argument('--target_altitude', type=float, default=600.0, help='Target altitude (km)')
     parser.add_argument('--sat_mass_kg', type=float, default=130.0, help='Satellite mass (kg)')
+    parser.add_argument('--dv_deployment_m_s', type=float, default=100.0, help='Delta-V for deployment phase (m/s)')
+    parser.add_argument('--T_deployment_days', type=float, default=180.0, help='Deployment time after launch (days)')
     
     # Add cluster-specific arguments
     parser.add_argument('--n_cores', type=int, default=None, help='Number of cores to use')
@@ -952,19 +1089,29 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    args.pattern = 'Flower' # Override default. Can be Walker-Delta or Flower
+    # args.pattern = 'Flower' # Override default. Can be Walker-Delta or Flower
 
     args.cluster_mode = True  # To enable cluster-specific optimizations
     args.n_cores = 4  # Optional: specify number of cores
     
-    # Or you can override any other parameters
-    args.pop_size = 16 
-    args.n_gen = 5
+    args.pop_size = 120
+    args.n_gen = 82
+
+    args.sat_mass_kg = 190.0 # 95, 190, 370, 760
+    # Sat   type    Payload     System      Dry mass    Propellant  Wet mass ∆V     (hydrazine
+    #               mass  (kg)  mass (kg)   (kg)        mass (kg)   (kg)            -like) (m/s)
+    # Micro-class   23.8        28.5        52.3        42.8        95              1290
+    # Low mini-class 53.2       41.8        95.0        95.0        190             1495
+    # Up mini-class 114.7       51.8        166.5       203.5       370             1723
+    # Small-class   266.0       38.0        304.0       456.0       760             1977
+    args.target_altitude = 500.0 # 500, 700, 1000 km
+    args.dv_deployment_m_s = 100.0
+    args.t_deployment_days = 180.0
 
     custom_payloads = [
-        {'type': 'fields', 'cat': 'EO', 'mass_kg': 10.0, 'power_w': 20.0},
-        {'type': 'particle', 'cat': 'EO', 'mass_kg': 10.0, 'power_w': 20.0}
-    ]
+        {'type': 'fields', 'cat': 'EO', 'mass_kg': 11.9, 'power_w': 20.0}, 
+        {'type': 'particle', 'cat': 'EO', 'mass_kg': 11.9, 'power_w': 20.0}
+    ] # 23.8, 53.2, 114.7, 266.0. demeter 50 kg payload at 70 W. 33 W for 23.8 kg. 40 W realistic
 
     # Run optimization with command line parameters
     results = run_multi_objective_optimization(
@@ -984,7 +1131,9 @@ if __name__ == "__main__":
         step=args.step,
         n_cores=args.n_cores,        # Cluster
         cluster_mode=args.cluster_mode,  # Cluster
-        evaluation_hours=96
+        evaluation_hours=96,
+        dv_deployment_m_s=args.dv_deployment_m_s,
+        T_deployment_days=args.T_deployment_days
     )
     
     print("\n=== OPTIMIZATION SUMMARY ===")
