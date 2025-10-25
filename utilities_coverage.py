@@ -34,6 +34,7 @@ from utilities import CoordinateConversion
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import constants
+from datetime import datetime
 
 """
 Theory from Wertz. Earth coverage refers to the part of  the Earth that a s/c instrument (sensor, antenna, etc.) 
@@ -146,7 +147,18 @@ class Coverage:
         sat_times = self.state["time"]
 
         ECEF_cartesian_orbit = CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(sat_position*1000, sat_times) # km to m
-        ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) for x, y, z in ECEF_cartesian_orbit]
+        # ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) for x, y, z in ECEF_cartesian_orbit]
+        # Handle both single position and array of positions
+        if ECEF_cartesian_orbit.ndim == 1:
+            # Single position: shape (3,)
+            ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(
+                ECEF_cartesian_orbit[0], ECEF_cartesian_orbit[1], ECEF_cartesian_orbit[2]
+            )]
+        else:
+            # Multiple positions: shape (n, 3)
+            ECEF_geodetic_orbit = [CoordinateConversion.ECEF_cartesian_to_geodetic(x, y, z) 
+                                   for x, y, z in ECEF_cartesian_orbit]
+
         # Access the first (and only) tuple in the results list
         if len(ECEF_geodetic_orbit) == 0:
             raise ValueError("No results returned from cartesian_to_geographic")
@@ -288,8 +300,24 @@ class Coverage:
         orbital_period_sec = 2 * np.pi * np.sqrt((constants.EARTH_RADIUS + mean_altitude_km)**3 / constants.GRAVITATIONAL_CONSTANT)
         
         # Determine which time steps to use based on orbital periods
-        max_time = times[0] + orbital_periods * orbital_period_sec
-        valid_time_indices = np.where(times <= max_time)[0]
+        # max_time = times[0] + orbital_periods * orbital_period_sec
+        # Handle both datetime and numeric timestamps
+        if isinstance(times[0], datetime):
+            from datetime import timedelta
+            max_time = times[0] + timedelta(seconds=orbital_periods * orbital_period_sec)
+        else:
+            max_time = times[0] + orbital_periods * orbital_period_sec
+            
+        # valid_time_indices = np.where(times <= max_time)[0]  
+        # Convert times to numpy array if it's a list, and handle datetime comparison
+        times_array = np.array(times) if isinstance(times, list) else times
+        
+        # Element-wise comparison for datetime arrays
+        if isinstance(times_array[0], datetime):
+            valid_time_mask = np.array([t <= max_time for t in times_array])
+            valid_time_indices = np.where(valid_time_mask)[0]
+        else:
+            valid_time_indices = np.where(times_array <= max_time)[0]      
         
         # Process each satellite
         single_sat_coverage = []

@@ -62,7 +62,7 @@ Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Re
 
 import numpy as np
 from scipy import optimize
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
@@ -99,17 +99,19 @@ class ConstellationOptimizer:
                  start_time=None, end_time=None, step=1500,
                  gs=None, elevation_threshold=10.0,
                  # Coverage weights
-                 local_weight=0.4, regional_weight=0.3, global_weight=0.3,
+                 local_weight=0.0, regional_weight=0.0, global_weight=0.9,
                  # Cost weights
                  satellite_cost_weight=0.2, operational_cost_weight=0.1, launch_cost_weight=0.1,
                  # Science requirements
-                 science_weight=0.8, target_altitude=500.0, target_altitude_tolerance=50.0,
+                 science_weight=0.9, target_altitude=500.0, target_altitude_tolerance=50.0,
                  # Regional coverage area
                  regional_area=None,
                  # New: launch and payload inputs
                  sat_mass_kg=130.0,
                  payloads=[{'type': 'fields', 'cat': 'EO', 'mass_kg': 12.0, 'power_w': 35.0},
-                           {'type': 'particle', 'cat': 'EO', 'mass_kg': 9.0, 'power_w': 22.0},]):
+                           {'type': 'particle', 'cat': 'EO', 'mass_kg': 9.0, 'power_w': 22.0},],
+                 dv_deployment_m_s: float = 100.0,
+                 T_deployment_days: float = 180.0):                           
         """
         Initialize the optimizer with baseline parameters.
         
@@ -145,6 +147,10 @@ class ConstellationOptimizer:
             Weight for operational costs (lower orbit = quicker deorbiting = lower cost)
         launch_cost_weight : float (0-1)
             Weight for launch costs (higher orbit = higher cost)
+            knobs for launch cost model of deployment:
+             - dv_deployment_m_s : float (higher means lower launches for depl needed)
+             - t deployment: float (higher means lower launches for depl needed)
+
             
         Science Requirements:
         -------------------
@@ -193,6 +199,9 @@ class ConstellationOptimizer:
         # Store spacecraft mass and payload definition for cost models
         self.sat_mass_kg = float(sat_mass_kg)
         self.payloads = payloads
+        # NEW: store launch deployment knobs
+        self.dv_deployment_m_s = float(dv_deployment_m_s)
+        self.T_deployment_days = float(T_deployment_days)
 
         from utilities_coverage import get_region_coordinates, get_available_regions
 
@@ -512,7 +521,15 @@ class ConstellationOptimizer:
             operational_cost_score = 1.0
             
             # Launch cost (higher altitude/inclination = higher cost) in M USD
-            launch_cost_score = self._calculate_launch_cost(orbital_parameters, num_satellites, self.sat_mass_kg, pattern_params)
+            # launch_cost_score = self._calculate_launch_cost(orbital_parameters, num_satellites, self.sat_mass_kg, pattern_params) # OLD
+            launch_cost_result = self._calculate_launch_cost(orbital_parameters, num_satellites, self.sat_mass_kg, pattern_params, dv_deployment_m_s=self.dv_deployment_m_s, T_deployment_days=self.T_deployment_days)
+            launch_cost_musd = float(launch_cost_result['total_cost_musd']) if isinstance(launch_cost_result, dict) else float(launch_cost_result)
+            launch_cost_score = 1.0  # neutral, excluded in Pareto; set self.launch_cost_weight=0 to fully ignore
+
+            # # Then normalize it to a score (0-1, lower cost = higher score)
+            # # Assume max reasonable cost is ~500 M$ for normalization
+            # max_reasonable_cost = 500.0
+            # launch_cost_score = 1.0 - min(launch_cost_musd / max_reasonable_cost, 1.0)
             
             # 3. Science requirement score
             science_score = self._calculate_science_requirement_score(orbital_parameters)
@@ -568,6 +585,8 @@ class ConstellationOptimizer:
                 'satellite_cost_score': satellite_cost_score,
                 'operational_cost_score': operational_cost_score,
                 'launch_cost_score': launch_cost_score,
+                'launch_cost_musd': launch_cost_musd,
+                'launch_details': launch_cost_result,
                 'science_score': science_score,
                 'combined_score': combined_score
             }
@@ -588,8 +607,28 @@ class ConstellationOptimizer:
     def _eci_to_ecef(self, eci_position, timestamp):
         """Convert ECI position to ECEF."""
         from utilities import CoordinateConversion
-        return CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(eci_position, timestamp)
-            
+        # return CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(eci_position, timestamp)
+        """
+        Convert ECI position to ECEF.
+        
+        Parameters:
+        -----------
+        eci_position : array
+            Position in ECI frame (meters)
+        timestamp : float or datetime
+            Time (seconds offset or datetime object)
+        """
+        # If timestamp is numeric (seconds offset), pass reference_time
+        if isinstance(timestamp, (int, float)):
+            return CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(
+                eci_position, timestamp, reference_time=self.start_time
+            )
+        else:
+            # Already a datetime
+            return CoordinateConversion.ECI_cartesian_to_ECEF_cartesian(
+                eci_position, timestamp
+            )
+                
     def optimize(self, method='differential_evolution', max_iter=50, popsize=15, strategy='rand2bin', 
                  mutation=(0.5, 0.7), recombination=0.7, seed=None, early_stopping=True, patience=20, 
                  improvement_threshold=0.001, workers=1):
@@ -992,15 +1031,21 @@ class ConstellationOptimizer:
                                                         epoch, orbital_period)
         
         try:
+            # Ensure timestamps are datetime objects for Coverage utilities
+            if isinstance(time_stamps[0], (int, float, np.integer, np.floating)):
+                ts_dt = [self.start_time + timedelta(seconds=float(t)) for t in time_stamps]
+            else:
+                ts_dt = time_stamps
+
             # Create Coverage object with existing positions and timestamps
-            coverage_obj = Coverage(orbital_parameters, positions=positions, times=time_stamps)
+            coverage_obj = Coverage(orbital_parameters, positions=positions, times=ts_dt)
             
             # Get region from self.regional_area
             region = self.regional_area
             
             # Compute regional coverage with appropriate parameters
             regional_result = coverage_obj.compute_regional_coverage(
-                positions, time_stamps,
+                positions, ts_dt,
                 region,
                 orbital_periods=1,
                 masking_angle=15.0,  # Default masking angle
@@ -1018,6 +1063,42 @@ class ConstellationOptimizer:
             # Fall back to original grid-based approach
             return self._calculate_regional_coverage_simplified(const, orbital_parameters, num_satellites, 
                                                         epoch, orbital_period)
+
+    def _calculate_regional_coverage_simplified(self, const, orbital_parameters, num_satellites, epoch, orbital_period):
+        """
+        Very simple regional coverage proxy: visibility of region centroid over one orbital period.
+        Returns value in [0,1].
+        """
+        from utilities_coverage import Coverage
+        # Propagate (reuse optimizer window)
+        res = const.generate_positions_with_time(self.start_time, self.end_time, self.step)
+        positions = res["positions"]
+        time_stamps = res["time_stamps"]
+
+        # Region centroid (avg vertices)
+        lats = [pt[0] for pt in self.regional_area]
+        lons = [pt[1] for pt in self.regional_area]
+        centroid = (sum(lats) / len(lats), sum(lons) / len(lons), 0.0)  # lat, lon, alt(m)
+
+        # One orbital period worth of steps
+        idx_oneperiod = np.searchsorted(time_stamps, orbital_period)
+        idx_oneperiod = max(1, int(idx_oneperiod))
+
+        any_visible = []
+        for k in range(idx_oneperiod):
+            t = time_stamps[k]
+            vis_any = False
+            for s in range(num_satellites):
+                sat_pos_eci_km = positions[s, k, :]
+                ecef_m = self._eci_to_ecef(sat_pos_eci_km * 1000.0, t)
+                vis, _ = Coverage.is_visible_cartesian_ECEF(ecef_m, centroid, self.elevation_threshold)
+                if vis:
+                    vis_any = True
+                    break
+            any_visible.append(1 if vis_any else 0)
+
+        # Fraction of timesteps with at least one sat visible
+        return float(sum(any_visible)) / float(len(any_visible))
 
     def _calculate_global_coverage(self, num_satellites, orbital_parameters, positions=None, time_stamps=None):
         """
@@ -1044,16 +1125,22 @@ class ConstellationOptimizer:
             return self._estimate_global_coverage(num_satellites, orbital_parameters)
         
         try:
+            # Ensure timestamps are datetime objects for Coverage utilities
+            if isinstance(time_stamps[0], (int, float, np.integer, np.floating)):
+                ts_dt = [self.start_time + timedelta(seconds=float(t)) for t in time_stamps]
+            else:
+                ts_dt = time_stamps
+
             # Create Coverage object with existing positions and timestamps
-            coverage_obj = Coverage(orbital_parameters, positions=positions, times=time_stamps)
+            coverage_obj = Coverage(orbital_parameters, positions=positions, times=ts_dt)
             
             # Compute global coverage with appropriate parameters
             # Use lower grid resolution for optimization (faster)
             global_coverage_result = coverage_obj.compute_global_coverage(
-                positions, time_stamps,
+                positions, ts_dt,
                 orbital_periods=1,
                 masking_angle=15.0,  # Default masking angle
-                fov=120.0,          # Default FOV
+                fov=100.0,          # Default FOV
                 grid_density=15.0   # Coarser grid for optimization speed
             )
             
@@ -1066,6 +1153,33 @@ class ConstellationOptimizer:
             print(f"Warning: Error in global coverage calculation: {str(e)}")
             # Fallback to simplified estimate
             return self._estimate_global_coverage(num_satellites, orbital_parameters)
+
+    def _estimate_global_coverage(self, num_satellites, orbital_parameters):
+        """
+        Simple geometric proxy for global coverage when grid computation fails.
+        
+        Returns:
+        --------
+        coverage_proxy : float (0-1)
+        """
+        inc_rad = np.radians(orbital_parameters['inclination'])
+        altitude_km = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS
+        
+        # Higher inclination = better global coverage (polar vs equatorial)
+        inc_score = min(1.0, inc_rad / (np.pi/2))  # 0 at equator, 1 at polar
+        
+        # More satellites = better coverage (log scale, saturates at 100)
+        sat_score = np.log1p(num_satellites) / np.log1p(100)
+        
+        # Altitude sweet spot around 600-800 km for LEO coverage
+        if 400 <= altitude_km <= 1200:
+            alt_score = 1.0
+        else:
+            alt_score = 0.5
+        
+        print('WARNING [Utilities Opt]: Using simplified global coverage')
+        # Weighted combination
+        return 0.5 * inc_score + 0.3 * sat_score + 0.2 * alt_score
 
     def compute_payload(self, payloads=None, payload_mass_kg=None, cat='EO', instrument='particle', power_w=None, design_life_months=None, design_life_years=None):
         """
@@ -1211,104 +1325,339 @@ class ConstellationOptimizer:
                 c_k = 1353.0 * (float(mass_particle) ** 0.47) * (float(power_particle) ** 0.39)
                 total_musd_2025 += to_musd_2025(c_k)
 
-        return total_musd_2025
+        nre_payload_musd_2025 = total_musd_2025
+        tfu_payload_musd_2025 = 0.4 * nre_payload_musd_2025
+
+        return nre_payload_musd_2025, tfu_payload_musd_2025
 
     def compute_satellite_cost(self, mass_kg: float | None = None):
         """
         Spacecraft cost CERs (M$), driven by total spacecraft mass (kg).
         Returns (NRE_musd, tfu_musd).
 
-        NRE from SSCM 1996 (old) (FY10$K): 1064 + 35.5*mass^1.261
+        NRE from SSCM 1996 (old) (FY10$K): 1064 + 35.5*mass_bus^1.261
         TFU (STILL NEED A REFERENCE FOR THIS) (M$): 0.151 * mass^0.7
+        changed TFU to 40% NRE
         """
-        m = float(self.sat_mass_kg if mass_kg is None else mass_kg)
-        if m <= 0:
-            raise ValueError("spacecraft mass must be > 0 kg")
-        nre_k2010usd = 1064 + 35.5 * (m ** 1.261)
-        nre_musd = nre_k2010usd/1000 * constants.INFLATION_2010_TO_2025
-        tfu_musd = 0.151 * (m ** 0.7)
+        m_wet = float(self.sat_mass_kg if mass_kg is None else mass_kg)
+        # Sum payload mass from self.payloads; ignore missing/invalid entries
+        try:
+            payload_mass = float(sum(float(p.get('mass_kg', 0.0)) for p in (self.payloads or [])))
+        except Exception:
+            payload_mass = 0.0
+        # Bus mass must be positive
+        m_bus = max(1.0, m_wet - payload_mass)
+        nre_k2010usd = 1064 + 35.5 * (m_bus ** 1.261)
+        nre_musd = nre_k2010usd / 1000.0 * constants.INFLATION_2010_TO_2025
+        # tfu_musd = 0.151 * (m_bus ** 0.7)
+        tfu_musd = nre_musd*0.4
         return nre_musd, tfu_musd
         
-    def _calculate_launch_cost(self, orbital_parameters, num_satellites, sat_mass_kg, pattern_params=None):
+    def _calculate_launch_cost(self, orbital_parameters, num_satellites, sat_mass_kg, pattern_params=None,
+                            dv_deployment_m_s: float = 100.0,
+                            T_deployment_days: float = 180.0,
+                            bundle_discount_per_extra_sat: float = 0.05,  # 5% off per extra sat on same launch
+                            bundle_discount_cap: float = 0.30):
         """
-        Calculate total launch cost in million USD (M$).
+        Calculate total launch cost in million USD (M$) and return detailed deployment information.
 
-        Assumptions:
-        - Satellites in different planes cannot share a launch if ΔRAAN between planes > delta_raan_dep (90 deg).
-        - OCF increases roughly linearly with inclination (0->1, 150->2) and altitude (200 km->1, 1200 km->1.4).
-        - Vehicle options evaluated per plane-group: Falcon 9 and Falcon Heavy. Cheapest is chosen per group.
-        - Base prices (to LEO) per kg (K$/kg): F9=5, FH=3. OCF adjusts price, not capacity.
-        - Capacities: F9=15000 kg, FH=30000 kg.
+        Strategy:
+        - Given dv_deployment_m_s, compute max |Δa_deployment| via one-way Hohmann inversion
+        - Compute ΔRAAN_deployment achievable in T_deployment_days using J2 differential precession
+        - If the required plane spacing can be met with less Δa (same T), reduce Δa to save sat Δv
+        - Group planes based on achievable ΔRAAN; for each group choose the cheapest vehicle option
+        allowing multiple launches if required by mass capacity
+        - Apply a bundle discount when multiple satellites ride the same vehicle launch:
+        discount_factor = 1 - min(cap, per_extra_sat * (avg_sats_per_launch - 1))
+
+        Parameters:
+        -----------
+        dv_deployment_m_s : float
+            One-way deployment Δv budget (m/s) available for phasing drift
+        T_deployment_days : float
+            Maximum deployment time (days) allowed
+        bundle_discount_per_extra_sat : float
+            Fractional discount per extra satellite on the same launch (e.g., 0.05 = 5% off)
+        bundle_discount_cap : float
+            Maximum per-launch discount fraction (e.g., 0.30 = 30% off)
 
         Returns:
-        - total_musd: float, total mission launch cost in million USD.
+        --------
+        result : dict
+            {
+                'total_cost_musd': float,
+                'num_launches': int,
+                'num_groups': int,
+                'bundle_discount_per_extra_sat': float,
+                'bundle_discount_cap': float,
+                'vehicle_breakdown': [
+                    {
+                        'group': int,
+                        'vehicle': str,
+                        'num_launches': int,
+                        'planes': int,
+                        'mass_kg': float,
+                        'cost_musd': float,
+                        'avg_sats_per_launch': int,
+                        'discount_factor': float
+                    }, ...
+                ],
+                'deployment': {
+                    'dv_deployment_m_s': float,
+                    'dv_used_m_s': float,
+                    'T_deployment_days': float,
+                    'T_used_days': float,
+                    'a_target_km': float,
+                    'a_launch_km': float,
+                    'delta_a_mag_km': float,
+                    'delta_raan_deployment_deg': float,
+                    'delta_raan_required_deg': float,
+                    'planes_per_group': int
+                }
+            }
         """
-        altitude = orbital_parameters['semi_major_axis'] - constants.EARTH_RADIUS  # km
-        inclination = orbital_parameters['inclination']  # deg
+        from orbital_cost_function import ocf_at
+        from scipy.optimize import brentq
+
+        mu = constants.GRAVITATIONAL_CONSTANT  # km^3/s^2
+        R_e = constants.EARTH_RADIUS           # km
+        J2 = constants.J2_EARTH
+
+        # --- Helpers ---
+        def hohmann_oneway_dv_m_s(a1_km: float, delta_a_km: float) -> float:
+            """One-way Hohmann Δv from circular a1 to circular a2=a1+Δa (m/s)."""
+            r1 = float(a1_km)
+            r2 = float(a1_km + delta_a_km)
+            if r1 <= 0 or r2 <= 0 or r2 <= R_e:
+                return np.inf
+            v1 = np.sqrt(mu / r1)
+            v2 = np.sqrt(mu / r2)
+            a_t = 0.5 * (r1 + r2)
+            v_peri_t = np.sqrt(mu * (2.0 / r1 - 1.0 / a_t))
+            v_apo_t = np.sqrt(mu * (2.0 / r2 - 1.0 / a_t))
+            dv1 = abs(v_peri_t - v1)
+            dv2 = abs(v2 - v_apo_t)
+            return (dv1 + dv2) * 1000.0  # m/s
+
+        def invert_oneway_dv_to_delta_a_mag(a1_km: float, dv_target_m_s: float) -> float:
+            """Find |Δa| ≥ 0 such that one-way Δv equals dv_target_m_s."""
+            if dv_target_m_s <= 0:
+                return 0.0
+            lo, hi = 0.0, 10.0
+            f = lambda da: hohmann_oneway_dv_m_s(a1_km, da) - dv_target_m_s
+            max_hi = 1.0e5
+            while f(hi) < 0.0 and hi < max_hi:
+                hi *= 1.8
+            if hi >= max_hi:
+                return hi
+            return float(brentq(f, lo, hi, maxiter=100, xtol=1e-6))
+
+        def raan_rate_rad_per_s(a_km: float, inc_rad: float) -> float:
+            """J2-induced RAAN drift rate (rad/s)."""
+            return -(3.0/2.0) * J2 * (R_e**2) * np.sqrt(mu) * np.cos(inc_rad) / (a_km**(7.0/2.0))
+
+        def compute_delta_raan_for_time_and_delta_a(a_target: float, delta_a: float, T_days: float, inc_rad: float) -> float:
+            """ΔRAAN (deg) achieved over T_days with given Δa (a_launch = a_target + Δa)."""
+            a_launch = a_target + delta_a
+            omega_dot_target = raan_rate_rad_per_s(a_target, inc_rad)
+            omega_dot_launch = raan_rate_rad_per_s(a_launch, inc_rad)
+            T_seconds = T_days * 86400.0
+            delta_raan_rad = (omega_dot_launch - omega_dot_target) * T_seconds
+            return np.degrees(abs(delta_raan_rad))
+
+        # --- Inputs and derived quantities ---
+        altitude = orbital_parameters['semi_major_axis'] - R_e  # km
+        inclination = orbital_parameters['inclination']         # deg
+        inc_rad = np.radians(inclination)
+        a_target_km = float(orbital_parameters['semi_major_axis'])
         sat_mass_kg = float(sat_mass_kg)
         T = int(num_satellites)
 
-        # Determine planes (Walker-Delta) else assume 1 plane
+        # Planes and plane spacing
         P = 1
         if pattern_params and 'P' in pattern_params and int(pattern_params['P']) > 0:
             P = int(pattern_params['P'])
-
-        # Satellites per plane (assumes divisibility; Walker-Delta is enforced elsewhere)
         sats_per_plane = max(1, T // P)
+        plane_spacing_deg = 360.0 / P if P > 0 else 360.0
 
-        # RAAN grouping rule: planes with separation <= delta_raan_dep can be launched together
-        delta_raan_dep = 90.0  # deg
-        plane_spacing = 360.0 / P if P > 0 else 360.0
-        planes_per_group = max(1, int(np.floor(delta_raan_dep / plane_spacing)) + 1)
+        # --- Deployment sizing from Δv and T_dep ---
+        delta_a_max_km = invert_oneway_dv_to_delta_a_mag(a_target_km, float(dv_deployment_m_s))
+        delta_raan_max_deg = compute_delta_raan_for_time_and_delta_a(
+            a_target_km, delta_a_max_km, T_deployment_days, inc_rad
+        )
+        delta_raan_required = plane_spacing_deg
+
+        if delta_raan_max_deg >= delta_raan_required:
+            # Use the minimum Δa that achieves the required ΔRAAN in the allotted time
+            def objective(da):
+                return compute_delta_raan_for_time_and_delta_a(a_target_km, da, T_deployment_days, inc_rad) - delta_raan_required
+            try:
+                delta_a_used_km = brentq(objective, 0.0, delta_a_max_km, maxiter=100, xtol=1e-6)
+                dv_used_m_s = hohmann_oneway_dv_m_s(a_target_km, delta_a_used_km)
+                T_used_days = T_deployment_days
+                delta_raan_deployment_deg = delta_raan_required
+            except Exception:
+                delta_a_used_km = delta_a_max_km
+                dv_used_m_s = dv_deployment_m_s
+                T_used_days = T_deployment_days
+                delta_raan_deployment_deg = delta_raan_max_deg
+        else:
+            # Even with max Δa, can't reach requirement within T_dep; use max capability
+            delta_a_used_km = delta_a_max_km
+            dv_used_m_s = dv_deployment_m_s
+            T_used_days = T_deployment_days
+            delta_raan_deployment_deg = delta_raan_max_deg
+
+        a_launch_km = a_target_km + delta_a_used_km
+
+        # Group planes by achievable ΔRAAN
+        planes_per_group = max(1, int(np.floor(delta_raan_deployment_deg / plane_spacing_deg)) + 1)
         num_groups = int(np.ceil(P / planes_per_group))
 
-        # OCF components
-        # Inclination OCF: 0 deg -> 1.0, 150 deg -> 2.0 (linear, clipped)
-        ocf_inc = 1.0 + max(0.0, min(1.0, inclination / 150.0)) * 1.0
-        # Altitude OCF: 200 km -> 1.0, 1200 km -> 1.4 (linear, clipped)
-        ocf_alt = 1.0 + max(0.0, min(1.0, (altitude - 200.0) / (1200.0 - 200.0))) * 0.4
-
-        # Vehicle models
+        # --- Vehicle database (cost M$ per launch, LEO payload kg) ---
         vehicles = {
-            'F9': {
-                'base_kusd_per_kg': 5.0,
-                'capacity_kg': 15000.0,
-                # Calibrated so at inc=150, alt=1200 -> OCF ~ 2.3
-                'alpha_inc': 1.00,  # weight for (ocf_inc - 1)
-                'beta_alt': 0.75    # weight for (ocf_alt - 1)
-            },
-            'FH': {
-                'base_kusd_per_kg': 3.0,
-                'capacity_kg': 30000.0,
-                # Calibrated so at inc=150, alt=1200 -> OCF ~ 1.9
-                'alpha_inc': 0.70,
-                'beta_alt': 0.50
-            }
+            'Electron': {'payload_kg_leo': 300, 'cost_musd': 7.5, 'operational': True},
+            'SSLV': {'payload_kg_leo': 500, 'cost_musd': 4.0, 'operational': False},
+            'Alpha': {'payload_kg_leo': 1030, 'cost_musd': 15.0, 'operational': True},
+            'Epsilon_S': {'payload_kg_leo': 1400, 'cost_musd': 30.0, 'operational': False},
+            'Minotaur_IV': {'payload_kg_leo': 1735, 'cost_musd': 45.0, 'operational': True},
+            'KSLV-II': {'payload_kg_leo': 2200, 'cost_musd': 80.0, 'operational': True},
+            
+            'Vega-C': {'payload_kg_leo': 2500, 'cost_musd': 50.0, 'operational': True},
+            'PSLV-XL': {'payload_kg_leo': 2900, 'cost_musd': 27.0, 'operational': True},
+            'GSLV_Mk_II': {'payload_kg_leo': 5500, 'cost_musd': 50.0, 'operational': True},
+            'Ariane_62': {'payload_kg_leo': 8000, 'cost_musd': 90.0, 'operational': False},
+            'Neutron_Reusable': {'payload_kg_leo': 13000, 'cost_musd': 55.0, 'operational': False},
+            'Neutron_Expendable': {'payload_kg_leo': 15000, 'cost_musd': 55.0, 'operational': False},
+            'Falcon_9_Launch_Site': {'payload_kg_leo': 15000, 'cost_musd': 69.85, 'operational': True},
+            'H3': {'payload_kg_leo': 16000, 'cost_musd': 50.0, 'operational': True},
+            'Vulcan_Centaur_VC2': {'payload_kg_leo': 16300, 'cost_musd': 100.0, 'operational': True},
+            'Falcon_9_Drone_Ship': {'payload_kg_leo': 16600, 'cost_musd': 69.85, 'operational': True},
+            'Atlas_V_551': {'payload_kg_leo': 17500, 'cost_musd': 153.0, 'operational': True},
+            'Ariane_64': {'payload_kg_leo': 17500, 'cost_musd': 130.0, 'operational': False},
+            'Falcon_9_Expendable': {'payload_kg_leo': 20400, 'cost_musd': 90.0, 'operational': True},
+            'Vulcan_Centaur_VC4': {'payload_kg_leo': 21600, 'cost_musd': 110.0, 'operational': True},
+            'Vulcan_Centaur_VC6': {'payload_kg_leo': 25800, 'cost_musd': 130.0, 'operational': False},
+            'Starship_Block_2': {'payload_kg_leo': 35000, 'cost_musd': 75.0, 'operational': False},
+            'New_Glenn': {'payload_kg_leo': 45000, 'cost_musd': 110.0, 'operational': False},
+            'Falcon_Heavy_Reusable': {'payload_kg_leo': 57000, 'cost_musd': 97.0, 'operational': True},
+            'Falcon_Heavy_Expendable': {'payload_kg_leo': 63800, 'cost_musd': 150.0, 'operational': True},
         }
 
-        total_cost_kusd = 0.0
+        total_cost_musd = 0.0
+        total_launches = 0
+        vehicle_breakdown = []
 
-        # Iterate plane groups; last group may have fewer planes
         for g in range(num_groups):
             planes_in_group = min(planes_per_group, P - g * planes_per_group)
             group_mass_kg = planes_in_group * sats_per_plane * sat_mass_kg
+            total_sats_in_group = int(planes_in_group * sats_per_plane)
 
-            # Evaluate both vehicles; choose cheaper for this group
-            best_group_cost_kusd = float('inf')
-            for v in vehicles.values():
-                ocf_total = 1.0 + v['alpha_inc'] * (ocf_inc - 1.0) + v['beta_alt'] * (ocf_alt - 1.0)
-                eff_kusd_per_kg = v['base_kusd_per_kg'] * ocf_total
+            best_vehicle_name = None
+            best_group_cost_musd = float('inf')
+            best_num_launches = 0
+            best_avg_sats_per_launch = 1
+            best_discount_factor = 1.0
 
-                capacity = v['capacity_kg']
-                launches = int(np.ceil(group_mass_kg / capacity))
-                # Charge per launch using full capacity rate (conservative)
-                group_cost_kusd = launches * capacity * eff_kusd_per_kg
-                best_group_cost_kusd = min(best_group_cost_kusd, group_cost_kusd)
+            for vehicle_name, vehicle in vehicles.items():
+                if not vehicle.get('operational', False):
+                    continue
 
-            total_cost_kusd += best_group_cost_kusd
+                # Single OCF for all vehicles
+                try:
+                    ocf = ocf_at(inclination, altitude)   # signature (inc, alt)
+                except TypeError:
+                    ocf = ocf_at(altitude, inclination)   # signature (alt, inc)
 
-        total_musd = total_cost_kusd / 1000.0
-        return total_musd
+                effective_capacity_kg = vehicle['payload_kg_leo'] * ocf
+                if effective_capacity_kg <= 0:
+                    continue
+
+                num_launches = int(np.ceil(group_mass_kg / effective_capacity_kg))
+
+                # Bundle discount based on average satellites per launch
+                if sat_mass_kg > 0:
+                    max_sats_one_launch = max(1, int(np.floor(effective_capacity_kg / sat_mass_kg)))
+                else:
+                    max_sats_one_launch = 1
+
+                avg_sats_per_launch = max(1, int(np.ceil(total_sats_in_group / max(1, num_launches))))
+                avg_sats_per_launch = min(avg_sats_per_launch, max_sats_one_launch)
+
+                discount_factor = 1.0 - min(float(bundle_discount_cap),
+                                            float(bundle_discount_per_extra_sat) * max(0, avg_sats_per_launch - 1))
+
+                vehicle_cost_musd = num_launches * vehicle['cost_musd'] * discount_factor
+
+                if vehicle_cost_musd < best_group_cost_musd:
+                    best_group_cost_musd = vehicle_cost_musd
+                    best_vehicle_name = vehicle_name
+                    best_num_launches = num_launches
+                    best_avg_sats_per_launch = avg_sats_per_launch
+                    best_discount_factor = discount_factor
+
+            if best_group_cost_musd == float('inf'):
+                # Infeasible for this configuration
+                return {
+                    'total_cost_musd': 1e6,
+                    'num_launches': 0,
+                    'num_groups': num_groups,
+                    'bundle_discount_per_extra_sat': bundle_discount_per_extra_sat,
+                    'bundle_discount_cap': bundle_discount_cap,
+                    'vehicle_breakdown': [],
+                    'deployment': {
+                        'dv_deployment_m_s': dv_deployment_m_s,
+                        'dv_used_m_s': 0.0,
+                        'T_deployment_days': T_deployment_days,
+                        'T_used_days': 0.0,
+                        'a_target_km': a_target_km,
+                        'a_launch_km': a_target_km,
+                        'delta_a_mag_km': 0.0,
+                        'delta_raan_deployment_deg': 0.0,
+                        'delta_raan_required_deg': delta_raan_required,
+                        'planes_per_group': 0
+                    }
+                }
+
+            total_cost_musd += best_group_cost_musd
+            total_launches += best_num_launches
+
+            vehicle_breakdown.append({
+                'group': g + 1,
+                'vehicle': best_vehicle_name,
+                'num_launches': best_num_launches,
+                'planes': planes_in_group,
+                'mass_kg': group_mass_kg,
+                'cost_musd': best_group_cost_musd,
+                'avg_sats_per_launch': best_avg_sats_per_launch,
+                'discount_factor': best_discount_factor
+            })
+
+        # Final result
+        result = {
+            'total_cost_musd': total_cost_musd,
+            'num_launches': total_launches,
+            'num_groups': num_groups,
+            'bundle_discount_per_extra_sat': float(bundle_discount_per_extra_sat),
+            'bundle_discount_cap': float(bundle_discount_cap),
+            'vehicle_breakdown': vehicle_breakdown,
+            'deployment': {
+                'dv_deployment_m_s': float(dv_deployment_m_s),
+                'dv_used_m_s': float(dv_used_m_s),
+                'T_deployment_days': float(T_deployment_days),
+                'T_used_days': float(T_used_days),
+                'a_target_km': float(a_target_km),
+                'a_launch_km': float(a_launch_km),
+                'delta_a_mag_km': float(delta_a_used_km),
+                'delta_raan_deployment_deg': float(delta_raan_deployment_deg),
+                'delta_raan_required_deg': float(delta_raan_required),
+                'planes_per_group': int(planes_per_group)
+            }
+        }
+
+        # Cache for inspection
+        self._last_deployment_sizing = result
+        return result
 
     def economies_of_scale(self,
                            num_satellites: int,
@@ -1329,14 +1678,14 @@ class ConstellationOptimizer:
 
         # Spacecraft costs from mass-based CERs
         m = self.sat_mass_kg if sat_mass_kg is None else float(sat_mass_kg)
-        nre_musd, sc_tfu_musd = self.compute_satellite_cost(m)
+        nre_sc_musd, tfu_sc_musd = self.compute_satellite_cost(m)
 
         # Payload TFU (M$)
         payload_def = payloads if payloads is not None else self.payloads
-        payload_tfu_musd = self.compute_payload(payload_def)
+        nre_payload_musd_2025, tfu_payload_musd_2025 = self.compute_payload(payload_def)
 
         # Unit TFU for learning curve (spacecraft + payload)
-        C_TFU = float(sc_tfu_musd) + float(payload_tfu_musd)
+        C_TFU = float(tfu_sc_musd) + float(tfu_payload_musd_2025)
 
         # Learning curve
         b = float(learning_rate)
@@ -1344,21 +1693,30 @@ class ConstellationOptimizer:
         n = np.arange(1, N + 1, dtype=float)
         C_RE = float(np.sum(C_TFU * (n ** exp_b)))
 
-        # Launch total (M$)
-        C_L = self._calculate_launch_cost(orbital_parameters, N, m, pattern_params)
+        # Launch total and details
+        C_L_res = self._calculate_launch_cost(orbital_parameters, N, m, pattern_params, dv_deployment_m_s=self.dv_deployment_m_s, T_deployment_days=self.T_deployment_days)
+        if isinstance(C_L_res, dict):
+            C_L = float(C_L_res.get('total_cost_musd', 0.0))
+            launch_details = C_L_res
+        else:
+            C_L = float(C_L_res)
+            launch_details = None
 
-        C_NRE = float(nre_musd)
+        C_NRE = float(nre_sc_musd) + float(nre_payload_musd_2025)
         total = C_NRE + C_RE + C_L
 
         return {
             'total_musd': total,
             'NRE_musd': C_NRE,
+            'sc_nre_musd': float(nre_sc_musd),
+            'payload_nre_musd': float(nre_payload_musd_2025),
             'RE_musd': C_RE,
             'launch_musd': C_L,
+            'launch_details': launch_details,
             'learning_rate': b,
             'C_TFU_musd': C_TFU,
-            'payload_tfu_musd': float(payload_tfu_musd),
-            'sc_tfu_musd': float(sc_tfu_musd)
+            'payload_tfu_musd': float(tfu_payload_musd_2025),
+            'sc_tfu_musd': float(tfu_sc_musd)
         }
 
     def _calculate_science_requirement_score(self, orbital_parameters):
