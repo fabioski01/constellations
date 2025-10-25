@@ -1208,53 +1208,51 @@ class ConstellationOptimizer:
             raise ValueError("All payloads must share the same 'cat' ('EO' or 'planetary'); mixing categories is not supported.")
         mission_cat = cats.pop() if cats else 'eo'
 
-        total = 0.0
+        # Accumulate NRE and TFU separately
+        total_nre = 0.0
+        total_tfu = 0.0
+        
         for i, item in enumerate(payloads):
-            t = str(item.get('type', 'particle')).lower()
-            m = float(item['mass_kg'])
-            p = float(item['power_w'])
+            inst_type = str(item.get('type', '')).strip().lower()
+            m = item.get('mass_kg')
+            p = item.get('power_w')
 
-            if t == 'fields':
-                total += self._calculate_payload_cost(cat=mission_cat, mass_field=m, power_field=p)
-            elif t == 'particle':
-                if mission_cat == 'planetary':
-                    # Accept months (preferred) or years (legacy) and use months directly in CER
-                    has_months = 'design_life_months' in item and item['design_life_months'] is not None
-                    has_years = 'design_life_years' in item and item['design_life_years'] is not None
-                    if not (has_months or has_years):
-                        raise ValueError(f"design_life_months is required for planetary particle instrument at index {i} (legacy 'design_life_years' also accepted).")
-                    if has_months:
-                        dl_months = float(item['design_life_months'])
-                    else:
-                        dl_months = float(item['design_life_years']) * 12.0
-                    total += self._calculate_payload_cost(cat='planetary',
-                                                          mass_particle=m, power_particle=p,
-                                                          design_life_planetary=dl_months)
-                else:
-                    total += self._calculate_payload_cost(cat='EO',
-                                                          mass_particle=m, power_particle=p)
+            # Convert legacy design_life_years to design_life_months if present
+            dl_months = item.get('design_life_months')
+            dl_years = item.get('design_life_years')
+            if dl_months is None and dl_years is not None:
+                dl_months = float(dl_years) * 12.0
+
+            if inst_type == 'fields':
+                nre, tfu = self._calculate_payload_cost(cat=mission_cat, mass_field=m, power_field=p)
+                total_nre += nre
+                total_tfu += tfu
+            elif inst_type == 'particle':
+                nre, tfu = self._calculate_payload_cost(cat=mission_cat, mass_particle=m, power_particle=p, design_life_planetary=dl_months)
+                total_nre += nre
+                total_tfu += tfu
             else:
-                raise ValueError(f"Unsupported instrument type '{t}' at index {i}")
+                raise ValueError(f"Payload {i}: unknown type '{inst_type}'. Expected 'fields' or 'particle'.")
 
         # Support single-instrument legacy call when payloads is provided via parameters
         if payload_mass_kg is not None and power_w is not None and instrument is not None:
-            t = str(instrument).lower()
-            if t == 'fields':
-                total += self._calculate_payload_cost(cat=cat.lower(), mass_field=float(payload_mass_kg), power_field=float(power_w))
-            elif t == 'particle':
-                if str(cat).lower() == 'planetary':
-                    # Use months directly; convert legacy years to months if provided
-                    if design_life_months is None and design_life_years is None:
-                        raise ValueError("design_life_months is required for planetary particle instrument (legacy 'design_life_years' also accepted).")
-                    dl_months_single = float(design_life_months) if design_life_months is not None else float(design_life_years) * 12.0
-                    total += self._calculate_payload_cost(cat='planetary',
-                                                          mass_particle=float(payload_mass_kg), power_particle=float(power_w),
-                                                          design_life_planetary=dl_months_single)
-                else:
-                    total += self._calculate_payload_cost(cat='EO',
-                                                          mass_particle=float(payload_mass_kg), power_particle=float(power_w))
+            # Convert legacy design_life_years to months
+            dl_months_legacy = design_life_months
+            if dl_months_legacy is None and design_life_years is not None:
+                dl_months_legacy = float(design_life_years) * 12.0
 
-        return total
+            if instrument.lower() == 'fields':
+                nre, tfu = self._calculate_payload_cost(cat=cat, mass_field=payload_mass_kg, power_field=power_w)
+                total_nre += nre
+                total_tfu += tfu
+            elif instrument.lower() == 'particle':
+                nre, tfu = self._calculate_payload_cost(cat=cat, mass_particle=payload_mass_kg, power_particle=power_w, design_life_planetary=dl_months_legacy)
+                total_nre += nre
+                total_tfu += tfu
+            else:
+                raise ValueError(f"Unknown instrument type: {instrument}")
+
+        return total_nre, total_tfu
 
     def _calculate_payload_cost(
         self,
