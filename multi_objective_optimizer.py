@@ -555,11 +555,11 @@ def generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, g
     # Create parameter string
     param_str = (f"{pattern_type.lower()}_"
                 f"w{local_weight:.1f}-{regional_weight:.1f}-{global_weight:.1f}-{science_weight:.1f}_"
-                f"pop{pop_size}_gen{n_gen}_"
-                f"step{step}_seed{seed}_"
-                f"mass{sat_mass_kg:.0f}kg_"
-                f"alt{target_altitude:.0f}km"
-                f"dv{dv_deployment_m_s:.0f}m_s_"
+                f"p{pop_size}_g{n_gen}_"
+                f"sp{step}_sd{seed}_"
+                f"m{sat_mass_kg:.0f}_"
+                f"a{target_altitude:.0f}_"
+                f"dv{dv_deployment_m_s:.0f}_"
                 f"T{T_deployment_days:.0f}d")
 
     if file_type == "csv":
@@ -1111,7 +1111,7 @@ if __name__ == "__main__":
     custom_payloads = [
         {'type': 'fields', 'cat': 'EO', 'mass_kg': 11.9, 'power_w': 20.0}, 
         {'type': 'particle', 'cat': 'EO', 'mass_kg': 11.9, 'power_w': 20.0}
-    ] # 23.8, 53.2, 114.7, 266.0. demeter 50 kg payload at 70 W. 33 W for 23.8 kg. 40 W realistic
+    ] # 23.8, 53.2, 114.7, 266.0. demeter 50 kg payload at 70 W (1.4 W/kg). swarm has 1.29 W/kg for tot sc, CSES has 1.23 W/kg
 
     # Run optimization with command line parameters
     results = run_multi_objective_optimization(
