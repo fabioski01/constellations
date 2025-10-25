@@ -1,0 +1,75 @@
+============================================================
+MULTI-OBJECTIVE OPTIMIZATION RESULTS SUMMARY
+============================================================
+
+CSV File: results/MOEA/walker-delta/L0.0_R0.0_G0.9_Sci0.9/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.9_pop120_gen80_step1500_seed42_mass190kg_alt600kmdv100m_s_T180d.csv
+Pattern Type: Walker-Delta
+Total Solutions: 59
+
+BASIC STATISTICS
+--------------------
+cost_musd:
+  Mean: 741.746
+  Std:  536.903
+  Min:  130.816
+  Max:  2302.815
+
+performance:
+  Mean: 0.667
+  Std:  0.123
+  Min:  0.517
+  Max:  0.945
+
+num_satellites:
+  Mean: 22.729
+  Std:  24.105
+  Min:  1.000
+  Max:  87.000
+
+altitude_km:
+  Mean: 599.970
+  Std:  0.127
+  Min:  599.022
+  Max:  600.013
+
+inclination_deg:
+  Mean: 64.667
+  Std:  15.540
+  Min:  32.730
+  Max:  84.129
+
+PARETO FRONT EXTREMES
+-------------------------
+Minimum Cost Solution:
+  Cost: 130.82 M$
+  Performance: 0.517
+  Satellites: 2
+  Altitude: 600.0 km
+
+Maximum Performance Solution:
+  Cost: 2302.81 M$
+  Performance: 0.945
+  Satellites: 87
+  Altitude: 600.0 km
+
+AVERAGE COST BREAKDOWN
+-------------------------
+  Nre Cost: 41.14 M$ (5.5%)
+  Re Cost: 664.03 M$ (89.5%)
+  Launch Cost: 36.57 M$ (4.9%)
+
+Total Average Cost: 741.75 M$
+
+WALKER-DELTA PATTERN STATISTICS
+-----------------------------------
+  Number of Planes (P) - Range: 2 to 23
+  Phasing Factor (F) - Range: 11 to 49
+  Average Satellites per Plane: 2.4
+
+KEY CORRELATIONS
+---------------
+  cost_musd vs performance: r = 0.988 (p = 0.000)
+  cost_musd vs num_satellites: r = 0.950 (p = 0.000)
+  performance vs num_satellites: r = 0.934 (p = 0.000)
+  performance vs altitude_km: r = -0.204 (p = 0.121)
+  cost_musd vs altitude_km: r = -0.229 (p = 0.081)

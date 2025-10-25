@@ -1036,10 +1036,10 @@ def plot_iso_time_contours_avg_targets(
     n_lat: int, n_lon: int,
     delta_min_km: float = -150.0,
     delta_max_km: float =  150.0,
-    delta_step_km: float = 5.0,
+    delta_step_km: float = 10.0,
     tol_list_deg: Iterable[float] = (0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10),
     drift_time_cap_days: float = 30.0,
-    max_wrap: int = 200,
+    max_wrap: int = 300,
     outdir: str = "results/reconfig/iso_time_avg",
     verbose: bool = False,
 ) -> plt.Figure:
@@ -1510,8 +1510,8 @@ def run_reconfig_plots(
     # -----------------------------------------
     inclination_deg: Optional[float] = None,    # defaults to gom.i_rad
     lat_band_deg: Optional[float] = None,       # default derived from inc
-    n_lat: int = 11,                            # targets across latitude band
-    n_lon: int = 360,                            # targets across full longitude
+    n_lat: int = 22,                            # targets across latitude band
+    n_lon: int = 72,                            # targets across full longitude
 
     # -------------- diagnostics knobs --------------
     # Pareto time vs ΔV

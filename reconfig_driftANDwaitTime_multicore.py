@@ -1072,7 +1072,7 @@ if __name__ == "__main__":
     # Diagnostics
     FLAG_PARETO_TIME_VS_DV    = True # works
     FLAG_ISO_TIME_CONTOURS    = False # works, to be detailed and expand with avg
-    FLAG_CHOSEN_VS_TOL        = True # works
+    FLAG_CHOSEN_VS_TOL        = False # works
     FLAG_TOL_SENSITIVITY      = False # doesnt work, type error
     FLAG_TARGET_JITTER        = False # doesnt work, type error
     FLAG_EPOCH_SENSITIVITY    = False # works, need to expand with avg and detail
