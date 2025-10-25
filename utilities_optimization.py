@@ -104,6 +104,7 @@ class ConstellationOptimizer:
                  satellite_cost_weight=0.2, operational_cost_weight=0.1, launch_cost_weight=0.1,
                  # Science requirements
                  science_weight=0.9, target_altitude=500.0, target_altitude_tolerance=50.0,
+                target_inclination=50.0, target_inclination_tolerance=10.0,
                  # Regional coverage area
                  regional_area=None,
                  # New: launch and payload inputs
@@ -111,7 +112,7 @@ class ConstellationOptimizer:
                  payloads=[{'type': 'fields', 'cat': 'EO', 'mass_kg': 12.0, 'power_w': 35.0},
                            {'type': 'particle', 'cat': 'EO', 'mass_kg': 9.0, 'power_w': 22.0},],
                  dv_deployment_m_s: float = 100.0,
-                 T_deployment_days: float = 180.0):                           
+                 T_deployment_days: float = 180.0):
         """
         Initialize the optimizer with baseline parameters.
         
@@ -160,6 +161,10 @@ class ConstellationOptimizer:
             Target altitude in km for science instruments
         target_altitude_tolerance : float
             Tolerance range for target altitude in km
+        target_inclination : float
+            Target inclination in degrees for science requirements (default: 50.0)
+        target_inclination_tolerance : float
+            Tolerance range for target inclination in degrees (default: 10.0)
             
         Regional Coverage Area:
         ---------------------
@@ -195,11 +200,13 @@ class ConstellationOptimizer:
         self.science_weight = science_weight
         self.target_altitude = target_altitude
         self.target_altitude_tolerance = target_altitude_tolerance
-        
+        self.target_inclination = target_inclination
+        self.target_inclination_tolerance = target_inclination_tolerance
+
         # Store spacecraft mass and payload definition for cost models
         self.sat_mass_kg = float(sat_mass_kg)
         self.payloads = payloads
-        # NEW: store launch deployment knobs
+        # launch deployment knobs
         self.dv_deployment_m_s = float(dv_deployment_m_s)
         self.T_deployment_days = float(T_deployment_days)
 
@@ -1771,8 +1778,7 @@ class ConstellationOptimizer:
         
     def _calculate_inclination_science_score(self, inclination):
         """
-        Calculate science score component based on inclination.
-        Some missions have specific inclination requirements.
+        Calculate science score component based on inclination relative to target.
         
         Parameters:
         -----------
@@ -1784,24 +1790,21 @@ class ConstellationOptimizer:
         inclination_score : float
             Score for inclination (0-1, higher is better)
         """
-        # Example: Prefer sun-synchronous orbit for Earth observation (around 98°)
-        # This could be customized or parameterized based on mission needs
+        # Calculate how close the inclination is to the target
+        distance_from_target = abs(inclination - self.target_inclination)
         
-        # Sun-synchronous orbit preference (peak at 98°)
-        if abs(inclination - 98.0) < 3.0:
-            return 1.0
-        elif abs(inclination - 98.0) < 10.0:
-            return 0.8
+        # Normalize distance by tolerance
+        normalized_distance = distance_from_target / self.target_inclination_tolerance
         
-        # For global coverage missions, higher inclinations are better
-        if inclination > 80:
-            return 0.9
-        elif inclination > 60:
-            return 0.7
-        elif inclination > 40:
-            return 0.5
+        # Calculate inclination score: 1.0 if at target, decreasing as we move away
+        if normalized_distance <= 1.0:
+            # Within tolerance - high score
+            inclination_score = 1.0 - (normalized_distance * 0.5)
         else:
-            return 0.3
+            # Outside tolerance - lower score (exponential decay)
+            inclination_score = 0.5 / normalized_distance
+        
+        return inclination_score
 
     def analyze_component_scores(self, params=None, plot=True, verbose=True, debug=False):
         """

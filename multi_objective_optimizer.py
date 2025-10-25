@@ -501,11 +501,11 @@ class ParallelConstellationOptimizationProblem(Problem):
         # Same bounds as existing problem
         if optimizer.pattern_type == "Walker-Delta":
             bounds_lower = [1, 250, 0, 0, 0, 0, 1, 0] # [N, perigee_h, ecc, inc, RAAN, argp, P, F]
-            bounds_upper = [100, 1200, 0, 90, 360, 360, 50, 49] # [N, perigee_h, ecc, inc, RAAN, argp, P, F]
+            bounds_upper = [100, 1200, 0, 100, 360, 360, 50, 49] # [N, perigee_h, ecc, inc, RAAN, argp, P, F]
             n_var = 8
         elif optimizer.pattern_type == "Flower":
             bounds_lower = [1, 200, 0, 0, 0, 0, 1, 1, 1, 1, 0] # [T, perigee_h, ecc, inc, RAAN, argp, Np, Nd, Fn, Fd, Fh]
-            bounds_upper = [200, 36000, 0.9, 180, 360, 360, 100, 365, 364, 364, 364] # [T, perigee_h, ecc, inc, RAAN, argp, Np, Nd, Fn, Fd, Fh]
+            bounds_upper = [200, 36000, 0.5, 100, 360, 360, 100, 365, 364, 364, 364] # [T, perigee_h, ecc, inc, RAAN, argp, Np, Nd, Fn, Fd, Fh]
             n_var = 11
         else:
             raise NotImplementedError(f"Pattern {optimizer.pattern_type} not implemented yet")
@@ -597,6 +597,9 @@ def run_multi_objective_optimization(
     global_weight=0.5,
     science_weight=0.6,
     target_altitude=600.0,
+    target_altitude_tolerance=50.0,
+    target_inclination=50.0,
+    target_inclination_tolerance=10.0,
     sat_mass_kg=130.0,
     payloads=None,
     pop_size=100,
@@ -684,6 +687,9 @@ def run_multi_objective_optimization(
         launch_cost_weight=0.0,
         science_weight=science_weight,
         target_altitude=target_altitude,
+        target_altitude_tolerance=target_altitude_tolerance,
+        target_inclination=target_inclination,
+        target_inclination_tolerance=target_inclination_tolerance,
         sat_mass_kg=sat_mass_kg,
         payloads=payloads,
         step=step,
