@@ -1522,7 +1522,7 @@ class ConstellationOptimizer:
         # --- Vehicle database (cost M$ per launch, LEO payload kg) ---
         vehicles = {
             'Electron': {'payload_kg_leo': 300, 'cost_musd': 7.5, 'operational': True},
-            'SSLV': {'payload_kg_leo': 500, 'cost_musd': 4.0, 'operational': False},
+            'SSLV': {'payload_kg_leo': 500, 'cost_musd': 4.0, 'operational': True},
             'Alpha': {'payload_kg_leo': 1030, 'cost_musd': 15.0, 'operational': True},
             'Epsilon_S': {'payload_kg_leo': 1400, 'cost_musd': 30.0, 'operational': False},
             'Minotaur_IV': {'payload_kg_leo': 1735, 'cost_musd': 45.0, 'operational': True},
@@ -1535,7 +1535,7 @@ class ConstellationOptimizer:
             'Neutron_Reusable': {'payload_kg_leo': 13000, 'cost_musd': 55.0, 'operational': False},
             'Neutron_Expendable': {'payload_kg_leo': 15000, 'cost_musd': 55.0, 'operational': False},
             'Falcon_9_Launch_Site': {'payload_kg_leo': 15000, 'cost_musd': 69.85, 'operational': True},
-            'H3': {'payload_kg_leo': 16000, 'cost_musd': 50.0, 'operational': True},
+            'H3': {'payload_kg_leo': 16000, 'cost_musd': 50.0, 'operational': False}, # too cheap and usually for GEO
             'Vulcan_Centaur_VC2': {'payload_kg_leo': 16300, 'cost_musd': 100.0, 'operational': True},
             'Falcon_9_Drone_Ship': {'payload_kg_leo': 16600, 'cost_musd': 69.85, 'operational': True},
             'Atlas_V_551': {'payload_kg_leo': 17500, 'cost_musd': 153.0, 'operational': True},
@@ -1545,8 +1545,8 @@ class ConstellationOptimizer:
             'Vulcan_Centaur_VC6': {'payload_kg_leo': 25800, 'cost_musd': 130.0, 'operational': False},
             'Starship_Block_2': {'payload_kg_leo': 35000, 'cost_musd': 75.0, 'operational': False},
             'New_Glenn': {'payload_kg_leo': 45000, 'cost_musd': 110.0, 'operational': False},
-            'Falcon_Heavy_Reusable': {'payload_kg_leo': 57000, 'cost_musd': 97.0, 'operational': True},
-            'Falcon_Heavy_Expendable': {'payload_kg_leo': 63800, 'cost_musd': 150.0, 'operational': True},
+            'Falcon_Heavy_Reusable': {'payload_kg_leo': 57000, 'cost_musd': 97.0, 'operational': False}, # too cheap and used for single sat
+            'Falcon_Heavy_Expendable': {'payload_kg_leo': 63800, 'cost_musd': 150.0, 'operational': False}, # too cheap and used for single sat
         }
 
         total_cost_musd = 0.0
@@ -1592,7 +1592,11 @@ class ConstellationOptimizer:
                 discount_factor = 1.0 - min(float(bundle_discount_cap),
                                             float(bundle_discount_per_extra_sat) * max(0, avg_sats_per_launch - 1))
 
-                vehicle_cost_musd = num_launches * vehicle['cost_musd'] * discount_factor
+                # vehicle_cost_musd = num_launches * vehicle['cost_musd'] * discount_factor # previously using entire launches even if not full
+
+                # Pay only for the fraction of launches actually used by mass (pro‑rata), still keep integer 'num_launches' for reporting and discount calculation.
+                paid_launch_equiv = group_mass_kg / effective_capacity_kg  # can be fractional
+                vehicle_cost_musd = paid_launch_equiv * vehicle['cost_musd'] * discount_factor
 
                 if vehicle_cost_musd < best_group_cost_musd:
                     best_group_cost_musd = vehicle_cost_musd
@@ -1600,6 +1604,7 @@ class ConstellationOptimizer:
                     best_num_launches = num_launches
                     best_avg_sats_per_launch = avg_sats_per_launch
                     best_discount_factor = discount_factor
+                    best_paid_launch_equiv = paid_launch_equiv
 
             if best_group_cost_musd == float('inf'):
                 # Infeasible for this configuration
@@ -1635,7 +1640,8 @@ class ConstellationOptimizer:
                 'mass_kg': group_mass_kg,
                 'cost_musd': best_group_cost_musd,
                 'avg_sats_per_launch': best_avg_sats_per_launch,
-                'discount_factor': best_discount_factor
+                'discount_factor': best_discount_factor,
+                'paid_launch_equiv': best_paid_launch_equiv
             })
 
         # Final result
@@ -2329,6 +2335,38 @@ class ConstellationOptimizer:
         
         return plt 
 
+    def _repair_walker_solution(self, x):
+        """
+        Repair a Walker-Delta solution vector so it satisfies:
+        - P >= 1
+        - N >= P and N % P == 0
+        - 0 <= F < P and, if F > 0, N % F == 0 (reduce F if needed)
+        Returns (x_fixed, {'N': N, 'P': P, 'F': F})
+        """
+        xx = np.array(x, dtype=float).copy()
+        N_raw = int(round(xx[0]))
+        P = max(1, int(round(xx[6])))
+        # Ensure N >= P and divisible by P
+        N = N_raw
+        if N < P:
+            N = P
+        else:
+            rem = N % P
+            if rem != 0:
+                N = N - rem
+                if N < P:
+                    N = P
+        # Repair F
+        F_raw = int(round(xx[7]))
+        F = min(max(0, F_raw), P - 1)
+        if F > 0:
+            while N % F != 0 and F > 0:
+                F -= 1
+        # Write back
+        xx[0] = float(N)
+        xx[6] = float(P)
+        xx[7] = float(F)
+        return xx, {'N': N, 'P': P, 'F': F}
 
 if __name__ == "__main__":
 

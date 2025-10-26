@@ -229,27 +229,34 @@ class MultiObjectiveConstellationOptimizer(ConstellationOptimizer):
             Negative performance score (for minimization)
         """
         try:
-            if self.pattern_type == "Walker-Delta":
-                P = max(1, int(round(params[6])))
-                F_raw = int(round(params[7]))
+            # if self.pattern_type == "Walker-Delta":
+            #     P = max(1, int(round(params[6])))
+            #     F_raw = int(round(params[7]))
                 
-                # Repair: force N to be multiple of P
-                N_candidate = int(round(params[0]))
-                N = N_candidate - (N_candidate % P) if N_candidate % P != 0 else N_candidate
-                if N < 1: N = P
-                params[0] = N
+            #     # Repair: force N to be multiple of P
+            #     N_candidate = int(round(params[0]))
+            #     N = N_candidate - (N_candidate % P) if N_candidate % P != 0 else N_candidate
+            #     if N < 1: N = P
+            #     params[0] = N
                 
-                # Repair: force F < P and F divides N
-                F = min(F_raw, P - 1)
-                if F > 0:
-                    while N % F != 0 and F > 0:
-                        F -= 1
-                params[7] = F
-                params[6] = P
+            #     # Repair: force F < P and F divides N
+            #     F = min(F_raw, P - 1)
+            #     if F > 0:
+            #         while N % F != 0 and F > 0:
+            #             F -= 1
+            #     params[7] = F
+            #     params[6] = P
                 # print(f"[DEBUG Evalute Obj.] Repaired params for Walker-Delta: N={N}, P={P}, F={F}")
+            raw_params = np.array(params, dtype=float)
+            params_for_eval = raw_params
+            if self.pattern_type == "Walker-Delta":
+                params_for_eval, repair_meta = self._repair_walker_solution(raw_params)            
 
-            # Create parameter dictionaries
-            num_satellites, orbital_parameters, pattern_params = self._create_orbital_parameters(params)
+            # # Create parameter dictionaries
+            # num_satellites, orbital_parameters, pattern_params = self._create_orbital_parameters(params)
+            # Create parameter dictionaries using repaired params (if any)
+            num_satellites, orbital_parameters, pattern_params = self._create_orbital_parameters(params_for_eval)
+    
             # DEBUG: print what we got
             # print(f"DEBUG eval: N={num_satellites}, P={pattern_params.get('P')}, F={pattern_params.get('F')}, types: P={type(pattern_params.get('P'))}, F={type(pattern_params.get('F'))}")
                         
@@ -388,20 +395,41 @@ class MultiObjectiveConstellationOptimizer(ConstellationOptimizer):
             
             # *** CACHE DETAILED RESULTS FOR CSV EXPORT ***
             # Create a hashable key from parameters (rounded for floating point consistency)
-            param_key = tuple(np.round(params, 6))  # Round to avoid floating point precision issues
+
+            # param_key = tuple(np.round(params, 6))  # Round to avoid floating point precision issues
             
-            self.detailed_cache[param_key] = {
-                'local_score': local_score,
-                'regional_score': regional_score, 
-                'global_score': global_score,
-                'science_score': science_score,
-                'overlap_penalty': overlap_penalty,
-                'weighted_local': weighted_local,
-                'weighted_regional': weighted_regional,
-                'weighted_global': weighted_global,
-                'weighted_science': weighted_science,
-                'cost_breakdown': cost_breakdown.copy()  # Store cost breakdown too
+            # self.detailed_cache[param_key] = {
+            #     'local_score': local_score,
+            #     'regional_score': regional_score, 
+            #     'global_score': global_score,
+            #     'science_score': science_score,
+            #     'overlap_penalty': overlap_penalty,
+            #     'weighted_local': weighted_local,
+            #     'weighted_regional': weighted_regional,
+            #     'weighted_global': weighted_global,
+            #     'weighted_science': weighted_science,
+            #     'cost_breakdown': cost_breakdown.copy()  # Store cost breakdown too
+            # }
+
+            # Store under BOTH raw and repaired keys (so CSV can find cache using raw res.X)
+            raw_key = tuple(np.round(raw_params, 6))
+            rep_key = tuple(np.round(params_for_eval, 6))
+            cached_payload = {
+                 'local_score': local_score,
+                 'regional_score': regional_score, 
+                 'global_score': global_score,
+                 'science_score': science_score,
+                 'overlap_penalty': overlap_penalty,
+                 'weighted_local': weighted_local,
+                 'weighted_regional': weighted_regional,
+                 'weighted_global': weighted_global,
+                 'weighted_science': weighted_science,
+                'cost_breakdown': cost_breakdown.copy(),
+                'repaired_design': params_for_eval.copy(),
+                'repaired_meta': repair_meta if self.pattern_type == "Walker-Delta" else None
             }
+            self.detailed_cache[raw_key] = cached_payload
+            self.detailed_cache[rep_key] = cached_payload
             
             # Return objectives: minimize cost, minimize -performance
             return total_cost, -performance
@@ -538,7 +566,7 @@ class ParallelConstellationOptimizationProblem(Problem):
 
 def generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, global_weight, 
                             science_weight, pop_size, n_gen, step, seed, sat_mass_kg, 
-                            target_altitude, dv_deployment_m_s, T_deployment_days, file_type="csv"):
+                            target_altitude, target_inclination, dv_deployment_m_s, T_deployment_days, file_type="csv"):
     """
     Generate dynamic filename based on optimization parameters.
     
@@ -558,7 +586,7 @@ def generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, g
                 f"p{pop_size}_g{n_gen}_"
                 f"sp{step}_sd{seed}_"
                 f"m{sat_mass_kg:.0f}_"
-                f"a{target_altitude:.0f}_"
+                f"a{target_altitude:.0f}_i{target_inclination:.0f}_"
                 f"dv{dv_deployment_m_s:.0f}_"
                 f"T{T_deployment_days:.0f}d")
 
@@ -585,8 +613,8 @@ def generate_dynamic_directory(pattern_type, gs, local_weight, regional_weight, 
         Dynamic directory path
     """
     # Create directory structure: results/pattern/weights/ (gs omitted)
-    weight_str = f"L{local_weight:.1f}_R{regional_weight:.1f}_G{global_weight:.1f}_Sci{science_weight:.1f}"
-    directory = os.path.join(base_dir, pattern_type.lower(), weight_str)
+    # weight_str = f"L{local_weight:.1f}_R{regional_weight:.1f}_G{global_weight:.1f}_Sci{science_weight:.1f}"
+    directory = os.path.join(base_dir, pattern_type.lower())
     return directory
 
 def run_multi_objective_optimization(
@@ -727,7 +755,7 @@ def run_multi_objective_optimization(
         pop_size=pop_size,
         sampling=FloatRandomSampling(),
         crossover=SBX(prob=0.9, eta=15),
-        mutation=PolynomialMutation(prob=1.0/problem.n_var, eta=20),
+        mutation=PolynomialMutation(prob=1.0/problem.n_var, eta=15),
         eliminate_duplicates=True
     )
     
@@ -765,12 +793,12 @@ def run_multi_objective_optimization(
     
     csv_filename = generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, 
                                            global_weight, science_weight, pop_size, n_gen, 
-                                           step, seed, sat_mass_kg, target_altitude, dv_deployment_m_s, T_deployment_days, "csv")
+                                           step, seed, sat_mass_kg, target_altitude, target_inclination, dv_deployment_m_s, T_deployment_days, "csv")
     csv_filepath = os.path.join(dynamic_dir, csv_filename)
     
     plot_filename = generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, 
                                             global_weight, science_weight, pop_size, n_gen, 
-                                            step, seed, sat_mass_kg, target_altitude, dv_deployment_m_s, T_deployment_days, "png")
+                                            step, seed, sat_mass_kg, target_altitude, target_inclination, dv_deployment_m_s, T_deployment_days, "png")
     plot_filepath = os.path.join(dynamic_dir, plot_filename)
     
     # Save detailed results to CSV
@@ -841,9 +869,15 @@ def run_multi_objective_optimization(
         writer.writeheader()
         
         for i, (solution, cost, performance) in enumerate(zip(pareto_solutions, costs, performances)):
-            # Decode solution parameters
-            num_satellites, orbital_params, pattern_params = optimizer._create_orbital_parameters(solution)
-            
+            # # Decode solution parameters
+            # num_satellites, orbital_params, pattern_params = optimizer._create_orbital_parameters(solution)
+            # Decode solution parameters using the same repair used in evaluation
+            sol_for_decode = solution
+            rep_meta = None
+            if pattern_type == "Walker-Delta":
+                sol_for_decode, rep_meta = optimizer._repair_walker_solution(solution)
+            num_satellites, orbital_params, pattern_params = optimizer._create_orbital_parameters(sol_for_decode)
+                
             # Calculate derived parameters
             altitude = orbital_params['semi_major_axis'] - constants.EARTH_RADIUS
             
@@ -930,12 +964,18 @@ def run_multi_objective_optimization(
                 'performance': performance,
                 
                 # Design variables
-                'num_satellites': num_satellites,
-                'perigee_height_km': solution[1],
-                'eccentricity': solution[2],
-                'inclination_deg': solution[3],
-                'RAAN_deg': solution[4],
-                'arg_periapsis_deg': solution[5],
+                # 'num_satellites': num_satellites,
+                # 'perigee_height_km': solution[1],
+                # 'eccentricity': solution[2],
+                # 'inclination_deg': solution[3],
+                # 'RAAN_deg': solution[4],
+                # 'arg_periapsis_deg': solution[5],
+                'num_satellites': rep_meta['N'] if rep_meta else num_satellites,
+                'perigee_height_km': sol_for_decode[1],
+                'eccentricity': sol_for_decode[2],
+                'inclination_deg': sol_for_decode[3],
+                'RAAN_deg': sol_for_decode[4],
+                'arg_periapsis_deg': sol_for_decode[5],
                 'altitude_km': altitude,
                 'semi_major_axis_km': orbital_params['semi_major_axis'],
                 
@@ -986,9 +1026,13 @@ def run_multi_objective_optimization(
             }
             
             if pattern_type == "Walker-Delta":
+                # row.update({
+                #     'P_planes': pattern_params['P'],
+                #     'F_phasing': pattern_params['F']
+                # })
                 row.update({
-                    'P_planes': pattern_params['P'],
-                    'F_phasing': pattern_params['F']
+                    'P_planes': rep_meta['P'] if rep_meta else pattern_params['P'],
+                    'F_phasing': rep_meta['F'] if rep_meta else pattern_params['F']
                 })
             elif pattern_type == "Flower":
                 row.update({
@@ -1019,7 +1063,8 @@ def run_multi_objective_optimization(
     # Enhanced title with key parameters (GS removed)
     title = (
         f'Pareto Front - {pattern_type} Constellation\n'
-        f'Weights: L={local_weight}, R={regional_weight}, G={global_weight}, Sci={science_weight}\n'
+        f'Weights: L={local_weight}, R={regional_weight}, G={global_weight}, Sci={science_weight}; '
+        f'Target Alt={target_altitude:.1f}km±{target_altitude_tolerance}km, Inc={target_inclination:.1f}°±{target_inclination_tolerance}°\n; '
         f'Pop={pop_size}, Gen={n_gen}, Step={step}s, Seed={seed}, SatMass={sat_mass_kg}kg; '
         f'DV_dep={dv_deployment_m_s:.0f} m/s, T_dep={T_deployment_days:.0f} d; '
         f'Payload={tot_payload_mass_kg:.1f} kg / {tot_payload_power_w:.0f} W'
