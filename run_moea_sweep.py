@@ -52,14 +52,14 @@ def run_parameter_sweep():
     default_payload_mass = 53.2  # kg (for 190 kg satellite)
     
     # Define parameter ranges
-    altitudes = [500.0, 700.0, 1000.0]  # km
-    inclinations = [50.0, 60.0, 98.0]    # degrees
-    deployment_dvs = [100.0, 200.0, 300.0, 400.0]  # m/s
+    altitudes = [500.0, 1000.0]  # Removed 700.0 (default)
+    inclinations = [60.0, 98.0]   # Removed 50.0 (default)
+    deployment_dvs = [100.0, 300.0, 500.0]  # Removed 200.0 (default)
     
     # Satellite mass and payload combinations (sat_total_kg, payload_total_kg)
     sat_configs = [
         (95.0, 23.8),    # Micro-class
-        (190.0, 53.2),   # Low mini-class (DEFAULT)
+        # (190.0, 53.2),   # Low mini-class (DEFAULT)
         (370.0, 114.7),  # Up mini-class
         (760.0, 266.0)   # Small-class
     ]
@@ -68,8 +68,8 @@ def run_parameter_sweep():
     fixed_params = {
         'pattern_type': 'Walker-Delta',
         'gs': 'AFB_Andersen',
-        'pop_size': 120,
-        'n_gen': 83,
+        'pop_size': 320,
+        'n_gen': 120,
         'seed': 42,
         'output_dir': 'results/MOEA',
         'step': 1500,
@@ -86,6 +86,16 @@ def run_parameter_sweep():
     
     # Build list of runs (one parameter changed at a time)
     runs = []
+
+    # 0. BASELINE RUN (all defaults) - ADD THIS FIRST
+    runs.append({
+        'name': 'baseline_default',
+        'altitude': default_altitude,
+        'inclination': default_inclination,
+        'dv_deployment': default_deployment_dv,
+        'sat_mass': default_sat_mass,
+        'payload_mass': default_payload_mass
+    })
     
     # 1. Altitude sweep (vary altitude, keep others at default)
     for alt in altitudes:
