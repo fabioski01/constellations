@@ -598,23 +598,83 @@ def generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, g
         return f"results_{param_str}.{file_type}"
 
 def generate_dynamic_directory(pattern_type, gs, local_weight, regional_weight, global_weight, 
-                              science_weight, base_dir="results/MOEA"):
+                              science_weight, pop_size, n_gen, seed,
+                              target_altitude, target_inclination, sat_mass_kg, dv_deployment_m_s,
+                              base_dir="results/MOEA", sweep_type_override=None):
     """
     Generate dynamic directory structure based on key parameters.
+    
+    Structure: <base_dir>/<pattern>/<p###_g###_sd###>/<sweep_type>/
+    
+    The sweep type is inferred by comparing parameters to baseline defaults:
+    - sweep_alt: if target_altitude differs from 700 km
+    - sweep_inc: if target_inclination differs from 50 deg
+    - sweep_mass: if sat_mass_kg differs from 190 kg
+    - sweep_vdep: if dv_deployment_m_s differs from 200 m/s
+    - (if multiple or none differ, defaults to the pattern folder)
+    
+    If sweep_type_override is provided, it will be used directly instead of inference.
 
-    NOTE: The `gs` (ground station) argument is accepted for backward
-    compatibility but is intentionally NOT included in the path. This saves
-    results under ``<base_dir>/<pattern_type>/<weight_str>/`` rather than
-    ``<base_dir>/<pattern_type>/<gs>/<weight_str>/``.
+    Parameters
+    ----------
+    pattern_type : str
+        Constellation pattern name
+    pop_size : int
+        Population size
+    n_gen : int
+        Number of generations
+    seed : int
+        Random seed
+    target_altitude : float
+        Target altitude in km
+    target_inclination : float
+        Target inclination in degrees
+    sat_mass_kg : float
+        Satellite mass in kg
+    dv_deployment_m_s : float
+        Deployment delta-V in m/s
+    base_dir : str
+        Base directory path
+    sweep_type_override : str, optional
+        Explicit sweep type ('sweep_alt', 'sweep_inc', 'sweep_mass', 'sweep_vdep')
+        If provided, bypasses automatic detection
 
     Returns
     -------
     directory : str
         Dynamic directory path
     """
-    # Create directory structure: results/pattern/weights/ (gs omitted)
-    # weight_str = f"L{local_weight:.1f}_R{regional_weight:.1f}_G{global_weight:.1f}_Sci{science_weight:.1f}"
-    directory = os.path.join(base_dir, pattern_type.lower())
+    # Baseline defaults (from your sweep script)
+    default_altitude = 700.0
+    default_inclination = 50.0
+    default_mass = 190.0
+    default_dv = 200.0
+    
+    # Use override if provided, otherwise infer
+    if sweep_type_override:
+        sweep_type = sweep_type_override
+    else:
+        # Determine which parameter is being swept
+        sweep_type = None
+        if abs(target_altitude - default_altitude) > 1e-3:
+            sweep_type = "sweep_alt"
+        elif abs(target_inclination - default_inclination) > 1e-3:
+            sweep_type = "sweep_inc"
+        elif abs(sat_mass_kg - default_mass) > 1e-3:
+            sweep_type = "sweep_mass"
+        elif abs(dv_deployment_m_s - default_dv) > 1e-3:
+            sweep_type = "sweep_vdep"
+        # If no difference (baseline) or multiple differences, omit sweep folder
+    
+    # Build path: base/pattern/p###_g###_sd###/[sweep_type]/
+    config_str = f"p{pop_size}_g{n_gen}_sd{seed}"
+    
+    if sweep_type:
+        directory = os.path.join(base_dir, pattern_type.lower(), config_str, sweep_type)
+    else:
+        # Baseline run or multi-parameter variation: no sweep subfolder
+        directory = os.path.join(base_dir, pattern_type.lower(), config_str)
+    
     return directory
 
 def run_multi_objective_optimization(
@@ -639,7 +699,8 @@ def run_multi_objective_optimization(
     cluster_mode=False, # for parallelism
     evaluation_hours=24,
     dv_deployment_m_s: float = 100.0,
-    T_deployment_days: float = 180.0
+    T_deployment_days: float = 180.0,
+    sweep_type: str = None  # NEW: explicit sweep type for directory organization
 ):
     """
     Run a multi-objective NSGA-II optimization for constellation design.
@@ -787,8 +848,12 @@ def run_multi_objective_optimization(
     print(f"Performance range: {performances.min():.3f} - {performances.max():.3f}")
     
     # Generate dynamic directory and filenames
-    dynamic_dir = generate_dynamic_directory(pattern_type, gs, local_weight, regional_weight, 
-                                           global_weight, science_weight, output_dir)
+    dynamic_dir = generate_dynamic_directory(
+        pattern_type, gs, local_weight, regional_weight, 
+        global_weight, science_weight, pop_size, n_gen, seed,
+        target_altitude, target_inclination, sat_mass_kg, dv_deployment_m_s,
+        output_dir, sweep_type_override=sweep_type
+    )
     os.makedirs(dynamic_dir, exist_ok=True)
     
     csv_filename = generate_dynamic_filename(pattern_type, gs, local_weight, regional_weight, 

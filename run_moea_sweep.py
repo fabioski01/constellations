@@ -51,15 +51,15 @@ def run_parameter_sweep():
     default_sat_mass = 190.0  # kg
     default_payload_mass = 53.2  # kg (for 190 kg satellite)
     
-    # Define parameter ranges
-    altitudes = [500.0, 1000.0]  # Removed 700.0 (default)
-    inclinations = [60.0, 98.0]   # Removed 50.0 (default)
-    deployment_dvs = [100.0, 300.0, 500.0]  # Removed 200.0 (default)
+    # Define parameter ranges (INCLUDE defaults in each sweep)
+    altitudes = [500.0, 700.0, 1000.0]  # Include 700.0 (default)
+    inclinations = [50.0, 60.0, 98.0]   # Include 50.0 (default)
+    deployment_dvs = [100.0, 200.0, 300.0, 500.0]  # Include 200.0 (default)
     
     # Satellite mass and payload combinations (sat_total_kg, payload_total_kg)
     sat_configs = [
         (95.0, 23.8),    # Micro-class
-        # (190.0, 53.2),   # Low mini-class (DEFAULT)
+        (190.0, 53.2),   # Low mini-class (DEFAULT) - INCLUDED
         (370.0, 114.7),  # Up mini-class
         (760.0, 266.0)   # Small-class
     ]
@@ -68,14 +68,14 @@ def run_parameter_sweep():
     fixed_params = {
         'pattern_type': 'Walker-Delta',
         'gs': 'AFB_Andersen',
-        'pop_size': 320,
-        'n_gen': 120,
-        'seed': 42,
+        'pop_size': 480,
+        'n_gen': 50,
+        'seed': 12,
         'output_dir': 'results/MOEA',
-        'step': 1500,
+        'step': 500,
         'n_cores': 4,
         'cluster_mode': True,
-        'evaluation_hours': 96,
+        'evaluation_hours': 48,
         'T_deployment_days': 180.0,
         # Weights
         'local_weight': 0.0,
@@ -94,7 +94,8 @@ def run_parameter_sweep():
         'inclination': default_inclination,
         'dv_deployment': default_deployment_dv,
         'sat_mass': default_sat_mass,
-        'payload_mass': default_payload_mass
+        'payload_mass': default_payload_mass,
+        'sweep_type': None  # No sweep folder for baseline
     })
     
     # 1. Altitude sweep (vary altitude, keep others at default)
@@ -105,7 +106,8 @@ def run_parameter_sweep():
             'inclination': default_inclination,
             'dv_deployment': default_deployment_dv,
             'sat_mass': default_sat_mass,
-            'payload_mass': default_payload_mass
+            'payload_mass': default_payload_mass,
+            'sweep_type': 'sweep_alt'  # Force all altitude runs into sweep_alt folder
         })
     
     # 2. Inclination sweep (vary inclination, keep others at default)
@@ -117,19 +119,21 @@ def run_parameter_sweep():
             'inclination': inc,
             'dv_deployment': default_deployment_dv,
             'sat_mass': default_sat_mass,
-            'payload_mass': default_payload_mass
+            'payload_mass': default_payload_mass,
+            'sweep_type': 'sweep_inc'  # Force all inclination runs into sweep_inc folder
         })
     
-    # 3. Deployment ΔV sweep
-    for dv in deployment_dvs:
-        runs.append({
-            'name': f'dv_{dv:.0f}ms',
-            'altitude': default_altitude,
-            'inclination': default_inclination,
-            'dv_deployment': dv,
-            'sat_mass': default_sat_mass,
-            'payload_mass': default_payload_mass
-        })
+    # # 3. Deployment ΔV sweep
+    # for dv in deployment_dvs:
+    #     runs.append({
+    #         'name': f'dv_{dv:.0f}ms',
+    #         'altitude': default_altitude,
+    #         'inclination': default_inclination,
+    #         'dv_deployment': dv,
+    #         'sat_mass': default_sat_mass,
+    #         'payload_mass': default_payload_mass,
+    #         'sweep_type': 'sweep_vdep'  # Force all dv runs into sweep_vdep folder
+    #     })
     
     # 4. Satellite mass sweep
     for sat_mass, payload_mass in sat_configs:
@@ -139,7 +143,8 @@ def run_parameter_sweep():
             'inclination': default_inclination,
             'dv_deployment': default_deployment_dv,
             'sat_mass': sat_mass,
-            'payload_mass': payload_mass
+            'payload_mass': payload_mass,
+            'sweep_type': 'sweep_mass'  # Force all mass runs into sweep_mass folder
         })
     
     total_runs = len(runs)
@@ -165,6 +170,42 @@ def run_parameter_sweep():
         # Create payload configuration
         payloads = create_payload_config(run_config['payload_mass'])
         
+        # --- Check if output CSV already exists ---
+        # Build expected output directory and filename
+        from multi_objective_optimizer import generate_dynamic_directory
+        output_dir = generate_dynamic_directory(
+            pattern_type=fixed_params['pattern_type'],
+            gs=fixed_params['gs'],
+            local_weight=fixed_params['local_weight'],
+            regional_weight=fixed_params['regional_weight'],
+            global_weight=fixed_params['global_weight'],
+            science_weight=fixed_params['science_weight'],
+            pop_size=fixed_params['pop_size'],
+            n_gen=fixed_params['n_gen'],
+            seed=fixed_params['seed'],
+            target_altitude=run_config['altitude'],
+            target_inclination=run_config['inclination'],
+            sat_mass_kg=run_config['sat_mass'],
+            dv_deployment_m_s=run_config['dv_deployment'],
+            base_dir=fixed_params['output_dir'],
+            sweep_type_override=run_config['sweep_type']
+        )
+
+        # Build expected CSV filename pattern (partial match)
+        expected_csv_prefix = f"pareto_solutions_{fixed_params['pattern_type'].lower()}_{fixed_params['gs']}_L{fixed_params['local_weight']:.1f}_R{fixed_params['regional_weight']:.1f}_G{fixed_params['global_weight']:.1f}_Sci{fixed_params['science_weight']:.1f}_tgtAlt{run_config['altitude']:.0f}km_tgtInc{run_config['inclination']:.0f}deg_dv{run_config['dv_deployment']:.0f}_T{fixed_params['T_deployment_days']:.0f}d_mass{run_config['sat_mass']:.0f}kg"
+        # Check if any file in output_dir matches this prefix
+        skip_run = False
+        if os.path.exists(output_dir):
+            for fname in os.listdir(output_dir):
+                if fname.startswith(expected_csv_prefix) and fname.endswith('.csv'):
+                    print(f"SKIPPING RUN {run_idx}/{total_runs}: {run_config['name']}")
+                    print(f"  Output already exists: {os.path.join(output_dir, fname)}")
+                    skip_run = True
+                    break
+
+        if skip_run:
+            continue
+
         print(f"\n{'='*80}")
         print(f"RUN {run_idx}/{total_runs}: {run_config['name']}")
         print(f"{'='*80}")
@@ -187,6 +228,7 @@ def run_parameter_sweep():
                 sat_mass_kg=run_config['sat_mass'],
                 payloads=payloads,
                 dv_deployment_m_s=run_config['dv_deployment'],
+                sweep_type=run_config['sweep_type'],  # Pass sweep type to ensure correct folder
                 **fixed_params
             )
             
