@@ -80,17 +80,40 @@ class MultiCSVComparator:
         self.load_all_csvs()
         
     def load_all_csvs(self):
-        """Load all CSV files from directory or list."""
+        """Load all CSV files from directory or list. Supports recursive search for multi-seed scenarios."""
         if isinstance(self.csv_dir, list):
             csv_files = self.csv_dir
         else:
-            # Prefer population-level CSVs if available, otherwise fall back to Pareto-only
+            # Check if we need recursive search (multi-seed scenario)
+            # Pattern: if csv_dir is like .../walker-delta/ (parent of p###_g###_sd### folders)
+            # then search recursively for sweep folders
+            csv_dir_path = Path(self.csv_dir)
+            
+            # Try direct search first (single seed folder like .../p320_g120_sd42/sweep_mass/)
             pop_candidates = glob(os.path.join(self.csv_dir, "population_solutions_*.csv"))
+            pareto_candidates = glob(os.path.join(self.csv_dir, "pareto_solutions_*.csv"))
+            
+            if not pop_candidates and not pareto_candidates:
+                # No CSVs found directly - try recursive search for multi-seed scenario
+                # Search pattern: .../p*_g*_sd*/sweep_*/*.csv
+                import re
+                
+                # Detect if we're at pattern level (e.g., walker-delta) or sweep level
+                if re.match(r'^p\d+_g\d+_sd\d+$', csv_dir_path.name):
+                    # We're at a specific config folder - don't recurse, user wants this seed only
+                    pass
+                else:
+                    # Try recursive search for multi-seed CSVs
+                    pop_candidates = glob(os.path.join(self.csv_dir, "**/population_solutions_*.csv"), recursive=True)
+                    pareto_candidates = glob(os.path.join(self.csv_dir, "**/pareto_solutions_*.csv"), recursive=True)
+            
+            # Prefer population CSVs
             if pop_candidates:
                 csv_files = sorted(pop_candidates)
-            else:
-                pareto_candidates = glob(os.path.join(self.csv_dir, "pareto_solutions_*.csv"))
+            elif pareto_candidates:
                 csv_files = sorted(pareto_candidates)
+            else:
+                csv_files = []
         
         if not csv_files:
             raise ValueError(f"No CSV files found in {self.csv_dir}")
@@ -105,6 +128,11 @@ class MultiCSVComparator:
             
             # Extract metadata from columns, filename, and parent folder
             metadata = self._extract_metadata(df, csv_path)
+            
+            # Debug: Print metadata for files with altitude 700 or inclination 50 or mass 190
+            if metadata.get('target_altitude') == 700.0 or metadata.get('target_inclination') == 50.0 or metadata.get('sat_mass') == 190.0:
+                print(f"  [DEBUG] {csv_name[:60]}...")
+                print(f"    altitude={metadata.get('target_altitude')}, inc={metadata.get('target_inclination')}, mass={metadata.get('sat_mass')}, sweep_type={metadata.get('sweep_type')}")
             
             # Clean data: ensure essential columns exist; drop rows missing core fields only
             critical_cols = ['cost_musd', 'performance', 'num_satellites']
@@ -125,6 +153,33 @@ class MultiCSVComparator:
 
         # Sort datasets by their sweep parameter for consistent legend ordering
         self._sort_datasets_by_parameter()
+        
+        # Add seed numbers to labels when duplicates exist
+        self._disambiguate_labels()
+
+    def _disambiguate_labels(self):
+        """
+        Add seed numbers to labels when multiple datasets have the same parameter value.
+        For example, if two datasets both have "Alt 700 km", they become:
+        "Alt 700 km (sd11)" and "Alt 700 km (sd42)"
+        """
+        # Group datasets by base_label
+        label_groups = {}
+        for name, meta in self.metadata.items():
+            base_label = meta.get('base_label', meta.get('label', 'unknown'))
+            label_groups.setdefault(base_label, []).append(name)
+        
+        # For groups with multiple datasets, append seed number
+        for base_label, names in label_groups.items():
+            if len(names) > 1:
+                # Multiple datasets with same parameter value - add seed to distinguish
+                for name in names:
+                    seed = self.metadata[name].get('seed')
+                    if seed is not None:
+                        self.metadata[name]['label'] = f"{base_label} (sd{seed})"
+                    else:
+                        # Fallback: use csv name if seed not found
+                        self.metadata[name]['label'] = f"{base_label} ({name})"
 
     def _nondominated_mask(self, df: pd.DataFrame) -> np.ndarray:
         """Return boolean mask for non-dominated points (minimize cost, maximize performance)."""
@@ -138,6 +193,35 @@ class MultiCSVComparator:
             # Eliminate points dominated by point i (strict in at least one objective)
             dominated = (costs[i] <= costs) & (perf[i] >= perf) & ((costs[i] < costs) | (perf[i] > perf))
             dominated[i] = False  # don't mark self as dominated
+            keep[dominated] = False
+        return keep
+
+    @staticmethod
+    def compute_global_pareto_from_arrays(costs: np.ndarray, performances: np.ndarray) -> np.ndarray:
+        """
+        Compute non-dominated front from cost and performance arrays.
+        
+        Parameters:
+        -----------
+        costs : np.ndarray
+            Cost values (to minimize)
+        performances : np.ndarray
+            Performance values (to maximize)
+            
+        Returns:
+        --------
+        mask : np.ndarray
+            Boolean mask indicating non-dominated solutions
+        """
+        n = len(costs)
+        keep = np.ones(n, dtype=bool)
+        for i in range(n):
+            if not keep[i]:
+                continue
+            # Eliminate points dominated by point i
+            dominated = (costs[i] <= costs) & (performances[i] >= performances) & \
+                       ((costs[i] < costs) | (performances[i] > performances))
+            dominated[i] = False
             keep[dominated] = False
         return keep
 
@@ -185,6 +269,11 @@ class MultiCSVComparator:
         p = Path(csv_path)
         csv_name = p.stem
         parent_name = p.parent.name.lower()
+        
+        # Extract seed number from filename (e.g., _sd42, _sd11)
+        import re
+        seed_match = re.search(r'_sd(\d+)', csv_name)
+        meta['seed'] = int(seed_match.group(1)) if seed_match else None
 
         # Try to get from dataframe columns first
         if 'optimization_params_target_altitude' in df.columns:
@@ -205,7 +294,7 @@ class MultiCSVComparator:
                 pass
 
         # Parse from filename (e.g., ..._a700_i50_m190_dv200_...)
-        import re
+        # Filename values take precedence (more specific)
         alt_match = re.search(r'[_-]a(\d+)[km]?', csv_name)
         if alt_match:
             meta['target_altitude'] = float(alt_match.group(1))
@@ -258,6 +347,7 @@ class MultiCSVComparator:
                 meta['label'] = csv_name
 
         meta['sweep_type'] = sweep_type
+        meta['base_label'] = meta['label']  # Store base label for later modification
         return meta
     
     def generate_all_plots(self):
@@ -297,11 +387,13 @@ class MultiCSVComparator:
         # 2. Pareto fronts with trend lines
         for sweep_type, names in sweep_groups.items():
             if len(names) > 1:
-                self.plot_pareto_comparison(names, sweep_type)
-                self.plot_pareto_comparison_colored(names, sweep_type)
-                # Extra: for mass sweep, also provide a log-scale cost variant
+                # Only keep log-scale Pareto for mass sweep
                 if sweep_type == 'mass':
                     self.plot_pareto_comparison_log_cost(names, sweep_type)
+                # Keep merged multi-seed Pareto plots
+                self.plot_merged_pareto_multiseed(names, sweep_type)
+                if sweep_type == 'mass':
+                    self.plot_merged_pareto_multiseed_logx(names, sweep_type)
         
         # 3. Cost components vs satellites
         for sweep_type, names in sweep_groups.items():
@@ -321,142 +413,142 @@ class MultiCSVComparator:
         print(f"\nAll comparison plots saved to: {self.output_dir}/")
     
     def plot_3d_altitude_comparison(self, csv_names):
-        """3D scatter: Cost vs Performance vs Satellites, colored by target altitude."""
+        """3D scatter: Cost vs Performance vs Satellites, merged by altitude (not by seed/config)."""
         fig = plt.figure(figsize=(16, 6))
-        
-        # Plot 1: Cost vs Performance vs Satellites (colored by target altitude)
-        ax1 = fig.add_subplot(131, projection='3d')
-        
-        for i, name in enumerate(csv_names):
-            df = self.data_dict[name]
+        # Group by altitude
+        param_groups = {}
+        for name in csv_names:
             meta = self.metadata[name]
+            param_val = meta.get('target_altitude')
+            if param_val is None:
+                continue
+            param_groups.setdefault(param_val, []).append(name)
+
+        # Plot 1: Cost vs Performance vs Satellites
+        ax1 = fig.add_subplot(131, projection='3d')
+        for i, (alt, csv_list) in enumerate(sorted(param_groups.items())):
             color = self.color_palette[i % len(self.color_palette)]
             marker = self.marker_styles[i % len(self.marker_styles)]
-
-            ax1.scatter(df['cost_musd'], df['performance'], df['num_satellites'],
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            ax1.scatter(merged_df['cost_musd'], merged_df['performance'], merged_df['num_satellites'],
                         c=color, s=60, alpha=0.7, marker=marker,
                         edgecolors='black', linewidth=0.5,
-                        label=meta['label'])
-        
-        ax1.set_xlabel('Cost (M$)')
+                        label=f"Alt {alt:.0f} km")
+        ax1.set_xlabel('Cost (M$ FY2025)')
         ax1.set_ylabel('Performance')
         ax1.set_zlabel('Number of Satellites')
         ax1.set_title('Altitude Sweep Comparison\nCost vs Performance vs Satellites')
         ax1.legend()
-        
+
         # Plot 2: Cost vs Satellites vs Altitude (colored by performance)
         ax2 = fig.add_subplot(132, projection='3d')
-        
-        for i, name in enumerate(csv_names):
-            df = self.data_dict[name]
-            meta = self.metadata[name]
-            target_alt = meta['target_altitude']
+        for i, (alt, csv_list) in enumerate(sorted(param_groups.items())):
             marker = self.marker_styles[i % len(self.marker_styles)]
-
-            scatter = ax2.scatter(df['cost_musd'], df['num_satellites'],
-                                  [target_alt] * len(df),
-                                  c=df['performance'], s=60, alpha=0.7, marker=marker,
-                                  cmap='plasma', vmin=0, vmax=1,
-                                  edgecolors='black', linewidth=0.5)
-        
-        ax2.set_xlabel('Cost (M$)')
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            scatter = ax2.scatter(merged_df['cost_musd'], merged_df['num_satellites'],
+                                [alt] * len(merged_df),
+                                c=merged_df['performance'], s=60, alpha=0.7, marker=marker,
+                                cmap='plasma', vmin=0, vmax=1,
+                                edgecolors='black', linewidth=0.5)
+        ax2.set_xlabel('Cost (M$ FY2025)')
         ax2.set_ylabel('Number of Satellites')
         ax2.set_zlabel('Target Altitude (km)')
         ax2.set_title('Cost vs Satellites vs Target Altitude\n(colored by performance)')
         plt.colorbar(scatter, ax=ax2, label='Performance', shrink=0.5)
-        
+
         # Plot 3: Performance vs Altitude vs Satellites
         ax3 = fig.add_subplot(133, projection='3d')
-        
-        for i, name in enumerate(csv_names):
-            df = self.data_dict[name]
-            meta = self.metadata[name]
-            target_alt = meta['target_altitude']
+        for i, (alt, csv_list) in enumerate(sorted(param_groups.items())):
             color = self.color_palette[i % len(self.color_palette)]
             marker = self.marker_styles[i % len(self.marker_styles)]
-
-            ax3.scatter([target_alt] * len(df), df['performance'], df['num_satellites'],
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            ax3.scatter([alt] * len(merged_df), merged_df['performance'], merged_df['num_satellites'],
                         c=color, s=60, alpha=0.7, marker=marker,
                         edgecolors='black', linewidth=0.5,
-                        label=meta['label'])
-        
+                        label=f"Alt {alt:.0f} km")
         ax3.set_xlabel('Target Altitude (km)')
         ax3.set_ylabel('Performance')
         ax3.set_zlabel('Number of Satellites')
         ax3.set_title('Altitude vs Performance vs Satellites')
         ax3.legend()
-        
+
         plt.tight_layout()
         plt.savefig(f"{self.output_dir}/3d_altitude_comparison.png", dpi=300, bbox_inches='tight')
         plt.close()
         print("✓ Saved 3d_altitude_comparison.png")
     
     def plot_3d_inclination_comparison(self, csv_names):
-        """3D scatter: Cost vs Performance vs Satellites, colored by target inclination."""
+        """3D scatter: Cost vs Performance vs Satellites, merged by inclination (not by seed/config)."""
         fig = plt.figure(figsize=(16, 6))
-        
-        # Plot 1: Cost vs Performance vs Satellites (colored by target inclination)
-        ax1 = fig.add_subplot(131, projection='3d')
-        
-        for i, name in enumerate(csv_names):
-            df = self.data_dict[name]
+        # Group by inclination
+        param_groups = {}
+        for name in csv_names:
             meta = self.metadata[name]
+            param_val = meta.get('target_inclination')
+            if param_val is None:
+                continue
+            param_groups.setdefault(param_val, []).append(name)
+
+        # Plot 1: Cost vs Performance vs Satellites
+        ax1 = fig.add_subplot(131, projection='3d')
+        for i, (inc, csv_list) in enumerate(sorted(param_groups.items())):
             color = self.color_palette[i % len(self.color_palette)]
             marker = self.marker_styles[i % len(self.marker_styles)]
-
-            ax1.scatter(df['cost_musd'], df['performance'], df['num_satellites'],
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            ax1.scatter(merged_df['cost_musd'], merged_df['performance'], merged_df['num_satellites'],
                         c=color, s=60, alpha=0.7, marker=marker,
                         edgecolors='black', linewidth=0.5,
-                        label=meta['label'])
-        
-        ax1.set_xlabel('Cost (M$)')
+                        label=f"Inc {inc:.0f}°")
+        ax1.set_xlabel('Cost (M$ FY2025)')
         ax1.set_ylabel('Performance')
         ax1.set_zlabel('Number of Satellites')
         ax1.set_title('Inclination Sweep Comparison\nCost vs Performance vs Satellites')
         ax1.legend()
-        
+
         # Plot 2: Cost vs Satellites vs Inclination (colored by performance)
         ax2 = fig.add_subplot(132, projection='3d')
-        
-        for i, name in enumerate(csv_names):
-            df = self.data_dict[name]
-            meta = self.metadata[name]
-            target_inc = meta['target_inclination']
+        for i, (inc, csv_list) in enumerate(sorted(param_groups.items())):
             marker = self.marker_styles[i % len(self.marker_styles)]
-
-            scatter = ax2.scatter(df['cost_musd'], df['num_satellites'],
-                                  [target_inc] * len(df),
-                                  c=df['performance'], s=60, alpha=0.7, marker=marker,
-                                  cmap='coolwarm', vmin=0, vmax=1,
-                                  edgecolors='black', linewidth=0.5)
-        
-        ax2.set_xlabel('Cost (M$)')
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            scatter = ax2.scatter(merged_df['cost_musd'], merged_df['num_satellites'],
+                                [inc] * len(merged_df),
+                                c=merged_df['performance'], s=60, alpha=0.7, marker=marker,
+                                cmap='coolwarm', vmin=0, vmax=1,
+                                edgecolors='black', linewidth=0.5)
+        ax2.set_xlabel('Cost (M$ FY2025)')
         ax2.set_ylabel('Number of Satellites')
         ax2.set_zlabel('Target Inclination (deg)')
         ax2.set_title('Cost vs Satellites vs Target Inclination\n(colored by performance)')
         plt.colorbar(scatter, ax=ax2, label='Performance', shrink=0.5)
-        
+
         # Plot 3: Performance vs Inclination vs Satellites
         ax3 = fig.add_subplot(133, projection='3d')
-        
-        for i, name in enumerate(csv_names):
-            df = self.data_dict[name]
-            meta = self.metadata[name]
-            target_inc = meta['target_inclination']
+        for i, (inc, csv_list) in enumerate(sorted(param_groups.items())):
             color = self.color_palette[i % len(self.color_palette)]
             marker = self.marker_styles[i % len(self.marker_styles)]
-
-            ax3.scatter([target_inc] * len(df), df['performance'], df['num_satellites'],
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            ax3.scatter([inc] * len(merged_df), merged_df['performance'], merged_df['num_satellites'],
                         c=color, s=60, alpha=0.7, marker=marker,
                         edgecolors='black', linewidth=0.5,
-                        label=meta['label'])
-        
+                        label=f"Inc {inc:.0f}°")
         ax3.set_xlabel('Target Inclination (deg)')
         ax3.set_ylabel('Performance')
         ax3.set_zlabel('Number of Satellites')
         ax3.set_title('Inclination vs Performance vs Satellites')
         ax3.legend()
-        
+
         plt.tight_layout()
         plt.savefig(f"{self.output_dir}/3d_inclination_comparison.png", dpi=300, bbox_inches='tight')
         plt.close()
@@ -493,7 +585,7 @@ class MultiCSVComparator:
                             edgecolors='black', linewidth=0.6,
                             label=meta['label'])
 
-        plt.xlabel('Total Cost (M$)', fontsize=12)
+        plt.xlabel('Total Cost (M$ FY2025)', fontsize=12)
         plt.ylabel('Performance Score', fontsize=12)
         plt.title(f'All Solutions + Pareto Front - {sweep_type.title()} Sweep', fontsize=14)
         plt.legend()
@@ -521,7 +613,7 @@ class MultiCSVComparator:
                                       cmap='viridis', edgecolors='black', linewidth=0.5,
                                       marker=marker)
             
-            axes[i].set_xlabel('Total Cost (M$)')
+            axes[i].set_xlabel('Total Cost (M$ FY2025)')
             axes[i].set_ylabel('Performance Score')
             axes[i].set_title(f'{meta["label"]}\nPareto Front')
             axes[i].grid(True, alpha=0.3)
@@ -564,7 +656,7 @@ class MultiCSVComparator:
                             edgecolors='black', linewidth=0.6,
                             label=meta['label'])
 
-        # Use log scale with readable money ticks (M$ / B$)
+        # Use log scale with readable money ticks (M$ FY2025 / B$)
         from matplotlib.ticker import FuncFormatter, LogLocator
         ax = plt.gca()
         ax.set_xscale('log')
@@ -572,19 +664,19 @@ class MultiCSVComparator:
         ax.xaxis.set_major_locator(LogLocator(base=10.0, subs=(1.0, 2.0, 5.0)))
 
         def _fmt_musd(x, pos):
-            # x is in millions of dollars (M$)
+            # x is in millions of dollars (M$ FY2025)
             import numpy as _np
             if x is None or not _np.isfinite(x) or x <= 0:
                 return ""
-            if x >= 1000:  # 1000 M$ = 1 B$
+            if x >= 1000:  # 1000 M$ FY2025 = 1 B$
                 val_b = x / 1000.0
                 # Show one decimal when needed
                 return (f"{val_b:.0f} B$" if abs(val_b - round(val_b)) < 1e-6 else f"{val_b:.1f} B$")
             else:
-                return f"{x:.0f} M$"
+                return f"{x:.0f} M$ FY2025"
 
         ax.xaxis.set_major_formatter(FuncFormatter(_fmt_musd))
-        plt.xlabel('Total Cost (M$)')
+        plt.xlabel('Total Cost (M$ FY2025)')
         plt.ylabel('Performance Score')
         plt.title(f'All Solutions + Pareto Front (Log Cost) - {sweep_type.title()} Sweep')
         plt.legend()
@@ -594,166 +686,549 @@ class MultiCSVComparator:
                     dpi=300, bbox_inches='tight')
         plt.close()
         print(f"✓ Saved pareto_comparison_{sweep_type}_logx.png")
+
+    def plot_merged_pareto_multiseed(self, csv_names, sweep_type):
+        """
+        Merge solutions from multiple seeds and recompute global Pareto front.
+        
+        This function:
+        1. Groups CSVs by their sweep parameter (e.g., same altitude, different seeds)
+        2. Merges all solutions for each parameter value across seeds
+        3. Recomputes the global non-dominated front from merged solutions
+        4. Plots individual seed fronts (faded) + global merged front (highlighted)
+        """
+        # Group CSVs by sweep parameter (ignoring seed differences)
+        import re
+        
+        param_groups = {}  # {param_value: [(csv_name, seed), ...]}
+        
+        for name in csv_names:
+            meta = self.metadata[name]
+            
+            # Extract parameter value based on sweep type
+            if sweep_type == 'altitude':
+                param_val = meta.get('target_altitude')
+            elif sweep_type == 'inclination':
+                param_val = meta.get('target_inclination')
+            elif sweep_type == 'mass':
+                param_val = meta.get('sat_mass')
+            elif sweep_type == 'dv':
+                param_val = meta.get('dv_m_s')
+            else:
+                continue
+            
+            if param_val is None:
+                continue
+            
+            # Extract seed from filename (e.g., sd42, sd11)
+            seed_match = re.search(r'_sd(\d+)', name)
+            seed = int(seed_match.group(1)) if seed_match else 0
+            
+            param_groups.setdefault(param_val, []).append((name, seed))
+        
+        # Check if we have any data at all
+        if not param_groups:
+            print(f"  [INFO] No data found for {sweep_type} sweep - skipping merged Pareto plot")
+            return
+        
+        # Identify which groups have multiple seeds
+        multi_seed_params = {k for k, v in param_groups.items() if len(v) > 1}
+        single_seed_params = {k for k, v in param_groups.items() if len(v) == 1}
+        
+        if not multi_seed_params:
+            print(f"  [INFO] No multi-seed data found for {sweep_type} sweep - skipping merged Pareto plot")
+            print(f"        All {len(param_groups)} parameter values have only one seed each")
+            return
+        
+        print(f"  Generating merged multi-seed Pareto plot for {sweep_type} sweep...")
+        print(f"    Found {len(multi_seed_params)} parameter values with multiple seeds")
+        if single_seed_params:
+            print(f"    Found {len(single_seed_params)} parameter values with single seed (will still plot)")
+        
+        # Create figure
+        fig, ax = plt.subplots(figsize=(12, 9))
+        
+        # Process each parameter group (including single-seed groups)
+        for param_idx, (param_val, csv_seed_list) in enumerate(sorted(param_groups.items())):
+            color = self.color_palette[param_idx % len(self.color_palette)]
+            marker = self.marker_styles[param_idx % len(self.marker_styles)]
+            
+            # Get label from first CSV in group (use base_label to exclude seed suffix)
+            first_csv_name = csv_seed_list[0][0]
+            param_label = self.metadata[first_csv_name].get('base_label', 
+                                                            self.metadata[first_csv_name]['label'])
+            
+            # Collect all solutions across seeds
+            all_costs = []
+            all_perfs = []
+            
+            is_multi_seed = len(csv_seed_list) > 1
+            
+            # Plot individual seed data
+            for csv_name, seed in csv_seed_list:
+                df = self.data_dict[csv_name].copy()
+                costs = df['cost_musd'].to_numpy()
+                perfs = df['performance'].to_numpy()
+                
+                # Store for merged computation
+                all_costs.extend(costs)
+                all_perfs.extend(perfs)
+                
+                # For multi-seed: plot faded individual seeds
+                # For single-seed: skip (will plot final front directly)
+                if is_multi_seed:
+                    ax.scatter(costs, perfs, 
+                              c=color, s=20, alpha=0.15, marker=marker,
+                              edgecolors='none')
+            
+            # Compute global Pareto front from all solutions (merged if multi-seed, single if not)
+            all_costs = np.array(all_costs)
+            all_perfs = np.array(all_perfs)
+            global_pareto_mask = self.compute_global_pareto_from_arrays(all_costs, all_perfs)
+            
+            merged_costs = all_costs[global_pareto_mask]
+            merged_perfs = all_perfs[global_pareto_mask]
+            
+            # Sort for line plotting
+            sorted_idx = np.argsort(merged_costs)
+            merged_costs_sorted = merged_costs[sorted_idx]
+            merged_perfs_sorted = merged_perfs[sorted_idx]
+            
+            # Plot Pareto front (highlighted)
+            ax.plot(merged_costs_sorted, merged_perfs_sorted, '-', 
+                   color=color, linewidth=2.5, alpha=0.9, zorder=10)
+            
+            label = f"{param_label}"
+            
+            ax.scatter(merged_costs_sorted, merged_perfs_sorted,
+                      c=color, s=80, alpha=0.95, marker=marker,
+                      edgecolors='black', linewidth=1.0, zorder=11,
+                      label=label)
+            
+            if is_multi_seed:
+                print(f"    {param_label}: merged {len(all_costs)} solutions → {len(merged_costs)} on global front")
+            else:
+                print(f"    {param_label}: single seed, {len(merged_costs)} solutions on Pareto front")
+        
+        ax.set_xlabel('Total Cost (M$ FY2025)', fontsize=12)
+        ax.set_ylabel('Performance Score', fontsize=12)
+        
+        # Create title and subtitle
+        ax.set_title(f'Pareto Front Comparison - {sweep_type.title()} Sweep', fontsize=13)
+        subtitle = ""
+        if multi_seed_params:
+            subtitle += f"Parameters with multiple seeds: {len(multi_seed_params)} (merged)\n"
+        if single_seed_params:
+            subtitle += f"Parameters with single seed: {len(single_seed_params)}"
+        if subtitle:
+            ax.text(0.5, 1.02, subtitle.strip(), fontsize=11, ha='center', va='bottom', transform=ax.transAxes)
+        
+        ax.legend(fontsize=10, loc='lower right')
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f"{self.output_dir}/pareto_merged_multiseed_{sweep_type}.png",
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"✓ Saved pareto_merged_multiseed_{sweep_type}.png")
+
+    def plot_merged_pareto_multiseed_logx(self, csv_names, sweep_type):
+        """
+        Identical to plot_merged_pareto_multiseed, but with cost x-axis in log scale.
+        Only used for mass sweep.
+        """
+        import re
+        param_groups = {}
+        for name in csv_names:
+            meta = self.metadata[name]
+            if sweep_type == 'mass':
+                param_val = meta.get('sat_mass')
+            elif sweep_type == 'altitude':
+                param_val = meta.get('target_altitude')
+            elif sweep_type == 'inclination':
+                param_val = meta.get('target_inclination')
+            elif sweep_type == 'dv':
+                param_val = meta.get('dv_m_s')
+            else:
+                continue
+            if param_val is None:
+                continue
+            seed_match = re.search(r'_sd(\d+)', name)
+            seed = int(seed_match.group(1)) if seed_match else 0
+            param_groups.setdefault(param_val, []).append((name, seed))
+
+        if not param_groups:
+            print(f"  [INFO] No data found for {sweep_type} sweep - skipping merged Pareto log plot")
+            return
+
+        multi_seed_params = {k for k, v in param_groups.items() if len(v) > 1}
+        single_seed_params = {k for k, v in param_groups.items() if len(v) == 1}
+
+        if not multi_seed_params:
+            print(f"  [INFO] No multi-seed data found for {sweep_type} sweep - skipping merged Pareto log plot")
+            print(f"        All {len(param_groups)} parameter values have only one seed each")
+            return
+
+        print(f"  Generating merged multi-seed Pareto LOG plot for {sweep_type} sweep...")
+        print(f"    Found {len(multi_seed_params)} parameter values with multiple seeds")
+        if single_seed_params:
+            print(f"    Found {len(single_seed_params)} parameter values with single seed (will still plot)")
+
+        fig, ax = plt.subplots(figsize=(12, 9))
+
+        for param_idx, (param_val, csv_seed_list) in enumerate(sorted(param_groups.items())):
+            color = self.color_palette[param_idx % len(self.color_palette)]
+            marker = self.marker_styles[param_idx % len(self.marker_styles)]
+            first_csv_name = csv_seed_list[0][0]
+            param_label = self.metadata[first_csv_name].get('base_label', self.metadata[first_csv_name]['label'])
+            all_costs = []
+            all_perfs = []
+            is_multi_seed = len(csv_seed_list) > 1
+            for csv_name, seed in csv_seed_list:
+                df = self.data_dict[csv_name].copy()
+                costs = df['cost_musd'].to_numpy()
+                perfs = df['performance'].to_numpy()
+                all_costs.extend(costs)
+                all_perfs.extend(perfs)
+                if is_multi_seed:
+                    ax.scatter(costs, perfs, c=color, s=20, alpha=0.15, marker=marker, edgecolors='none')
+            all_costs = np.array(all_costs)
+            all_perfs = np.array(all_perfs)
+            global_pareto_mask = self.compute_global_pareto_from_arrays(all_costs, all_perfs)
+            merged_costs = all_costs[global_pareto_mask]
+            merged_perfs = all_perfs[global_pareto_mask]
+            sorted_idx = np.argsort(merged_costs)
+            merged_costs_sorted = merged_costs[sorted_idx]
+            merged_perfs_sorted = merged_perfs[sorted_idx]
+            ax.plot(merged_costs_sorted, merged_perfs_sorted, '-', color=color, linewidth=2.5, alpha=0.9, zorder=10)
+            label = f"{param_label}"
+            ax.scatter(merged_costs_sorted, merged_perfs_sorted, c=color, s=80, alpha=0.95, marker=marker, edgecolors='black', linewidth=1.0, zorder=11, label=label)
+            if is_multi_seed:
+                print(f"    {param_label}: merged {len(all_costs)} solutions → {len(merged_costs)} on global front")
+            else:
+                print(f"    {param_label}: single seed, {len(merged_costs)} solutions on Pareto front")
+
+        ax.set_xlabel('Total Cost (M$ FY2025)', fontsize=12)
+        ax.set_ylabel('Performance Score', fontsize=12)
+        ax.set_xscale('log')
+        from matplotlib.ticker import FuncFormatter, LogLocator
+        ax.xaxis.set_major_locator(LogLocator(base=10.0, subs=(1.0, 2.0, 5.0)))
+        def _fmt_musd(x, pos):
+            import numpy as _np
+            if x is None or not _np.isfinite(x) or x <= 0:
+                return ""
+            if x >= 1000:
+                val_b = x / 1000.0
+                return (f"{val_b:.0f} B$" if abs(val_b - round(val_b)) < 1e-6 else f"{val_b:.1f} B$")
+            else:
+                return f"{x:.0f} M$ FY2025"
+        ax.xaxis.set_major_formatter(FuncFormatter(_fmt_musd))
+        ax.set_title(f'Pareto Front Comparison (Log Cost) - {sweep_type.title()} Sweep', fontsize=13)
+        subtitle = ""
+        if multi_seed_params:
+            subtitle += f"Parameters with multiple seeds: {len(multi_seed_params)} (merged)\n"
+        if single_seed_params:
+            subtitle += f"Parameters with single seed: {len(single_seed_params)}"
+        if subtitle:
+            ax.text(0.5, 1.02, subtitle.strip(), fontsize=11, ha='center', va='bottom', transform=ax.transAxes)
+        ax.legend(fontsize=10, loc='lower right')
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f"{self.output_dir}/pareto_merged_multiseed_{sweep_type}_logx.png", dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"✓ Saved pareto_merged_multiseed_{sweep_type}_logx.png")
     
     def plot_cost_components_comparison(self, csv_names, sweep_type):
-        """Cost components (RE, Launch) vs satellites with trends."""
+        """Cost components (RE, Launch) vs satellites, merged by sweep parameter."""
         fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-        
         components = [
             ('RE_cost_musd', 'RE Cost', axes[0]),
             ('launch_cost_musd', 'Launch Cost', axes[1])
         ]
-        
-        for comp_col, comp_title, ax in components:
-            for i, name in enumerate(csv_names):
-                df = self.data_dict[name]
-                meta = self.metadata[name]
-                color = self.color_palette[i % len(self.color_palette)]
-                marker = self.marker_styles[i % len(self.marker_styles)]
 
-                # Scatter
-                ax.scatter(df['num_satellites'], df[comp_col],
-                           c=color, s=45, alpha=0.75, marker=marker,
-                           edgecolors='black', linewidth=0.4,
-                           label=meta['label'])
-                
-                # Trend line
-                if len(df) > 1:
-                    slope, intercept, r_value, _, _ = linregress(df['num_satellites'], df[comp_col])
-                    x_fit = np.array([df['num_satellites'].min(), df['num_satellites'].max()])
-                    y_fit = slope * x_fit + intercept
-                    ax.plot(x_fit, y_fit, '--', color=color, linewidth=2, alpha=0.8)
-                    
-                    # Add r-value as text
-                    mid_x = (df['num_satellites'].min() + df['num_satellites'].max()) / 2
-                    mid_y = slope * mid_x + intercept
-                    ax.text(mid_x, mid_y, f'r={r_value:.2f}', fontsize=8,
-                            bbox=dict(boxstyle='round', facecolor=color, alpha=0.25))
-            
-            ax.set_xlabel('Number of Satellites')
-            ax.set_ylabel(f'{comp_title} (M$)')
-            ax.set_title(f'{comp_title} vs Satellites - {sweep_type.title()} Sweep')
-            ax.legend()
-            ax.grid(True, alpha=0.3)
-        
+        # Group CSVs by sweep parameter
+        param_groups = {}
+        for name in csv_names:
+            meta = self.metadata[name]
+            if sweep_type == 'altitude':
+                param_val = meta.get('target_altitude')
+            elif sweep_type == 'inclination':
+                param_val = meta.get('target_inclination')
+            elif sweep_type == 'mass':
+                param_val = meta.get('sat_mass')
+            elif sweep_type == 'dv':
+                param_val = meta.get('dv_m_s')
+            else:
+                continue
+            if param_val is None:
+                continue
+            param_groups.setdefault(param_val, []).append(name)
+
+        for param_idx, (param_val, csv_list) in enumerate(sorted(param_groups.items())):
+            color = self.color_palette[param_idx % len(self.color_palette)]
+            marker = self.marker_styles[param_idx % len(self.marker_styles)]
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            label = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
+
+            # RE Cost subplot: scatter only
+            axes[0].scatter(merged_df['num_satellites'], merged_df['RE_cost_musd'],
+                            c=color, s=45, alpha=0.75, marker=marker,
+                            edgecolors='black', linewidth=0.4,
+                            label=label)
+
+            # Launch Cost subplot: scatter + linear trend line
+            axes[1].scatter(merged_df['num_satellites'], merged_df['launch_cost_musd'],
+                            c=color, s=45, alpha=0.55, marker=marker,
+                            edgecolors='black', linewidth=0.4,
+                            label=label)
+            # Linear trend line
+            if len(merged_df) > 1:
+                x = merged_df['num_satellites']
+                y = merged_df['launch_cost_musd']
+                slope, intercept, r, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[1].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
+                # R label, offset to avoid overlap
+                x_r = x_fit[-1] + 0.5 * (x_fit.max() - x_fit.min()) / len(param_groups)
+                y_r = y_fit[-1]
+                axes[1].text(x_r, y_r, f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+
+            axes[0].set_xlabel('Number of Satellites')
+            axes[0].set_ylabel('RE Cost (M$ FY2025)')
+            axes[0].set_title(f'RE Cost vs Satellites - {sweep_type.title()} Sweep')
+            axes[0].legend()
+            axes[0].grid(True, alpha=0.3)
+
+            axes[1].set_xlabel('Number of Satellites')
+            axes[1].set_ylabel('Launch Cost (M$ FY2025)')
+            axes[1].set_title(f'Launch Cost vs Satellites - {sweep_type.title()} Sweep')
+            axes[1].legend()
+            axes[1].grid(True, alpha=0.3)
+
         plt.tight_layout()
         plt.savefig(f"{self.output_dir}/cost_components_{sweep_type}.png",
-                   dpi=300, bbox_inches='tight')
+                    dpi=300, bbox_inches='tight')
         plt.close()
         print(f"✓ Saved cost_components_{sweep_type}.png")
-    
+
     def plot_deployment_comparison(self, csv_names, sweep_type):
-        """Deployment constraints: RAAN spacing, launch groups vs planes."""
+        """Deployment constraints: RAAN spacing, launch groups vs planes, merged by sweep parameter."""
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-        
-        for i, name in enumerate(csv_names):
-            df = self.data_dict[name]
+        param_groups = {}
+        for name in csv_names:
             meta = self.metadata[name]
-            color = self.color_palette[i % len(self.color_palette)]
-            marker = self.marker_styles[i % len(self.marker_styles)]
-            
+            if sweep_type == 'altitude':
+                param_val = meta.get('target_altitude')
+            elif sweep_type == 'inclination':
+                param_val = meta.get('target_inclination')
+            elif sweep_type == 'mass':
+                param_val = meta.get('sat_mass')
+            elif sweep_type == 'dv':
+                param_val = meta.get('dv_m_s')
+            else:
+                continue
+            if param_val is None:
+                continue
+            param_groups.setdefault(param_val, []).append(name)
+
+        for param_idx, (param_val, csv_list) in enumerate(sorted(param_groups.items())):
+            color = self.color_palette[param_idx % len(self.color_palette)]
+            marker = self.marker_styles[param_idx % len(self.marker_styles)]
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            label = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
+
             # 1. Launch groups vs number of planes
-            axes[0, 0].scatter(df['P_planes'], df['launch_num_groups'],
-                               c=color, s=55, alpha=0.7, marker=marker,
-                               edgecolors='black', linewidth=0.4,
-                               label=meta['label'])
-            
-            # 2. Required RAAN spacing vs launch groups
-            axes[0, 1].scatter(df['launch_num_groups'], df['launch_delta_raan_required_deg'],
-                               c=color, s=55, alpha=0.7, marker=marker,
-                               edgecolors='black', linewidth=0.4,
-                               label=meta['label'])
-            
-            # 3. Phasing factor F vs number of launches
-            axes[1, 0].scatter(df['F_phasing'], df['launch_num_launches'],
-                               c=color, s=55, alpha=0.7, marker=marker,
-                               edgecolors='black', linewidth=0.4,
-                               label=meta['label'])
-            
-            # 4. Launch cost vs number of planes (new)
-            axes[1, 1].scatter(df['P_planes'], df['launch_cost_musd'],
-                               c=color, s=55, alpha=0.7, marker=marker,
-                               edgecolors='black', linewidth=0.4,
-                               label=meta['label'])
-        
+            axes[0, 0].scatter(merged_df['P_planes'], merged_df['launch_num_groups'],
+                            c=color, s=55, alpha=0.7, marker=marker,
+                            edgecolors='black', linewidth=0.4,
+                            label=label)
+            # Linear trend line
+            if len(merged_df) > 1:
+                x = merged_df['P_planes']
+                y = merged_df['launch_num_groups']
+                slope, intercept, r, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[0, 0].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
+                axes[0, 0].text(x_fit[-1], y_fit[-1], f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+
+            # 2. Required RAAN spacing vs launch groups (hyperbolic fit)
+            axes[0, 1].scatter(merged_df['launch_num_groups'], merged_df['launch_delta_raan_required_deg'],
+                            c=color, s=55, alpha=0.7, marker=marker,
+                            edgecolors='black', linewidth=0.4,
+                            label=label)
+            if len(merged_df) > 1:
+                x = merged_df['launch_num_groups']
+                y = merged_df['launch_delta_raan_required_deg']
+                # Fit y = a/x + b
+                from scipy.optimize import curve_fit
+                def hyperbolic(x, a, b): return a / x + b
+                try:
+                    popt, _ = curve_fit(hyperbolic, x, y)
+                    y_fit = hyperbolic(x, *popt)
+                    r = np.corrcoef(y, y_fit)[0, 1]
+                    x_fit = np.linspace(x.min(), x.max(), 100)
+                    axes[0, 1].plot(x_fit, hyperbolic(x_fit, *popt), color=color, alpha=0.5, linewidth=2)
+                    axes[0, 1].text(x_fit[-1], hyperbolic(x_fit, *popt)[-1], f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+                except Exception:
+                    pass
+
+            # 3. Phasing factor F vs number of launches (linear trend)
+            axes[1, 0].scatter(merged_df['F_phasing'], merged_df['launch_num_launches'],
+                            c=color, s=55, alpha=0.7, marker=marker,
+                            edgecolors='black', linewidth=0.4,
+                            label=label)
+            if len(merged_df) > 1:
+                x = merged_df['F_phasing']
+                y = merged_df['launch_num_launches']
+                slope, intercept, r, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[1, 0].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
+                axes[1, 0].text(x_fit[-1], y_fit[-1], f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+
+            # 4. Launch cost vs number of planes (linear trend)
+            axes[1, 1].scatter(merged_df['P_planes'], merged_df['launch_cost_musd'],
+                            c=color, s=55, alpha=0.7, marker=marker,
+                            edgecolors='black', linewidth=0.4,
+                            label=label)
+            if len(merged_df) > 1:
+                x = merged_df['P_planes']
+                y = merged_df['launch_cost_musd']
+                slope, intercept, r, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[1, 1].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
+                axes[1, 1].text(x_fit[-1], y_fit[-1], f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+
         # Configure axes
         axes[0, 0].set_xlabel('Number of Planes (P)')
         axes[0, 0].set_ylabel('Number of Launch Groups')
         axes[0, 0].set_title('Launch Groups vs Planes')
         axes[0, 0].legend()
         axes[0, 0].grid(True, alpha=0.3)
-        
+
         axes[0, 1].set_xlabel('Number of Launch Groups')
         axes[0, 1].set_ylabel('Required RAAN Spacing (deg)')
         axes[0, 1].set_title('RAAN Spacing vs Launch Groups')
         axes[0, 1].legend()
         axes[0, 1].grid(True, alpha=0.3)
-        
+
         axes[1, 0].set_xlabel('Phasing Factor (F)')
         axes[1, 0].set_ylabel('Number of Launches')
         axes[1, 0].set_title('Launches vs Phasing Factor')
         axes[1, 0].legend()
         axes[1, 0].grid(True, alpha=0.3)
-        
+
         axes[1, 1].set_xlabel('Number of Planes (P)')
-        axes[1, 1].set_ylabel('Launch Cost (M$)')
+        axes[1, 1].set_ylabel('Launch Cost (M$ FY2025)')
         axes[1, 1].set_title('Launch Cost vs Number of Planes')
         axes[1, 1].legend()
         axes[1, 1].grid(True, alpha=0.3)
-        
+
         plt.suptitle(f'Deployment Constraints - {sweep_type.title()} Sweep', fontsize=14)
         plt.tight_layout()
         plt.savefig(f"{self.output_dir}/deployment_{sweep_type}.png",
-                   dpi=300, bbox_inches='tight')
+                    dpi=300, bbox_inches='tight')
         plt.close()
         print(f"✓ Saved deployment_{sweep_type}.png")
-    
+
     def plot_launch_cost_comparison(self, csv_names, sweep_type):
-        """Launch cost analysis: cost vs ΔV, launches vs planes vs satellites."""
+        """Launch cost analysis: cost vs ΔV, launches vs planes vs satellites, merged by sweep parameter."""
         fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-        
-        for i, name in enumerate(csv_names):
-            df = self.data_dict[name]
+        param_groups = {}
+        for name in csv_names:
             meta = self.metadata[name]
-            color = self.color_palette[i % len(self.color_palette)]
-            marker = self.marker_styles[i % len(self.marker_styles)]
-            
+            if sweep_type == 'altitude':
+                param_val = meta.get('target_altitude')
+            elif sweep_type == 'inclination':
+                param_val = meta.get('target_inclination')
+            elif sweep_type == 'mass':
+                param_val = meta.get('sat_mass')
+            elif sweep_type == 'dv':
+                param_val = meta.get('dv_m_s')
+            else:
+                continue
+            if param_val is None:
+                continue
+            param_groups.setdefault(param_val, []).append(name)
+
+        for param_idx, (param_val, csv_list) in enumerate(sorted(param_groups.items())):
+            color = self.color_palette[param_idx % len(self.color_palette)]
+            marker = self.marker_styles[param_idx % len(self.marker_styles)]
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            label = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
+
             # 1. Launch cost vs deployment ΔV
-            axes[0].scatter(df['launch_dv_used_m_s'], df['launch_cost_musd'],
-                            c=color, s=55, alpha=0.7, marker=marker,
+            axes[0].scatter(merged_df['launch_dv_used_m_s'], merged_df['launch_cost_musd'],
+                            c=color, s=45, alpha=0.35, marker=marker,
                             edgecolors='black', linewidth=0.4,
-                            label=meta['label'])
-            
-            # Add correlation
-            if len(df) > 1:
-                corr, _ = pearsonr(df['launch_dv_used_m_s'], df['launch_cost_musd'])
-                # Add text in legend area
-                label_text = f"{meta['label']} (r={corr:.2f})"
-                axes[0].plot([], [], ' ', label=label_text)
-            
-            # 2. Launches vs planes (sized by satellites)
-            scatter = axes[1].scatter(df['P_planes'], df['launch_num_launches'],
-                                      s=df['num_satellites']*2, alpha=0.55,
-                                      c=color, marker=marker,
-                                      edgecolors='black', linewidth=0.5,
-                                      label=meta['label'])
-        
+                            label=label)
+            # Linear and hyperbolic trend lines
+            if len(merged_df) > 1:
+                x = merged_df['launch_dv_used_m_s']
+                y = merged_df['launch_cost_musd']
+                # Linear fit
+                slope, intercept, r_lin, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit_lin = slope * x_fit + intercept
+                axes[0].plot(x_fit, y_fit_lin, color=color, alpha=0.5, linewidth=2, linestyle='--')
+                # Hyperbolic fit
+                from scipy.optimize import curve_fit
+                def hyperbolic(x, a, b): return a / x + b
+                try:
+                    popt, _ = curve_fit(hyperbolic, x, y)
+                    y_fit_hyp = hyperbolic(x_fit, *popt)
+                    r_hyp = np.corrcoef(y, hyperbolic(x, *popt))[0, 1]
+                    axes[0].plot(x_fit, y_fit_hyp, color=color, alpha=0.5, linewidth=2)
+                    # Improved label placement: offset right and space vertically
+                    x_label = x_fit[-1] + 0.03 * (x_fit.max() - x_fit.min())
+                    y_label_lin = y_fit_lin[-1] + 0.20 * (y_fit_lin.max() - y_fit_lin.min()) + 0.15 * param_idx
+                    y_label_hyp = y_fit_hyp[-1] - 0.20 * (y_fit_hyp.max() - y_fit_hyp.min()) + 0.15 * param_idx
+                    axes[0].text(x_label, y_label_lin, f"R_lin={r_lin:.2f}", color=color, fontsize=11, alpha=0.8)
+                    axes[0].text(x_label, y_label_hyp, f"R_hyp={r_hyp:.2f}", color=color, fontsize=11, alpha=0.8)
+                except Exception:
+                    x_label = x_fit[-1] + 0.03 * (x_fit.max() - x_fit.min())
+                    y_label_lin = y_fit_lin[-1] + 0.04 * (y_fit_lin.max() - y_fit_lin.min()) + 0.15 * param_idx
+                    axes[0].text(x_label, y_label_lin, f"R={r_lin:.2f}", color=color, fontsize=11, alpha=0.8)
+
+            # 2. Launches vs planes (marker size = satellites, more transparent, add trend line)
+            axes[1].scatter(merged_df['P_planes'], merged_df['launch_num_launches'],
+                            s=merged_df['num_satellites']*2, alpha=0.35,
+                            c=color, marker=marker,
+                            edgecolors='black', linewidth=0.5,
+                            label=label)
+            if len(merged_df) > 1:
+                x = merged_df['P_planes']
+                y = merged_df['launch_num_launches']
+                slope, intercept, r, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[1].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
+                axes[1].text(x_fit[-1], y_fit[-1] + 0.2*param_idx, f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+
         axes[0].set_xlabel('Deployment ΔV Used (m/s)')
-        axes[0].set_ylabel('Launch Cost (M$)')
+        axes[0].set_ylabel('Launch Cost (M$ FY2025)')
         axes[0].set_title('Launch Cost vs Deployment ΔV')
         axes[0].legend()
         axes[0].grid(True, alpha=0.3)
-        
+
         axes[1].set_xlabel('Number of Planes (P)')
         axes[1].set_ylabel('Number of Launches')
         axes[1].set_title('Launches vs Planes\n(marker size = number of satellites)')
         axes[1].legend()
         axes[1].grid(True, alpha=0.3)
-        
+
         plt.suptitle(f'Launch Cost Analysis - {sweep_type.title()} Sweep', fontsize=14)
         plt.tight_layout()
         plt.savefig(f"{self.output_dir}/launch_cost_{sweep_type}.png",
-                   dpi=300, bbox_inches='tight')
+                    dpi=300, bbox_inches='tight')
         plt.close()
         print(f"✓ Saved launch_cost_{sweep_type}.png")
 
@@ -780,30 +1255,145 @@ def main():
     print("\nComparison complete!")
 
 if __name__ == "__main__":
-    # Option 1: Use command line (uncomment)
+    # =====================================================================
+    # MANUAL CONTROL EXAMPLES
+    # =====================================================================
+    # This section shows different ways to run the comparator with manual control.
+    # Comment/uncomment the examples you want to run.
+    
+    # ---------------------------------------------------------------------
+    # Option 1: Command line interface
+    # ---------------------------------------------------------------------
+    # Uncomment to use command-line arguments:
+    # python csv_compare.py "results/MOEA/walker-delta/p320_g120/sweep_alt"
+    # python csv_compare.py "path/to/file1.csv,path/to/file2.csv,path/to/file3.csv"
     # main()
     
-    # Option 2: Hardcode paths
+    # ---------------------------------------------------------------------
+    # Option 2: Single sweep from specific seed/config
+    # ---------------------------------------------------------------------
+    # # Process altitude sweep from a single configuration/seed
+    # csv_dir_altitude = "results/MOEA/walker-delta/p320_g120_sd11/sweep_alt"
+    # comparator = MultiCSVComparator(csv_dir_altitude, "comparison_plots")
+    # comparator.generate_all_plots()
+
+    # ---------------------------------------------------------------------
+    # Option 3: Other single-seed sweeps
+    # ---------------------------------------------------------------------
+    # # Inclination sweep
+    # csv_dir_inclination = "results/MOEA/walker-delta/p320_g120_sd11/sweep_inc"
+    # comparator = MultiCSVComparator(csv_dir_inclination, "comparison_plots")
+    # comparator.generate_all_plots()
+
+    # # Mass sweep (will use log-scale Pareto)
+    # csv_dir_mass = "results/MOEA/walker-delta/p320_g120_sd11/sweep_mass"
+    # comparator = MultiCSVComparator(csv_dir_mass, "comparison_plots")
+    # comparator.generate_all_plots()
+
+    # # Deployment ΔV sweep
+    # csv_dir_vdep = "results/MOEA/walker-delta/p320_g120_sd11/sweep_vdep"
+    # comparator = MultiCSVComparator(csv_dir_vdep, "comparison_plots")
+    # comparator.generate_all_plots()
+
+    # ---------------------------------------------------------------------
+    # Option 4: Multi-seed analysis (recursive loading)
+    # ---------------------------------------------------------------------
+    # Point to parent folder containing multiple seed folders.
+    # Will automatically find and merge CSVs from all seeds:
+    # e.g., p320_g120_sd11/sweep_mass/, p320_g120_sd42/sweep_mass/, etc.
     
-    # Process altitude sweep
-    csv_dir_altitude = "results/MOEA/walker-delta/p320_g120/sweep_alt"
-    comparator = MultiCSVComparator(csv_dir_altitude, "comparison_plots")
+    # # Multi-seed mass sweep (merges across all seeds)
+    # csv_dir_multiseed = "results/MOEA/walker-delta/p320_g120/sweep_mass"
+    # comparator = MultiCSVComparator(csv_dir_multiseed, "comparison_plots")
+    # comparator.generate_all_plots()  # Includes individual + merged Pareto
+    
+    # # Or point to pattern level to get all configs/seeds
+    # csv_dir_all = "results/MOEA/walker-delta/"
+    # comparator = MultiCSVComparator(csv_dir_all, "comparison_plots")
+    # comparator.generate_all_plots()
+
+
+    # ---------------------------------------------------------------------
+    # Option 5: Manual list of specific CSV files
+    # ---------------------------------------------------------------------
+    # Provide exact file paths as a list
+    # List all CSVs for altitude sweep (3 folders × 3 altitudes = 9 files)
+    csv_files_altitude = [
+        # p480_g50_sd11
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m190_a500_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m190_a1000_i50_dv200_T180d.csv",
+        # p320_g120_sd42
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m190_a500_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m190_a1000_i50_dv200_T180d.csv",
+        # p160_g81_sd42
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a500_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a1000_i50_dv200_T180d.csv",
+        # p480_g50_sd12
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a500_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a1000_i50_dv200_T180d.csv",
+    ]
+    comparator = MultiCSVComparator(csv_files_altitude, "comparison_plots/manual_altitude")
+    comparator.generate_all_plots()
+        
+    csv_files_inclination = [
+        # p480_g50_sd11
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m190_a700_i60_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m190_a700_i98_dv200_T180d.csv",
+        # p320_g120_sd42
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m190_a700_i60_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m190_a700_i98_dv200_T180d.csv",
+        # p160_g81_sd42
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a700_i60_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a700_i98_dv200_T180d.csv",
+        # p480_g50_sd12
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a700_i60_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a700_i98_dv200_T180d.csv",
+    ]
+    comparator = MultiCSVComparator(csv_files_inclination, "comparison_plots/manual_inclination")
     comparator.generate_all_plots()
 
-    # Example: Inclination sweep
-    csv_dir_inclination = "results/MOEA/walker-delta/p320_g120/sweep_inc"
-    comparator = MultiCSVComparator(csv_dir_inclination, "comparison_plots")
+    csv_files_mass = [
+        # p480_g50_sd11
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m370_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m760_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd11/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1500_sd11_m95_a700_i50_dv200_T180d.csv",
+        # p320_g120_sd42
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m370_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m760_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p320_g120_sd42/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p320_g120_sp1500_sd42_m95_a700_i50_dv200_T180d.csv",
+        # p160_g81_sd42
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m370_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m760_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p160_g81_sd42/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m95_a700_i50_dv200_T180d.csv",
+        # p480_g50_sd12
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m370_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m760_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m95_a700_i50_dv200_T180d.csv",
+    ]
+    comparator = MultiCSVComparator(csv_files_mass, "comparison_plots/manual_mass")
     comparator.generate_all_plots()
 
-    # Example: Mass sweep
-    csv_dir_mass = "results/MOEA/walker-delta/p320_g120/sweep_mass"
-    comparator = MultiCSVComparator(csv_dir_mass, "comparison_plots")
-    comparator.generate_all_plots()
-
-    # Vdep sweep
-    csv_dir_vdep = "results/MOEA/walker-delta/p320_g120/sweep_vdep"  # or ".../sweep_dv"
-    comparator = MultiCSVComparator(csv_dir_vdep, "comparison_plots")
-    comparator.generate_all_plots()
-
+    # ---------------------------------------------------------------------
+    # Option 6: Selective plotting
+    # ---------------------------------------------------------------------
+    # # Run only specific plots instead of generate_all_plots()
+    # csv_dir = "results/MOEA/walker-delta/p320_g120_sd11/sweep_inc"
+    # comparator = MultiCSVComparator(csv_dir, "comparison_plots")
+    # comparator.plot_3d_comparison()
+    # comparator.plot_pareto_comparison()
+    # # comparator.plot_merged_pareto_multiseed()  # Only if multi-seed
+    # comparator.plot_cost_components_comparison()
     
     print("\nComparison complete!")
