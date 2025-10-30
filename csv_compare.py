@@ -1,15 +1,30 @@
 """
-Multi-CSV Comparison Script for Constellation Optimization Results
+Multi-CSV Comparison Script for Satellite Constellation Optimization Results
 
-This script loads multiple optimization CSVs (from parameter sweeps) and generates
-comparative plots for trade-off analysis.
+This script is designed to load and compare multiple optimization result CSV files generated from parameter sweeps of satellite constellation designs. It provides a suite of comparative plots to analyze trade-offs between cost, performance, deployment constraints, and other mission metrics across different design choices (such as altitude, inclination, mass, and deployment delta-V).
 
-Useful plots:
-- 3D scatter comparing altitude/inclination sweeps
-- Cost vs performance (Pareto) with trend lines across sweeps
-- Cost components vs satellites with trends for different sweeps
-- Deployment constraints (RAAN spacing, launch groups vs planes)
-- Launch cost analysis
+Main Features:
+ - Loads multiple CSVs from a directory or a manual list, extracting metadata and results for each sweep configuration.
+ - Generates comparative plots including:
+     * 3D scatter plots for visualizing relationships between cost, performance, and design parameters.
+     * Pareto front comparisons (cost vs performance) with trend lines and multi-seed merging.
+     * Cost component breakdowns and trends as a function of satellite number and sweep parameter.
+     * Deployment constraint analysis (RAAN spacing, launch groups, phasing factors, launch cost).
+     * Launch cost analysis and trade-off visualization.
+     * Performance plots (coverage/science) vs satellite number and planes.
+ - Supports merging solutions by sweep parameter, filtering non-dominated solutions, and visualizing only the relevant design variations (not per seed).
+ - Interacts with other scripts in the workflow by consuming CSV outputs from optimization runs and producing summary plots for downstream analysis and reporting.
+
+Main Functions:
+ - MultiCSVComparator: Core class for loading, processing, and plotting results from multiple CSVs.
+ - generate_all_plots: Orchestrates the creation of all comparative plots for a given sweep.
+ - plot_3d_altitude_comparison, plot_3d_inclination_comparison: 3D visualizations for sweep analysis.
+ - plot_pareto_comparison, plot_merged_pareto_multiseed: Pareto front and trade-off analysis.
+ - plot_cost_components_comparison, plot_cost_components_per_satellite: Cost breakdowns and trends.
+ - plot_deployment_comparison, plot_launch_cost_comparison: Deployment and launch cost analysis.
+ - plot_performance_vs_sat_and_planes: Performance trends vs satellites and planes.
+
+This script is typically used after running parameter sweeps with the optimization engine, and is compatible with outputs from scripts such as run_moea_sweep.py and multi_objective_optimizer.py.
 
 Author: Fabio Meloni - TU Delft MSc Student - NASA JPL Visiting Researcher
 """
@@ -409,6 +424,16 @@ class MultiCSVComparator:
         for sweep_type, names in sweep_groups.items():
             if len(names) > 1:
                 self.plot_launch_cost_comparison(names, sweep_type)
+
+        # 6. Cost components per satellite vs satellites
+        for sweep_type, names in sweep_groups.items():
+            if len(names) > 1:
+                self.plot_cost_components_per_satellite(names, sweep_type)
+
+        # 7. Performance vs n of sats and n of planes
+        for sweep_type, names in sweep_groups.items():
+            if len(names) > 1:
+                self.plot_performance_vs_sat_and_planes(names, sweep_type)
         
         print(f"\nAll comparison plots saved to: {self.output_dir}/")
     
@@ -945,7 +970,6 @@ class MultiCSVComparator:
             ('launch_cost_musd', 'Launch Cost', axes[1])
         ]
 
-        # Group CSVs by sweep parameter
         param_groups = {}
         for name in csv_names:
             meta = self.metadata[name]
@@ -969,43 +993,49 @@ class MultiCSVComparator:
             merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
             nd_mask = self._nondominated_mask(merged_df)
             merged_df = merged_df[nd_mask]
-            label = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
+            label_base = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
 
-            # RE Cost subplot: scatter only
+            # RE Cost subplot: scatter + linear trend line (dotted)
+            r_re = None
             axes[0].scatter(merged_df['num_satellites'], merged_df['RE_cost_musd'],
                             c=color, s=45, alpha=0.75, marker=marker,
-                            edgecolors='black', linewidth=0.4,
-                            label=label)
-
-            # Launch Cost subplot: scatter + linear trend line
+                            edgecolors='black', linewidth=0.4)
+            if len(merged_df) > 1:
+                x = merged_df['num_satellites']
+                y = merged_df['RE_cost_musd']
+                slope, intercept, r_re, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[0].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            legend_label_re = f"{label_base} (R={r_re:.2f})" if r_re is not None else label_base
+            axes[0].plot([], [], color=color, marker=marker, linestyle='None', label=legend_label_re)
+            
+            # Launch Cost subplot: scatter + linear trend line (dotted)
+            r = None
             axes[1].scatter(merged_df['num_satellites'], merged_df['launch_cost_musd'],
                             c=color, s=45, alpha=0.55, marker=marker,
-                            edgecolors='black', linewidth=0.4,
-                            label=label)
-            # Linear trend line
+                            edgecolors='black', linewidth=0.4)
             if len(merged_df) > 1:
                 x = merged_df['num_satellites']
                 y = merged_df['launch_cost_musd']
                 slope, intercept, r, _, _ = linregress(x, y)
                 x_fit = np.linspace(x.min(), x.max(), 100)
                 y_fit = slope * x_fit + intercept
-                axes[1].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
-                # R label, offset to avoid overlap
-                x_r = x_fit[-1] + 0.5 * (x_fit.max() - x_fit.min()) / len(param_groups)
-                y_r = y_fit[-1]
-                axes[1].text(x_r, y_r, f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+                axes[1].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            legend_label = f"{label_base} (R={r:.2f})" if r is not None else label_base
+            axes[1].plot([], [], color=color, marker=marker, linestyle='None', label=legend_label)
 
-            axes[0].set_xlabel('Number of Satellites')
-            axes[0].set_ylabel('RE Cost (M$ FY2025)')
-            axes[0].set_title(f'RE Cost vs Satellites - {sweep_type.title()} Sweep')
-            axes[0].legend()
-            axes[0].grid(True, alpha=0.3)
+        axes[0].set_xlabel('Number of Satellites')
+        axes[0].set_ylabel('RE Cost (M$ FY2025)')
+        axes[0].set_title(f'RE Cost vs Satellites - {sweep_type.title()} Sweep')
+        axes[0].legend()
+        axes[0].grid(True, alpha=0.3)
 
-            axes[1].set_xlabel('Number of Satellites')
-            axes[1].set_ylabel('Launch Cost (M$ FY2025)')
-            axes[1].set_title(f'Launch Cost vs Satellites - {sweep_type.title()} Sweep')
-            axes[1].legend()
-            axes[1].grid(True, alpha=0.3)
+        axes[1].set_xlabel('Number of Satellites')
+        axes[1].set_ylabel('Launch Cost (M$ FY2025)')
+        axes[1].set_title(f'Launch Cost vs Satellites - {sweep_type.title()} Sweep')
+        axes[1].legend()
+        axes[1].grid(True, alpha=0.3)
 
         plt.tight_layout()
         plt.savefig(f"{self.output_dir}/cost_components_{sweep_type}.png",
@@ -1014,7 +1044,6 @@ class MultiCSVComparator:
         print(f"✓ Saved cost_components_{sweep_type}.png")
 
     def plot_deployment_comparison(self, csv_names, sweep_type):
-        """Deployment constraints: RAAN spacing, launch groups vs planes, merged by sweep parameter."""
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
         param_groups = {}
         for name in csv_names:
@@ -1039,96 +1068,90 @@ class MultiCSVComparator:
             merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
             nd_mask = self._nondominated_mask(merged_df)
             merged_df = merged_df[nd_mask]
-            label = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
+            label_base = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
 
             # 1. Launch groups vs number of planes
+            r1 = None
             axes[0, 0].scatter(merged_df['P_planes'], merged_df['launch_num_groups'],
                             c=color, s=55, alpha=0.7, marker=marker,
-                            edgecolors='black', linewidth=0.4,
-                            label=label)
-            # Linear trend line
+                            edgecolors='black', linewidth=0.4)
             if len(merged_df) > 1:
                 x = merged_df['P_planes']
                 y = merged_df['launch_num_groups']
-                slope, intercept, r, _, _ = linregress(x, y)
+                slope, intercept, r1, _, _ = linregress(x, y)
                 x_fit = np.linspace(x.min(), x.max(), 100)
                 y_fit = slope * x_fit + intercept
-                axes[0, 0].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
-                axes[0, 0].text(x_fit[-1], y_fit[-1], f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+                axes[0, 0].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            axes[0, 0].plot([], [], color=color, marker=marker, linestyle='None',
+                            label=f"{label_base} (R={r1:.2f})" if r1 is not None else label_base)
 
-            # 2. Required RAAN spacing vs launch groups (hyperbolic fit)
+            # 2. Required RAAN spacing vs launch groups (hyperbolic fit, but dotted)
+            r2 = None
             axes[0, 1].scatter(merged_df['launch_num_groups'], merged_df['launch_delta_raan_required_deg'],
                             c=color, s=55, alpha=0.7, marker=marker,
-                            edgecolors='black', linewidth=0.4,
-                            label=label)
+                            edgecolors='black', linewidth=0.4)
             if len(merged_df) > 1:
                 x = merged_df['launch_num_groups']
                 y = merged_df['launch_delta_raan_required_deg']
-                # Fit y = a/x + b
                 from scipy.optimize import curve_fit
                 def hyperbolic(x, a, b): return a / x + b
                 try:
                     popt, _ = curve_fit(hyperbolic, x, y)
                     y_fit = hyperbolic(x, *popt)
-                    r = np.corrcoef(y, y_fit)[0, 1]
+                    r2 = np.corrcoef(y, y_fit)[0, 1]
                     x_fit = np.linspace(x.min(), x.max(), 100)
-                    axes[0, 1].plot(x_fit, hyperbolic(x_fit, *popt), color=color, alpha=0.5, linewidth=2)
-                    axes[0, 1].text(x_fit[-1], hyperbolic(x_fit, *popt)[-1], f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+                    axes[0, 1].plot(x_fit, hyperbolic(x_fit, *popt), color=color, alpha=0.7, linewidth=2, linestyle=':')
                 except Exception:
                     pass
+            axes[0, 1].plot([], [], color=color, marker=marker, linestyle='None',
+                            label=f"{label_base} (R={r2:.2f})" if r2 is not None else label_base)
 
-            # 3. Phasing factor F vs number of launches (linear trend)
+            # 3. Phasing factor F vs number of launches (linear trend, dotted)
+            r3 = None
             axes[1, 0].scatter(merged_df['F_phasing'], merged_df['launch_num_launches'],
                             c=color, s=55, alpha=0.7, marker=marker,
-                            edgecolors='black', linewidth=0.4,
-                            label=label)
+                            edgecolors='black', linewidth=0.4)
             if len(merged_df) > 1:
                 x = merged_df['F_phasing']
                 y = merged_df['launch_num_launches']
-                slope, intercept, r, _, _ = linregress(x, y)
+                slope, intercept, r3, _, _ = linregress(x, y)
                 x_fit = np.linspace(x.min(), x.max(), 100)
                 y_fit = slope * x_fit + intercept
-                axes[1, 0].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
-                axes[1, 0].text(x_fit[-1], y_fit[-1], f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+                axes[1, 0].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            axes[1, 0].plot([], [], color=color, marker=marker, linestyle='None',
+                            label=f"{label_base} (R={r3:.2f})" if r3 is not None else label_base)
 
-            # 4. Launch cost vs number of planes (linear trend)
+            # 4. Launch cost vs number of planes (linear trend, dotted)
+            r4 = None
             axes[1, 1].scatter(merged_df['P_planes'], merged_df['launch_cost_musd'],
                             c=color, s=55, alpha=0.7, marker=marker,
-                            edgecolors='black', linewidth=0.4,
-                            label=label)
+                            edgecolors='black', linewidth=0.4)
             if len(merged_df) > 1:
                 x = merged_df['P_planes']
                 y = merged_df['launch_cost_musd']
-                slope, intercept, r, _, _ = linregress(x, y)
+                slope, intercept, r4, _, _ = linregress(x, y)
                 x_fit = np.linspace(x.min(), x.max(), 100)
                 y_fit = slope * x_fit + intercept
-                axes[1, 1].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
-                axes[1, 1].text(x_fit[-1], y_fit[-1], f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+                axes[1, 1].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            axes[1, 1].plot([], [], color=color, marker=marker, linestyle='None',
+                            label=f"{label_base} (R={r4:.2f})" if r4 is not None else label_base)
 
         # Configure axes
+        for ax in axes.flat:
+            ax.legend()
+            ax.grid(True, alpha=0.3)
         axes[0, 0].set_xlabel('Number of Planes (P)')
         axes[0, 0].set_ylabel('Number of Launch Groups')
         axes[0, 0].set_title('Launch Groups vs Planes')
-        axes[0, 0].legend()
-        axes[0, 0].grid(True, alpha=0.3)
-
         axes[0, 1].set_xlabel('Number of Launch Groups')
         axes[0, 1].set_ylabel('Required RAAN Spacing (deg)')
         axes[0, 1].set_title('RAAN Spacing vs Launch Groups')
-        axes[0, 1].legend()
-        axes[0, 1].grid(True, alpha=0.3)
-
         axes[1, 0].set_xlabel('Phasing Factor (F)')
         axes[1, 0].set_ylabel('Number of Launches')
         axes[1, 0].set_title('Launches vs Phasing Factor')
-        axes[1, 0].legend()
-        axes[1, 0].grid(True, alpha=0.3)
-
         axes[1, 1].set_xlabel('Number of Planes (P)')
         axes[1, 1].set_ylabel('Launch Cost (M$ FY2025)')
         axes[1, 1].set_title('Launch Cost vs Number of Planes')
-        axes[1, 1].legend()
-        axes[1, 1].grid(True, alpha=0.3)
 
         plt.suptitle(f'Deployment Constraints - {sweep_type.title()} Sweep', fontsize=14)
         plt.tight_layout()
@@ -1138,7 +1161,7 @@ class MultiCSVComparator:
         print(f"✓ Saved deployment_{sweep_type}.png")
 
     def plot_launch_cost_comparison(self, csv_names, sweep_type):
-        """Launch cost analysis: cost vs ΔV, launches vs planes vs satellites, merged by sweep parameter."""
+        """Launch cost analysis: cost vs ΔV, launches vs planes, merged by sweep parameter."""
         fig, axes = plt.subplots(1, 2, figsize=(16, 6))
         param_groups = {}
         for name in csv_names:
@@ -1163,55 +1186,39 @@ class MultiCSVComparator:
             merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
             nd_mask = self._nondominated_mask(merged_df)
             merged_df = merged_df[nd_mask]
-            label = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
+            label_base = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
 
-            # 1. Launch cost vs deployment ΔV
+            # 1. Launch cost vs deployment ΔV (left)
             axes[0].scatter(merged_df['launch_dv_used_m_s'], merged_df['launch_cost_musd'],
                             c=color, s=45, alpha=0.35, marker=marker,
-                            edgecolors='black', linewidth=0.4,
-                            label=label)
-            # Linear and hyperbolic trend lines
+                            edgecolors='black', linewidth=0.4)
+            # Linear trend line (dotted)
+            r_lin = None
             if len(merged_df) > 1:
                 x = merged_df['launch_dv_used_m_s']
                 y = merged_df['launch_cost_musd']
-                # Linear fit
                 slope, intercept, r_lin, _, _ = linregress(x, y)
                 x_fit = np.linspace(x.min(), x.max(), 100)
                 y_fit_lin = slope * x_fit + intercept
-                axes[0].plot(x_fit, y_fit_lin, color=color, alpha=0.5, linewidth=2, linestyle='--')
-                # Hyperbolic fit
-                from scipy.optimize import curve_fit
-                def hyperbolic(x, a, b): return a / x + b
-                try:
-                    popt, _ = curve_fit(hyperbolic, x, y)
-                    y_fit_hyp = hyperbolic(x_fit, *popt)
-                    r_hyp = np.corrcoef(y, hyperbolic(x, *popt))[0, 1]
-                    axes[0].plot(x_fit, y_fit_hyp, color=color, alpha=0.5, linewidth=2)
-                    # Improved label placement: offset right and space vertically
-                    x_label = x_fit[-1] + 0.03 * (x_fit.max() - x_fit.min())
-                    y_label_lin = y_fit_lin[-1] + 0.20 * (y_fit_lin.max() - y_fit_lin.min()) + 0.15 * param_idx
-                    y_label_hyp = y_fit_hyp[-1] - 0.20 * (y_fit_hyp.max() - y_fit_hyp.min()) + 0.15 * param_idx
-                    axes[0].text(x_label, y_label_lin, f"R_lin={r_lin:.2f}", color=color, fontsize=11, alpha=0.8)
-                    axes[0].text(x_label, y_label_hyp, f"R_hyp={r_hyp:.2f}", color=color, fontsize=11, alpha=0.8)
-                except Exception:
-                    x_label = x_fit[-1] + 0.03 * (x_fit.max() - x_fit.min())
-                    y_label_lin = y_fit_lin[-1] + 0.04 * (y_fit_lin.max() - y_fit_lin.min()) + 0.15 * param_idx
-                    axes[0].text(x_label, y_label_lin, f"R={r_lin:.2f}", color=color, fontsize=11, alpha=0.8)
+                axes[0].plot(x_fit, y_fit_lin, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            # Add legend entry with R value
+            legend_label_left = f"{label_base} (R={r_lin:.2f})" if r_lin is not None else label_base
+            axes[0].plot([], [], color=color, marker=marker, linestyle='None', label=legend_label_left)
 
-            # 2. Launches vs planes (marker size = satellites, more transparent, add trend line)
+            # 2. Launches vs planes (right)
             axes[1].scatter(merged_df['P_planes'], merged_df['launch_num_launches'],
-                            s=merged_df['num_satellites']*2, alpha=0.35,
-                            c=color, marker=marker,
-                            edgecolors='black', linewidth=0.5,
-                            label=label)
+                            s=45, alpha=0.25, c=color, marker=marker,
+                            edgecolors='black', linewidth=0.5)
+            r_right = None
             if len(merged_df) > 1:
                 x = merged_df['P_planes']
                 y = merged_df['launch_num_launches']
-                slope, intercept, r, _, _ = linregress(x, y)
+                slope, intercept, r_right, _, _ = linregress(x, y)
                 x_fit = np.linspace(x.min(), x.max(), 100)
                 y_fit = slope * x_fit + intercept
-                axes[1].plot(x_fit, y_fit, color=color, alpha=0.5, linewidth=2)
-                axes[1].text(x_fit[-1], y_fit[-1] + 0.2*param_idx, f"R={r:.2f}", color=color, fontsize=11, alpha=0.8)
+                axes[1].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            legend_label_right = f"{label_base} (R={r_right:.2f})" if r_right is not None else label_base
+            axes[1].plot([], [], color=color, marker=marker, linestyle='None', label=legend_label_right)
 
         axes[0].set_xlabel('Deployment ΔV Used (m/s)')
         axes[0].set_ylabel('Launch Cost (M$ FY2025)')
@@ -1221,7 +1228,7 @@ class MultiCSVComparator:
 
         axes[1].set_xlabel('Number of Planes (P)')
         axes[1].set_ylabel('Number of Launches')
-        axes[1].set_title('Launches vs Planes\n(marker size = number of satellites)')
+        axes[1].set_title('Launches vs Planes')
         axes[1].legend()
         axes[1].grid(True, alpha=0.3)
 
@@ -1232,6 +1239,173 @@ class MultiCSVComparator:
         plt.close()
         print(f"✓ Saved launch_cost_{sweep_type}.png")
 
+    def plot_cost_components_per_satellite(self, csv_names, sweep_type):
+        """
+        Plot RE cost and Launch cost per satellite as a function of number of satellites.
+        """
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        components = [
+            ('RE_cost_musd', 'RE Cost per Satellite', axes[0]),
+            ('launch_cost_musd', 'Launch Cost per Satellite', axes[1])
+        ]
+
+        param_groups = {}
+        for name in csv_names:
+            meta = self.metadata[name]
+            if sweep_type == 'altitude':
+                param_val = meta.get('target_altitude')
+            elif sweep_type == 'inclination':
+                param_val = meta.get('target_inclination')
+            elif sweep_type == 'mass':
+                param_val = meta.get('sat_mass')
+            elif sweep_type == 'dv':
+                param_val = meta.get('dv_m_s')
+            else:
+                continue
+            if param_val is None:
+                continue
+            param_groups.setdefault(param_val, []).append(name)
+
+        for param_idx, (param_val, csv_list) in enumerate(sorted(param_groups.items())):
+            color = self.color_palette[param_idx % len(self.color_palette)]
+            marker = self.marker_styles[param_idx % len(self.marker_styles)]
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            label_base = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
+
+            # Calculate cost per satellite
+            merged_df = merged_df.copy()
+            merged_df['RE_cost_per_sat'] = merged_df['RE_cost_musd'] / merged_df['num_satellites']
+            merged_df['launch_cost_per_sat'] = merged_df['launch_cost_musd'] / merged_df['num_satellites']
+
+            # RE Cost per satellite subplot
+            r_re = None
+            axes[0].scatter(merged_df['num_satellites'], merged_df['RE_cost_per_sat'],
+                            c=color, s=45, alpha=0.75, marker=marker,
+                            edgecolors='black', linewidth=0.4)
+            if len(merged_df) > 1:
+                x = merged_df['num_satellites']
+                y = merged_df['RE_cost_per_sat']
+                slope, intercept, r_re, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[0].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            legend_label_re = f"{label_base} (R={r_re:.2f})" if r_re is not None else label_base
+            axes[0].plot([], [], color=color, marker=marker, linestyle='None', label=legend_label_re)
+
+            # Launch Cost per satellite subplot
+            r_launch = None
+            axes[1].scatter(merged_df['num_satellites'], merged_df['launch_cost_per_sat'],
+                            c=color, s=45, alpha=0.55, marker=marker,
+                            edgecolors='black', linewidth=0.4)
+            if len(merged_df) > 1:
+                x = merged_df['num_satellites']
+                y = merged_df['launch_cost_per_sat']
+                slope, intercept, r_launch, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[1].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            legend_label_launch = f"{label_base} (R={r_launch:.2f})" if r_launch is not None else label_base
+            axes[1].plot([], [], color=color, marker=marker, linestyle='None', label=legend_label_launch)
+
+        axes[0].set_xlabel('Number of Satellites')
+        axes[0].set_ylabel('RE Cost per Satellite (M$ FY2025)')
+        axes[0].set_title(f'RE Cost per Satellite vs Satellites - {sweep_type.title()} Sweep')
+        axes[0].legend()
+        axes[0].grid(True, alpha=0.3)
+
+        axes[1].set_xlabel('Number of Satellites')
+        axes[1].set_ylabel('Launch Cost per Satellite (M$ FY2025)')
+        axes[1].set_title(f'Launch Cost per Satellite vs Satellites - {sweep_type.title()} Sweep')
+        axes[1].legend()
+        axes[1].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.savefig(f"{self.output_dir}/cost_components_per_satellite_{sweep_type}.png",
+                    dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"✓ Saved cost_components_per_satellite_{sweep_type}.png")
+
+    def plot_performance_vs_sat_and_planes(self, csv_names, sweep_type):
+        """
+        Plot performance vs number of satellites (left) and vs number of planes (right),
+        with trend lines and R in legend, colored by sweep parameter.
+        """
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+        param_groups = {}
+        for name in csv_names:
+            meta = self.metadata[name]
+            if sweep_type == 'altitude':
+                param_val = meta.get('target_altitude')
+            elif sweep_type == 'inclination':
+                param_val = meta.get('target_inclination')
+            elif sweep_type == 'mass':
+                param_val = meta.get('sat_mass')
+            elif sweep_type == 'dv':
+                param_val = meta.get('dv_m_s')
+            else:
+                continue
+            if param_val is None:
+                continue
+            param_groups.setdefault(param_val, []).append(name)
+
+        for param_idx, (param_val, csv_list) in enumerate(sorted(param_groups.items())):
+            color = self.color_palette[param_idx % len(self.color_palette)]
+            marker = self.marker_styles[param_idx % len(self.marker_styles)]
+            merged_df = pd.concat([self.data_dict[name] for name in csv_list], ignore_index=True)
+            nd_mask = self._nondominated_mask(merged_df)
+            merged_df = merged_df[nd_mask]
+            label_base = f"{sweep_type.title()} {param_val:.0f}" if param_val is not None else f"{sweep_type.title()}"
+
+            # Left: Performance vs Number of Satellites
+            r_sat = None
+            axes[0].scatter(merged_df['num_satellites'], merged_df['performance'],
+                            c=color, s=45, alpha=0.7, marker=marker,
+                            edgecolors='black', linewidth=0.4)
+            if len(merged_df) > 1:
+                x = merged_df['num_satellites']
+                y = merged_df['performance']
+                slope, intercept, r_sat, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[0].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            legend_label_sat = f"{label_base} (R={r_sat:.2f})" if r_sat is not None else label_base
+            axes[0].plot([], [], color=color, marker=marker, linestyle='None', label=legend_label_sat)
+
+            # Right: Performance vs Number of Planes
+            r_planes = None
+            axes[1].scatter(merged_df['P_planes'], merged_df['performance'],
+                            c=color, s=45, alpha=0.7, marker=marker,
+                            edgecolors='black', linewidth=0.4)
+            if len(merged_df) > 1:
+                x = merged_df['P_planes']
+                y = merged_df['performance']
+                slope, intercept, r_planes, _, _ = linregress(x, y)
+                x_fit = np.linspace(x.min(), x.max(), 100)
+                y_fit = slope * x_fit + intercept
+                axes[1].plot(x_fit, y_fit, color=color, alpha=0.7, linewidth=2, linestyle=':')
+            legend_label_planes = f"{label_base} (R={r_planes:.2f})" if r_planes is not None else label_base
+            axes[1].plot([], [], color=color, marker=marker, linestyle='None', label=legend_label_planes)
+
+        axes[0].set_xlabel('Number of Satellites')
+        axes[0].set_ylabel('Performance Score')
+        axes[0].set_title(f'Performance vs Satellites - {sweep_type.title()} Sweep')
+        axes[0].legend()
+        axes[0].grid(True, alpha=0.3)
+
+        axes[1].set_xlabel('Number of Planes (P)')
+        axes[1].set_ylabel('Performance Score')
+        axes[1].set_title(f'Performance vs Planes - {sweep_type.title()} Sweep')
+        axes[1].legend()
+        axes[1].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.savefig(f"{self.output_dir}/performance_vs_sat_and_planes_{sweep_type}.png",
+                    dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"✓ Saved performance_vs_sat_and_planes_{sweep_type}.png")
 
 def main():
     """Main function for command-line usage."""
@@ -1331,10 +1505,18 @@ if __name__ == "__main__":
         "results/MOEA/walker-delta/p160_g81_sd42/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a500_i50_dv200_T180d.csv",
         "results/MOEA/walker-delta/p160_g81_sd42/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a700_i50_dv200_T180d.csv",
         "results/MOEA/walker-delta/p160_g81_sd42/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p160_g81_sp1500_sd42_m190_a1000_i50_dv200_T180d.csv",
-        # p480_g50_sd12
+        # p480_g50_sd12 step 1000 
         "results/MOEA/walker-delta/p480_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a500_i50_dv200_T180d.csv",
         "results/MOEA/walker-delta/p480_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a700_i50_dv200_T180d.csv",
         "results/MOEA/walker-delta/p480_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a1000_i50_dv200_T180d.csv",
+        # p480_g50_sd12 step 500
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp500_sd12_m190_a500_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp500_sd12_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p480_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp500_sd12_m190_a1000_i50_dv200_T180d.csv",
+        # p500_g50_sd12 step 500
+        "results/MOEA/walker-delta/p500_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m190_a500_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p500_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p500_g50_sd12/sweep_alt/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m190_a1000_i50_dv200_T180d.csv",
     ]
     comparator = MultiCSVComparator(csv_files_altitude, "comparison_plots/manual_altitude")
     comparator.generate_all_plots()
@@ -1356,6 +1538,10 @@ if __name__ == "__main__":
         "results/MOEA/walker-delta/p480_g50_sd12/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a700_i50_dv200_T180d.csv",
         "results/MOEA/walker-delta/p480_g50_sd12/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a700_i60_dv200_T180d.csv",
         "results/MOEA/walker-delta/p480_g50_sd12/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m190_a700_i98_dv200_T180d.csv",
+        # p500_g50_sd12 step 500
+        "results/MOEA/walker-delta/p500_g50_sd12/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p500_g50_sd12/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m190_a700_i60_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p500_g50_sd12/sweep_inc/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m190_a700_i98_dv200_T180d.csv",
     ]
     comparator = MultiCSVComparator(csv_files_inclination, "comparison_plots/manual_inclination")
     comparator.generate_all_plots()
@@ -1381,6 +1567,11 @@ if __name__ == "__main__":
         "results/MOEA/walker-delta/p480_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m370_a700_i50_dv200_T180d.csv",
         "results/MOEA/walker-delta/p480_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m760_a700_i50_dv200_T180d.csv",
         "results/MOEA/walker-delta/p480_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p480_g50_sp1000_sd12_m95_a700_i50_dv200_T180d.csv",
+        # p500_g50_sd12 step 500
+        "results/MOEA/walker-delta/p500_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m190_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p500_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m370_a700_i50_dv200_T180d.csv",
+        # "results/MOEA/walker-delta/p500_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m760_a700_i50_dv200_T180d.csv",
+        "results/MOEA/walker-delta/p500_g50_sd12/sweep_mass/pareto_solutions_walker-delta_w0.0-0.0-0.9-0.7_p500_g50_sp500_sd12_m95_a700_i50_dv200_T180d.csv",
     ]
     comparator = MultiCSVComparator(csv_files_mass, "comparison_plots/manual_mass")
     comparator.generate_all_plots()
