@@ -1,8 +1,19 @@
 """
 CSV Postprocessing Script for Multi-Objective Optimization Results
 
-This script loads optimization results from CSV files and generates various plots
-analyzing relationships between design parameters, costs, and performance metrics.
+This script loads and analyzes results from constellation design optimization runs stored in CSV format. It provides a comprehensive suite of postprocessing tools for visualizing relationships between design parameters, cost components, and performance metrics. The script supports both Walker-Delta and Flower constellation patterns, automatically detects the pattern type, and generates a wide range of plots including Pareto fronts, cost breakdowns, performance analyses, deployment and launch efficiency, and summary statistics.
+
+Main features:
+- Loads and cleans optimization results from CSV files.
+- Detects constellation pattern type and adapts analysis accordingly.
+- Generates plots for cost vs performance, cost components, performance breakdown, coverage, altitude/inclination trade-offs, and more.
+- Provides advanced analyses such as correlation matrices, 3D visualizations, and launch/deployment efficiency.
+- Outputs all plots and summary statistics to organized directories for further review.
+
+Interactions:
+- Designed to be run as a standalone script or via command line.
+- Can be integrated with other optimization and analysis scripts in the constellation design workflow.
+- Uses pandas, numpy, matplotlib, seaborn, and scipy for data handling and visualization.
 
 Author: Fabio Meloni - TU Delft MSc Student - NASA JPL Visiting Researcher
 """

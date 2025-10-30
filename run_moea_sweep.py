@@ -1,13 +1,24 @@
 """
 Multi-objective optimization parameter sweep script.
 
+This script automates the execution of a series of multi-objective evolutionary algorithm (MOEA) runs, 
+systematically varying one constellation design parameter at a time (altitude, inclination, deployment
+ ΔV, satellite mass/payload). Each run uses a set of default parameters except for the parameter being
+   swept, and results are saved in organized subdirectories for later analysis.
+
+
 Runs MOEA with default parameters, changing ONE parameter at a time:
 - Altitudes: 500, 700, 1000 km (default 700)
 - Inclinations: 50, 60, 98 deg (default 50)
 - Deployment ΔV: 100, 200, 300, 400 m/s (default 200)
 - Satellite mass/payload combinations (4 classes, default 190 kg)
 
-Each run writes results to a unique subdirectory under results/MOEA/.
+Interactions:
+- Calls `run_multi_objective_optimization` and `generate_dynamic_directory` from `multi_objective_optimizer.py`.
+- Outputs results and summary files to the `results/MOEA/` directory.
+- Designed to be run as a standalone script or imported as a module.
+
+Author: Fabio Meloni - TU Delft MSc Student - NASA JPL Visiting Researcher
 """
 
 import os
@@ -68,7 +79,7 @@ def run_parameter_sweep():
     fixed_params = {
         'pattern_type': 'Walker-Delta',
         'gs': 'AFB_Andersen',
-        'pop_size': 480,
+        'pop_size': 500,
         'n_gen': 50,
         'seed': 12,
         'output_dir': 'results/MOEA',

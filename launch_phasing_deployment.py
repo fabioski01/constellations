@@ -20,6 +20,8 @@ Inputs:
 
 Outputs:
     deployment_plan (dict): per-satellite {delta_a_km, time_s, dv_ms, feasible} + total stats
+
+Author: Fabio Meloni - TU Delft MSc Student - NASA JPL Visiting Researcher
 """
 import os
 
