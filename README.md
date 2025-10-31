@@ -1,68 +1,99 @@
 # Satellite Constellation Modeling, Analysis & Reconfiguration Framework
 
-High-level design, performance evaluation, cost / science multi‑objective optimization, and reconfiguration analytics for constellations (Walker / Flower / variants) with J2 phasing.
+High-level design, performance evaluation, cost/science multi-objective optimization, and reconfiguration analytics for constellations (Walker / Flower / variants) with J2 phasing.
 
 ---
+
 ## Table of Contents
 1. Purpose & Scope
-2. End‑to‑End Workflow (Recommended Procedure)
-3. Script Catalogue (14 Python files)
+2. End-to-End Workflow (Recommended Procedure)
+3. Script Catalogue
 4. Typical Outputs & Directory Structure
 5. Installation & Quick Start
 6. Minimal Usage Examples
 7. Author & License
 
 ---
+
 ## 1. Purpose & Scope
-This repository (~13.5k lines, 14 Python modules) provides a modular toolkit to: (a) generate constellation layouts, (b) quantify coverage / visibility / cost / science metrics, (c) optimize architectures (Pareto front), and (d) analyze & visualize time, ΔV, and geometry for single-satellite reconfiguration to regional (RGT) or global orbits.
+
+This repository provides a modular toolkit to:
+- Generate constellation layouts (Walker, Flower, custom patterns)
+- Quantify coverage, visibility, cost, and science metrics
+- Multi-objective optimization (Pareto front) of architectures
+- Postprocessing and comparative analysis of design sweeps
+- Spacecraft reconfiguration analysis (dependence on Δa, ground target coordinates, coordinate  tolerance, total time, ΔV)
+- Visualization of ground tracks, coverage, and maneuver sequences
+
+Supports both analytic and numerical approaches, with tools for batch optimization, postprocessing, deployment planning, and maneuver visualization.
 
 ---
-## 2. End‑to‑End Workflow (Recommended Procedure)
-Step 1 – Architecture Exploration: Run `multi_objective_optimizer.py` to obtain a Pareto front (cost vs performance weights). Exported CSV contains orbital & pattern parameters of optimal candidates.
 
-Step 2 – Post Processing: Use `csv_postprocess.py` on the produced CSV(s) to generate comparative plots (cost vs altitude, performance vs inclination, trade studies) and summary statistics.
+## 2. End-to-End Workflow (Recommended Procedure)
 
-Step 3 – Detailed Coverage & Visibility: Select one (or a few) candidate architectures from the Pareto front and run `main.py` to produce ground tracks, 3D orbit views, coverage maps (global/regional), visibility time series and animations.
+**Step 1 – Architecture Optimization & Deployment Analysis:**  
+Run `run_moea_sweep.py` to automate a series of multi-objective evolutionary algorithm (MOEA) runs, sweeping key parameters (altitude, inclination, mass, deployment ΔV). This script calls `multi_objective_optimizer.py`, which internally calls `launch_phasing_deployment.py` to analyze deployment phasing, time, and ΔV for multi-satellite launches. Results are saved as CSVs and plots.
 
-Step 4 – RGT / Regional Orbit Tuning: If a repeat ground track (RGT) regional mode is desired, use `reconfig_phasing_RGT.py` to identify altitude / semi-major axis satisfying a specified repeat ratio for the given inclination.
+**Step 2 – Postprocessing & Comparison:**  
+Use `csv_postprocess.py` and `csv_compare.py` to analyze and visualize trade-offs, cost breakdowns, performance trends, and deployment constraints across sweeps and seeds.
 
-Step 5 – Reconfiguration Analysis (Parametric): With global (GOM) and selected regional (ROM / RGT) orbits defined, use `reconfig_plotter.py` to sweep Δa and tolerance parameters and produce timing & minimum ΔV style figures (wait, drift, total times; averaged heatmaps; iso-time contours) to choose an operational Δa (e.g., 50 km) and tolerance strategy.
+**Step 3 – Detailed Coverage & Visibility:**  
+Select candidate architectures and run `main.py` for ground tracks, 3D orbit views, coverage maps, visibility time series, and animations.
 
-Step 6 – Maneuver Sequence Visualization: Use `reconfig_maneuver_visualizer.py` to render ground track evolution for a specific reconfiguration (GOM wait → Hohmann 1 → drift → Hohmann 2 → target pass) across multiple ground targets.
+**Step 4 – Reconfiguration Analysis:**  
+Run `reconfig_driftANDwaitTime_multicore.py` (or single-core variant) to perform parametric reconfiguration analysis (Δa/tolerance sweeps, timing, ΔV). This script calls `reconfig_plotter.py` and related plotting utilities.  
+During this process, the RGT altitude solver (`reconfig_phasing_RGT.py`) is called internally to identify regional orbit parameters as needed for reconfiguration. Direct use of the RGT solver is only needed if you want to manually explore possible Nd/No combinations for RGT altitude and repeat ratios.  
+Results are heavy and saved in CSV for further inspection.  
+Optionally, use `reconfig_plot_from_csv.py` to visualize timing and ΔV breakdowns from saved CSVs after running the multicore analysis.
 
-Iterate: Adjust weights, architectural parameters, or Δa / tolerance and repeat steps as needed.
+**Step 5 – Maneuver Sequence Visualization:**  
+Use `reconfig_maneuver_visualizer.py` to render ground track evolution for specific reconfiguration scenarios.
+
+Iterate as needed, adjusting weights, parameters, or operational strategies.
 
 ---
+
 ## 3. Script Catalogue
-Below each module is listed with a concise role and typical invocation context.
 
-| File | Purpose (Short) | Typical User Action |
-|------|-----------------|---------------------|
-| `multi_objective_optimizer.py` | High-level multi-objective (cost / coverage / science) optimizer. Produces Pareto CSV + plots. | Edit weights & limits, run to generate new Pareto set. |
-| `csv_postprocess.py` | Post-processing & visualization of Pareto CSV (cost vs performance, altitude/inclination trade-offs, correlation). | Provide CSV path, run to produce `postprocessing/` figures. |
-| `main.py` | Comprehensive analysis & visualization driver (ground tracks, coverage, visibility, animations). | Set flags & constellation parameters; run for diagnostics & figures. |
-| `utilities_constellations.py` | Constellation object: builds Walker / Flower patterns (SGP4-based propagation). | Imported by higher-level scripts. |
-| `utilities_coverage.py` | Grid-based global/regional coverage & visibility utilities + region & ground station lookups. | Imported; rarely run standalone. |
-| `utilities_optimization.py` | Foundational (earlier) optimization utilities (weights & scoring components). | Internal support / legacy reference. |
-| `utilities.py` | Core coordinate & time conversions; orbital element transforms; basic propagators; perturbations. | Imported widely. |
-| `reconfig_plotter.py` | Parametric reconfiguration timing & Δa/tolerance sweeps; heatmaps / iso-time plots; auto-selects multicore planner. | Provide GOM & ROM parameters; choose sweeps; run for `results/reconfig/` figures. |
-| `reconfig_driftANDwaitTime_multicore.py` | J2 analytic reconfiguration planner (multicore); solves for wait & drift times across wrap branches. | Imported by plotter / visualizer; not typically executed directly. |
-| `reconfig_driftANDwaitTime.py` | Single-core variant (fallback) of the analytic planner. | Automatic fallback if multicore import fails. |
-| `reconfig_maneuver_visualizer.py` | Builds maneuver phase orbital segments & ground track PNGs for a specific reconfiguration scenario. | Edit scenario block or call programmatically; produces `plots/reconfig_groundtracks/`. |
-| `reconfig_phasing_RGT.py` | Repeat Ground Track (RGT) altitude solver under J2 (semi-major axis for No/Nd ratio). | Use to determine ROM altitude satisfying repeat ratio. |
-| `revisit.py` | Simplified analytic revisit-time estimation (coverage geometry approximations). | Run interactively for quick early analysis. |
-| `constants.py` | Physical / economic constants (μ, R⊕, J2, inflation factors, etc.). | Internal. |
+| File | Purpose | Typical Usage |
+|------|---------|---------------|
+| `multi_objective_optimizer.py` | Multi-objective optimizer (cost, coverage, science); NSGA-II, CSV/plot output; calls launch phasing deployment | Run for Pareto front generation |
+| `run_moea_sweep.py` | Batch parameter sweep runner for optimizer; automates multi-run sweeps | Run for full sweep across parameters |
+| `csv_postprocess.py` | Postprocessing & visualization of single Pareto CSV | Analyze one optimization result |
+| `csv_compare.py` | Multi-CSV comparison, sweep analysis, cost/performance/deployment plots | Compare sweeps, seeds, or configs |
+| `main.py` | Detailed analysis & visualization driver (ground tracks, coverage, visibility, animation) | Run for selected architecture |
+| `utilities_constellations.py` | Constellation object builder (Walker, Flower, SGP4 propagation) | Imported by optimizer and analysis scripts |
+| `utilities_coverage.py` | Coverage and visibility utilities, region/ground station lookup | Imported by optimizer and analysis scripts |
+| `utilities_optimization.py` | Foundational optimization utilities (weights, scoring) | Internal support |
+| `utilities.py` | Core coordinate/time conversions, orbital transforms, propagators, perturbations | Widely imported |
+| `orbital_cost_function.py` | Launch cost scaling and OCF interpolation for Neutron DRL | Used in cost models |
+| `reconfig_plotter.py` | Parametric reconfiguration timing, Δa/tolerance sweeps, heatmaps, iso-time plots | Called by multicore reconfig analysis |
+| `reconfig_plotter_multicore.py` | Multicore variant of reconfiguration plotter | Used for large sweeps |
+| `reconfig_plot_from_csv.py` | Plotting of reconfiguration timing from CSV (Δa, ΔV, time breakdown) | Visualize parametric results after heavy analysis |
+| `reconfig_driftANDwaitTime.py` | Analytic J2 reconfiguration planner (single-core) | Imported by plotter/visualizer |
+| `reconfig_driftANDwaitTime_multicore.py` | Multicore variant of analytic planner; main entry for reconfig analysis | Used for batch sweeps and main reconfig analysis |
+| `reconfig_maneuver_visualizer.py` | Ground track visualizer for maneuver phases | Visualize reconfiguration sequences |
+| `reconfig_phasing_RGT.py` | Repeat Ground Track (RGT) altitude solver under J2 | Called internally by reconfig analysis; optionally check Nd/No combinations manually |
+| `launch_phasing_deployment.py` | RAAN phasing deployment planner (Δa, time, ΔV); called by optimizer | Optionally visualize deployment cost/time |
+| `revisit.py` | Analytic revisit-time estimation | Optional, not precise or used in main workflow |
+| `constants.py` | Physical/economic constants (μ, R⊕, J2, inflation, etc.) | Internal |
 
 ---
+
 ### Cross-Module Data Flow (Conceptual)
-Optimizer → (select candidate) → Main (detailed coverage) → RGT (derive regional orbit) → Reconfig Plotter (Δa/tolerance trade) → Maneuver Visualizer (sequence depiction).
+
+run_moea_sweep.py → multi_objective_optimizer.py (calls launch_phasing_deployment.py and other internal scripts) → (select candidate) → main.py (for detailed coverage or animations) → reconfig_driftANDwaitTime_multicore.py (calls reconfig_plotter.py, saves CSV; calls reconfig_phasing_RGT.py internally) → reconfig_maneuver_visualizer.py.
 
 ---
+
 ## 4. Typical Outputs & Directory Structure
+
 ```
 results/                  # Aggregated analysis outputs
+  MOEA/                   # Optimization results (Pareto CSVs, plots)
   walker-delta/           # Example constellation comparison outputs
-  reconfig/               # Reconfiguration timing / heatmaps
+  reconfig/               # Reconfiguration timing, heatmaps, parametric sweeps (CSV + plots)
+  launch/                 # Launch phasing deployment analysis
 plots/                    # General plotting products
   ground_tracks/          # Ground track figures
   coverage/               # Coverage maps
@@ -72,32 +103,44 @@ hpc_downloads/            # (Optional) HPC-produced optimization results or plot
 ```
 
 ---
+
 ## 5. Installation & Quick Start
+
 1. Clone repository.
 2. Create Python >=3.10 environment (recommended).
 3. Install core dependencies:
     ```bash
     pip install numpy scipy matplotlib cartopy sgp4 pandas seaborn tqdm
     ```
-4. (Optional) For optimization extras: `pip install pymoo` (if used in `multi_objective_optimizer.py`).
-5. Run optimizer example:
+4. (Optional) For optimization extras:
     ```bash
-    python multi_objective_optimizer.py
+    pip install pymoo
+    ```
+5. Run optimizer sweep:
+    ```bash
+    python run_moea_sweep.py
     ```
 6. Post-process a generated CSV:
     ```bash
     python csv_postprocess.py path/to/pareto_solutions.csv
     ```
+7. Compare multiple sweeps:
+    ```bash
+    python csv_compare.py "results/MOEA/walker-delta/p320_g120/sweep_alt"
+    ```
 
 Cartopy may require PROJ / GEOS system libraries (on Windows, wheels usually bundle them; on Linux use system package manager if needed).
 
+---
+
 ## 6. Minimal Usage Examples
-Refer to examples in each script. Most should be ready to run without changes. Some have flags
-to active functionalities, such as plots.
+
+Refer to examples in each script. Most should be ready to run without changes. Some have flags to activate functionalities, such as plots.
 
 ---
 
 ## 7. Author & License
+
 Author: Fabio Meloni – TU Delft MSc Student – NASA Jet Propulsion Laboratory Visiting Researcher
 
 License: Not for public distribution.
