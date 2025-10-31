@@ -1,42 +1,18 @@
-"""Analytic J2 Reconfiguration Planner (multicore version)
+"""
+Analytic J2 phasing with wait + Hohmann-to-drift + drift + Hohmann-to-ROM.
 
-Phases: GOM wait -> Hohmann (T1) -> Drift -> Hohmann (T2) -> ROM pass over target.
-Solves closed-form secular J2 phasing for required final overflight latitude / longitude
-by scanning wrap integers (m,k) and solving for (T_wait, T_drift) with finite transfer
-durations included.
+- Propagates secular J2 for Ω, ω, M across each segment (GOM wait, T1, drift, T2)
+- Uses mean longitude ℓ = Ω + ω + M so circular segments are handled cleanly
+- Enforces final-pass geometry exactly:
+    latitude:  sin φ_t = sin i * sin u_f  (two branches: asc/desc)
+    longitude: Ω_f + atan2(cos i sin u_f, cos u_f) - θ_G(tf) = λ_t + 2π k
+- Solves for T_wait and T_d (drift time) per branch and wrap integers (m,k)
+- Includes the finite durations of both Hohmann halves (T1 and T2)
+- Reports final ROM elements at tf (circular: ω=0, M = u_f mod 2π)
 
-What This File Adds vs single-core version
-    - Shared / reuseable ProcessPoolExecutor for per-m candidate solves
-    - n_jobs auto detection (env RECONFIG_N_JOBS or cpu_count)
-    - Optional start method control (env RECONFIG_MP_START)
-    - Thread caps set for BLAS libs (OMP/MKL/OPENBLAS/NUMEXPR)
-    - One-time diagnostic print of core usage + affinity
+No external deps beyond Python stdlib.
 
-Core Inputs (AnalyticRaanPhasingPlanner)
-    gom (Orbit)                 : initial circular orbit
-    rom_a_km                    : final (ROM) semi-major axis
-    delta_a_km                  : drift orbit SMA offset (a_G + Δa = a_D)
-    epoch_gom (datetime UTC)    : start epoch
-    target_lat_geod_deg / lon   : desired ground pass (deg)
-    max_wrap                    : bounds integer search if fallback used (mostly unused now)
-    drift_time_cap_days         : cap on drift time to trim search
-
-High-Level Solve Output (dict)
-    success, branch (ascending/descending), T_wait, T1, T_d, T2, total_time_s
-    lon_err_deg, m_u_wrap, k_lon_wrap, Omega_f_rad, u_f_rad
-    final_orbit / final_orbit_deg, selection_meta (diagnostics)
-
-Helper Functions Exposed
-    build_maneuver_sequence_for_visualizer(...) -> package for plotting (maneuver visualizer)
-    compute_reconfig_times_vs_delta_a(...)      -> sweep Δa producing time arrays
-    print_solution_summary(sol)                 -> concise human summary
-
-Parallel Use
-    When imported, create one ProcessPoolExecutor (outside hot loop) and pass
-    into higher-level sweep logic (see multi-core integration code) to amortize spawn cost.
-
-Author
-Fabio Meloni - TU Delft MSc Student - NASA Jet Propulsion Laboratory Visiting Researcher
+Author: Fabio Meloni - TU Delft MSc Student - NASA JPL Visiting Researcher
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -53,9 +29,42 @@ from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import get_context
 # import matplotlib.pyplot as plt
 # from matplotlib.ticker import MultipleLocator, AutoMinorLocator
+import sys
+from reconfig_phasing_RGT import PhasingRGT 
 
 # Print guard so we only announce core usage once per process
 _PRINTED_CORE_CONFIG = False
+_CORE_BANNER_PID = os.getpid()  # track which process printed
+_PRINTED_SOLVER_MODE_PIDS: set = set()  # print mode banner once per PID
+
+
+def _env_truthy(name: str, default: bool = False) -> bool:
+    v = os.getenv(name)
+    if v is None: return default
+    return v.strip().lower() in ("1", "true", "yes", "y", "on")
+
+def _print_core_banner(n_jobs: int, requested, env_jobs_val, mp_start: str) -> None:
+    # Print to stderr to avoid buffering/capture issues
+    try:
+        try:
+            aff = os.sched_getaffinity(0)
+            aff_count = len(aff)
+        except Exception:
+            aff = None
+            aff_count = os.cpu_count() or 1
+        sys.stderr.write(
+            f"[solver] n_jobs={n_jobs} cpu_max={os.cpu_count()} "
+            f"affinity_count={aff_count} requested={requested} env={env_jobs_val} "
+            f"mp_start={mp_start} pid={os.getpid()}\n"
+        )
+        if aff is not None:
+            try:
+                sys.stderr.write(f"[solver] CPU affinity set: {sorted(list(aff))}\n")
+            except Exception:
+                pass
+        sys.stderr.flush()
+    except Exception:
+        pass
 
 # ---------------------------
 # Constants and small helpers
@@ -274,8 +283,12 @@ class AnalyticRaanPhasingPlanner:
         os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
         # Announce configured core usage once per process
-        global _PRINTED_CORE_CONFIG
-        if not _PRINTED_CORE_CONFIG:
+        global _PRINTED_CORE_CONFIG, _CORE_BANNER_PID
+        force_print = _env_truthy("RECONFIG_PRINT_CORES", False)
+        if os.getpid() != _CORE_BANNER_PID:
+            _CORE_BANNER_PID = os.getpid()
+            _PRINTED_CORE_CONFIG = False
+        if not _PRINTED_CORE_CONFIG or force_print:
             try:
                 try:
                     aff = os.sched_getaffinity(0)
@@ -374,11 +387,11 @@ class AnalyticRaanPhasingPlanner:
         - Select the earliest candidate meeting the tolerance ladder.
         """
         # -------- knobs --------
-        NSCAN_KDISC    = 160         # discover k across Td interval
-        NSCAN_BRACKET  = 192         # bracket across Td for (r==0) and band edges
-        K_NEIGHBOR_PAD = 5
-        LON_TOL_SCHEDULE = lon_tol_schedule or [0.25, 0.5, 0.8, 1.0, 1.5, 2.0]  # deg (tune as you like)
-        WAIT_CAP_HR    = 150.0       # set None to disable wait cap. Usually is never more than 150 hr
+        NSCAN_KDISC    = 160         # discover k across Td interval 100-160
+        NSCAN_BRACKET  = 160         # bracket across Td for (r==0) and band edges 120-160
+        K_NEIGHBOR_PAD = 8 # 2-5
+        LON_TOL_SCHEDULE = lon_tol_schedule or [0.25]  # deg (tune as you like)
+        WAIT_CAP_HR    = 200       # set None to disable wait cap. Usually is never more than 150 hr
         WAIT_CAP_S     = None if WAIT_CAP_HR is None else WAIT_CAP_HR * 3600.0
         # -----------------------
 
@@ -434,16 +447,26 @@ class AnalyticRaanPhasingPlanner:
         # Decide whether to run parallel or sequential
         do_parallel = (self.n_jobs > 1) and (len(m_list) >= 4)
 
+        global _PRINTED_SOLVER_MODE_PIDS
+        if os.getpid() not in _PRINTED_SOLVER_MODE_PIDS:
+            try:
+                mode = "parallel" if do_parallel else "sequential"
+                cpu_id = None
+                try:
+                    cpu_id = os.sched_getcpu()
+                except Exception:
+                    pass
+                sys.stderr.write(
+                    f"[solver] {mode}: n_jobs={self.n_jobs}, m_candidates={len(m_list)}, "
+                    f"mp_start={self._mp_start}, pid={os.getpid()}"
+                    + (f", cpu={cpu_id}" if cpu_id is not None else "") + "\n"
+                )
+                sys.stderr.flush()
+            except Exception:
+                pass
+            _PRINTED_SOLVER_MODE_PIDS.add(os.getpid())
+
         if do_parallel:
-            # if not self._printed_cores:
-            #     try:
-            #         print(
-            #             f"[solver] Using {self.n_jobs} processes (cpu_max={os.cpu_count()}) for per-m parallelism",
-            #             flush=True,
-            #         )
-            #     except Exception:
-            #         pass
-            #     self._printed_cores = True
             # Fan out per-m solve to processes (reuse shared executor when possible)
             ex = self._executor
             created_local = False
@@ -466,15 +489,6 @@ class AnalyticRaanPhasingPlanner:
                     ex.shutdown(wait=True)
         else:
             # Sequential evaluation using the same worker
-            if not self._printed_cores:
-                try:
-                    print(
-                        f"[solver] Running sequentially (n_jobs={self.n_jobs}, m_candidates={len(m_list)})",
-                        flush=True,
-                    )
-                except Exception:
-                    pass
-                self._printed_cores = True
             for m in m_list:
                 chunk = _solve_branch_m_task(state, u_req, const_u, branch_name, m)
                 if chunk:
@@ -954,10 +968,11 @@ def compute_reconfig_times_vs_delta_a(
     delta_min_km: float = -200.0,
     delta_max_km: float =  200.0,
     delta_step_km: float =  5.0,
-    max_wrap: int = 40,
+    max_wrap: int = 300,
     drift_time_cap_days: float = 15.0,
     verbose: bool = False,
     n_jobs: Optional[int] = None,
+    lon_tol_schedule: Optional[List[float]] = None,  # <-- added
 ):
     """
     Returns (delta_a_km, total_time_s, wait_time_s, drift_time_s), using NaN where no solution exists.
@@ -966,8 +981,8 @@ def compute_reconfig_times_vs_delta_a(
     totals = np.full(dAs.shape, np.nan, dtype=float)
     waits  = np.full(dAs.shape, np.nan, dtype=float)
     drifts = np.full(dAs.shape, np.nan, dtype=float)
-    if verbose:
-        print(f"[Δa sweep] {len(dAs)} steps from {delta_min_km} to {delta_max_km} km (step {delta_step_km})...", flush=True)
+    # if verbose:
+    #     print(f"[Δa sweep] {len(dAs)} steps from {delta_min_km} to {delta_max_km} km (step {delta_step_km})...", flush=True)
     # Determine progress granularity (~10% of steps)
     progress_step = max(1, len(dAs)//10)
 
@@ -985,14 +1000,14 @@ def compute_reconfig_times_vs_delta_a(
     start_method = os.getenv("RECONFIG_MP_START") or ("spawn" if os.name == "nt" else "fork")
     shared_ex: Optional[ProcessPoolExecutor] = None
     if use_workers > 1:
-        if verbose:
-            print(f"[Δa sweep] Creating shared pool: workers={use_workers} start={start_method}", flush=True)
+        # if verbose:
+        #     print(f"[Δa sweep] Creating shared pool: workers={use_workers} start={start_method}", flush=True)
         shared_ex = ProcessPoolExecutor(max_workers=use_workers, mp_context=get_context(start_method))
 
     try:
         for idx, dA in enumerate(dAs):
-            if verbose and ((idx % progress_step) == 0 or idx == 0):
-                print(f"[Δa sweep] starting {idx+1}/{len(dAs)}: Δa={dA:g} km", flush=True)
+            # if verbose and ((idx % progress_step) == 0 or idx == 0):
+            #     print(f"[Δa sweep] starting {idx+1}/{len(dAs)}: Δa={dA:g} km", flush=True)
             # Skip unphysical drift SMA
             if gom.a_km + dA <= 0.0:
                 continue
@@ -1009,22 +1024,23 @@ def compute_reconfig_times_vs_delta_a(
                 executor=shared_ex,
                 mp_start=start_method,
             )
-            sol = planner.solve_min_time()
+            sol = planner.solve_min_time(lon_tol_schedule=lon_tol_schedule)  # <-- pass through
             if sol.get('success'):
                 totals[idx] = sol['total_time_s']
                 waits[idx]  = sol['T_wait']
                 drifts[idx] = sol['T_d']
-            if verbose:
-                # Print every ~10% progress
-                if (idx + 1) % progress_step == 0 or (idx + 1) == len(dAs):
-                    pct = 100.0 * (idx + 1) / len(dAs)
-                    print(f"[Δa sweep] {idx+1}/{len(dAs)} ({pct:.0f}%)", flush=True)
+            # if verbose:
+            #     # Print every ~10% progress
+            #     if (idx + 1) % progress_step == 0 or (idx + 1) == len(dAs):
+            #         pct = 100.0 * (idx + 1) / len(dAs)
+            #         print(f"[Δa sweep] {idx+1}/{len(dAs)} ({pct:.0f}%)", flush=True)
     finally:
         if shared_ex is not None:
             shared_ex.shutdown(wait=True)
-    if verbose:
-        print("[Δa sweep] done.", flush=True)
+    # if verbose:
+        # print("[Δa sweep] done.", flush=True)
     return dAs, totals, waits, drifts
+
 
 # ---------------------------
 # Usage
@@ -1032,21 +1048,27 @@ def compute_reconfig_times_vs_delta_a(
 
 if __name__ == "__main__":
     # Import the new plotter module
-    from reconfig_plotter import run_reconfig_plots, PlotFlags
+    from reconfig_plotter_multicore import run_reconfig_plots, PlotFlags
     
-    # Example inputs (sample)
+    # Example inputs (your sample)
     epoch = datetime(2025, 5, 5, 12, 0, 0, tzinfo=timezone.utc)
-    i_deg = 51.4476847948
+    # i_deg = 51.4476847948
 
-    gom = Orbit(
-        a_km = R_EARTH + 500.0,
-        i_rad= deg2rad(i_deg),
-        Omega_rad = deg2rad(0.0),
-        u_rad     = deg2rad(0.0)
-    )
+    # gom = Orbit(
+    #     a_km = R_EARTH + 500.0,
+    #     i_rad= deg2rad(i_deg),
+    #     Omega_rad = deg2rad(0.0),
+    #     u_rad     = deg2rad(0.0)
+    # )
 
     # ROM altitude (semi-major axis)
-    rom_a_km = R_EARTH + 504.59534097
+    # rom_a_km = R_EARTH + 504.59534097
+    # RGT (Repeat Ground Track) ROM settings
+    RGT_USE = True
+    RGT_No  = 15          # revolutions
+    RGT_Nd  = 1           # days    
+    RGT_e   = 0.0         # eccentricity for RGT solution
+    RGT_FALLBACK_ALT_KM = 505.0  # fallback if RGT solver fails
 
     # Targets list: add as many (name, lat_deg, lon_deg) tuples as you like
     targets = [
@@ -1065,12 +1087,14 @@ if __name__ == "__main__":
 
     FLAG_TIMES_VS_DELTA_A = False
     FLAG_TIMES_VS_TOLERANCE = False
-    FLAG_AVG_VS_DELTA_A = False
+    FLAG_AVG_VS_DELTA_A = True
     FLAG_AVG_VS_TOLERANCE = False
     FLAG_HEATMAP = False
+    FLAG_PARETO_TIME_VS_DV_AVG = False
+    FLAG_ISO_TIME_CONTOURS_AVG = False
 
     # Diagnostics
-    FLAG_PARETO_TIME_VS_DV    = True # works
+    FLAG_PARETO_TIME_VS_DV    = False # averaged across grid
     FLAG_ISO_TIME_CONTOURS    = False # works, to be detailed and expand with avg
     FLAG_CHOSEN_VS_TOL        = False # works
     FLAG_TOL_SENSITIVITY      = False # doesnt work, type error
@@ -1080,13 +1104,14 @@ if __name__ == "__main__":
 
 
     # Common knobs
-    max_wrap = 300
-    drift_time_cap_days = 200.0/24.0  # ~200 hr
-    verbose = True
+    max_wrap = 200
+    drift_time_cap_days = 300.0/24.0  # ~200 hr
+    verbose = False
 
     # Plot parameter sets
-    delta_range = dict(delta_min_km=-100, delta_max_km=200, delta_step_km=10)
-    tol_ladder  = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]
+    delta_range = dict(delta_min_km=-200, delta_max_km=200, delta_step_km=10)
+    tol_ladder  = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0] # used by time vs tolerance at given delta a 
+    # tol_ladder  = [0.001, 0.25]
     delta_a_fixed_km = 50.0
 
     # Diagnostics params
@@ -1105,138 +1130,230 @@ if __name__ == "__main__":
     residual_k         = None
     residual_nsamples  = 600
 
-    # ===============================
-    # 1) Per-target case study plots
-    # ===============================
-    if any([FLAG_TIMES_VS_DELTA_A, FLAG_TIMES_VS_TOLERANCE,
-            FLAG_PARETO_TIME_VS_DV, FLAG_CHOSEN_VS_TOL,
-            FLAG_TOL_SENSITIVITY, FLAG_TARGET_JITTER,
-            FLAG_EPOCH_SENSITIVITY, FLAG_RESIDUAL_CURVES]):
-        for (target_name, tlat, tlon) in targets:
-            print(f"\n[CASE] {target_name} ({tlat:+.3f}°, {tlon:+.3f}°)")
+    # -----------------------------------------------
+    # Sweep GOM altitude and inclination combinations
+    #  - altitudes: 500, 700, 1000 km
+    #  - inclinations: 50°, 60°, and 98° only for 500 and 700 km
+    # -----------------------------------------------
+    ALT_LIST_KM = [500.0, 700.0, 1000.0]
+    for alt_km in ALT_LIST_KM:
+        incl_list = [50.0, 60.0] if alt_km == 1000.0 else [50.0, 60.0, 98.0]
+        for i_deg in incl_list:
+            print(f"\n=== Scenario: hG={alt_km:.0f} km, i={i_deg:.2f}° ===")
 
-            run_reconfig_plots(
+            # Build GOM and ROM (keep ~+5 km offset for ROM)
+            gom = Orbit(
+                a_km = R_EARTH + alt_km,
+                i_rad= deg2rad(i_deg),
+                Omega_rad = deg2rad(0.0),
+                u_rad     = deg2rad(0.0)
+            )
+
+            # Compute ROM from RGT solver for this inclination
+            if RGT_USE:
+                phasing = PhasingRGT()
+                a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                    i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                )
+                if converged and np.isfinite(a_solution):
+                    rom_a_km = float(a_solution)
+                    print(f"[RGT] ROM a={rom_a_km:.3f} km (h={rom_a_km - R_EARTH:.1f} km) "
+                          f"from No/Nd={RGT_No}/{RGT_Nd}, e={RGT_e} (iters={iterations})")
+                else:
+                    rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
+                    print(f"[RGT] WARN: RGT solver failed (iters={iterations}). "
+                          f"Falling back to h={RGT_FALLBACK_ALT_KM:.1f} km (a={rom_a_km:.3f} km).")
+            else:
+                rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
+
+            # ===============================
+            # 1) Per-target case study plots
+            # ===============================
+            if any([FLAG_TIMES_VS_DELTA_A, FLAG_TIMES_VS_TOLERANCE,
+                    FLAG_PARETO_TIME_VS_DV, FLAG_CHOSEN_VS_TOL,
+                    FLAG_TOL_SENSITIVITY, FLAG_TARGET_JITTER,
+                    FLAG_EPOCH_SENSITIVITY, FLAG_RESIDUAL_CURVES]):
+                for (target_name, tlat, tlon) in targets:
+                    print(f"\n[CASE] {target_name} ({tlat:+.3f}°, {tlon:+.3f}°)")
+
+                    run_reconfig_plots(
+                        gom=gom,
+                        rom_a_km=rom_a_km,
+                        epoch=epoch,
+                        target_name=target_name,
+                        target_lat_geod_deg=tlat,
+                        target_lon_deg=tlon,
+
+                        flags=PlotFlags(
+                            times_vs_delta_a=FLAG_TIMES_VS_DELTA_A,
+                            times_vs_tolerance=FLAG_TIMES_VS_TOLERANCE,
+                            avg_vs_delta_a=False,
+                            avg_vs_tolerance=False,
+                            heatmap=False,
+                            # diagnostics
+                            pareto_time_vs_dv=FLAG_PARETO_TIME_VS_DV,
+                            iso_time_contours=False,              # iso-time is grid-wide, see section 3
+                            chosen_vs_tolerance=FLAG_CHOSEN_VS_TOL,
+                            tolerance_sensitivity=FLAG_TOL_SENSITIVITY,
+                            target_jitter=FLAG_TARGET_JITTER,
+                            epoch_sensitivity=FLAG_EPOCH_SENSITIVITY,
+                            residual_curves=FLAG_RESIDUAL_CURVES,
+                        ),
+
+                        # Δa sweep (case + pareto)
+                        delta_min_km=delta_range["delta_min_km"],
+                        delta_max_km=delta_range["delta_max_km"],
+                        delta_step_km=delta_range["delta_step_km"],
+
+                        # tolerance sweep (case + chosen_vs_tolerance + tol sensitivity)
+                        delta_a_fixed_km=delta_a_fixed_km,
+                        tolerances_deg=tol_ladder,
+
+                        # diagnostics knobs
+                        pareto_include_wait=True,
+                        tol_sens_include_series=tol_sens_series,
+                        jitter_radius_deg=jitter_radius_deg,
+                        jitter_samples=jitter_samples,
+                        jitter_seed=jitter_seed,
+                        jitter_tolerance_deg=jitter_tol_deg,
+                        epoch_window_hours=epoch_window_hours,
+                        epoch_samples=epoch_samples,
+                        epoch_tolerance_deg=epoch_tol_deg,
+                        residual_branch=residual_branch,
+                        residual_m=residual_m,
+                        residual_k=residual_k,
+                        residual_nsamples=residual_nsamples,
+
+                        # solver
+                        max_wrap=max_wrap,
+                        drift_time_cap_days=drift_time_cap_days,
+                        verbose=verbose,
+                    )
+
+
+            # ---------------------------------------------------------
+            # 2) Averaged plots across a latitude band & all longitudes
+            #    (no target loop; this averages over many targets)
+            # ---------------------------------------------------------
+            if FLAG_AVG_VS_DELTA_A or FLAG_AVG_VS_TOLERANCE or FLAG_PARETO_TIME_VS_DV_AVG or FLAG_ISO_TIME_CONTOURS_AVG:
+                # Latitude band (deg): must be < inclination to ensure access
+                lat_band_deg = i_deg -1.0         # must be < inclination to ensure access
+
+                # Default grid
+                n_lat = 2                # number of latitude samples in [-band,+band]
+                n_lon = 3                  # number of longitudes in [-180,180)
+
+                # Adjust grid sizes by inclination
+                if i_deg > 90.0:
+                    n_lat = 18
+                elif abs(i_deg - 60.0) < 1e-9:
+                    n_lat = 13
+
+                # Compute ROM from RGT solver for this inclination
+                if RGT_USE:
+                    phasing = PhasingRGT()
+                    a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                        i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                    )
+                    if converged and np.isfinite(a_solution):
+                        rom_a_km = float(a_solution)
+                        print(f"[RGT] ROM a={rom_a_km:.3f} km (h={rom_a_km - R_EARTH:.1f} km) "
+                            f"from No/Nd={RGT_No}/{RGT_Nd}, e={RGT_e} (iters={iterations})")
+                    else:
+                        rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
+                        print(f"[RGT] WARN: RGT solver failed (iters={iterations}). "
+                            f"Falling back to h={RGT_FALLBACK_ALT_KM:.1f} km (a={rom_a_km:.3f} km).")
+                else:
+                    rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
+
+                print("\n[AVG] Generating averaged plots across target grid...")
+                run_reconfig_plots(
+                    gom=gom,
+                    rom_a_km=rom_a_km,
+                    epoch=epoch,
+                    target_name="AVG",               # not used by averaged plots
+                    target_lat_geod_deg=0.0,         # not used by averaged plots
+                    target_lon_deg=0.0,              # not used by averaged plots
+                    flags=PlotFlags(
+                        times_vs_delta_a=False,
+                        times_vs_tolerance=False,
+                        avg_vs_delta_a=FLAG_AVG_VS_DELTA_A,
+                        avg_vs_tolerance=FLAG_AVG_VS_TOLERANCE,
+                        heatmap=False,
+                        pareto_time_vs_dv_avg=FLAG_PARETO_TIME_VS_DV_AVG,     # added
+                        iso_time_contours_avg=FLAG_ISO_TIME_CONTOURS_AVG       # added
+                    ),
+                    delta_min_km=delta_range["delta_min_km"],
+                    delta_max_km=delta_range["delta_max_km"],
+                    delta_step_km=delta_range["delta_step_km"],
+                    delta_a_fixed_km=[50, 100, 200, 400], # only for tol plot with multiple deltaA
+                    tolerances_deg=tol_ladder,
+                    inclination_deg=i_deg,
+                    lat_band_deg=lat_band_deg,
+                    n_lat=n_lat, n_lon=n_lon,
+                    max_wrap=max_wrap,
+                    drift_time_cap_days=drift_time_cap_days,
+                    verbose=verbose,
+                )
+
+            # ==========================
+            # 3) Heatmaps & Iso-time map
+            # ==========================
+            if FLAG_HEATMAP or FLAG_ISO_TIME_CONTOURS:
+                lat_band_deg = i_deg - 1.0
+                # Default grid
+                n_lat_heatmap = 110          # across inclination band
+                n_long_heatmap = 360         # around Earth
+
+                # Adjust grid sizes by inclination
+                if i_deg > 90.0:
+                    n_lat_heatmap = 180
+                elif abs(i_deg - 60.0) < 1e-9:
+                    n_lat_heatmap = 130
+
+                # Compute ROM from RGT solver for this inclination
+                if RGT_USE:
+                    phasing = PhasingRGT()
+                    a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                        i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                    )
+                    if converged and np.isfinite(a_solution):
+                        rom_a_km = float(a_solution)
+                        print(f"[RGT] ROM a={rom_a_km:.3f} km (h={rom_a_km - R_EARTH:.1f} km) "
+                            f"from No/Nd={RGT_No}/{RGT_Nd}, e={RGT_e} (iters={iterations})")
+                    else:
+                        rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
+                        print(f"[RGT] WARN: RGT solver failed (iters={iterations}). "
+                            f"Falling back to h={RGT_FALLBACK_ALT_KM:.1f} km (a={rom_a_km:.3f} km).")
+                else:
+                    rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
+
+                print("\n[GRID] Generating world maps...")
+                run_reconfig_plots(
                 gom=gom,
                 rom_a_km=rom_a_km,
                 epoch=epoch,
-                target_name=target_name,
-                target_lat_geod_deg=tlat,
-                target_lon_deg=tlon,
-
+                target_name="GRID",               # not used by grid plots
+                target_lat_geod_deg=0.0,
+                target_lon_deg=0.0,
                 flags=PlotFlags(
-                    times_vs_delta_a=FLAG_TIMES_VS_DELTA_A,
-                    times_vs_tolerance=FLAG_TIMES_VS_TOLERANCE,
+                    times_vs_delta_a=False,
+                    times_vs_tolerance=False,
                     avg_vs_delta_a=False,
                     avg_vs_tolerance=False,
-                    heatmap=False,
-                    # diagnostics
-                    pareto_time_vs_dv=FLAG_PARETO_TIME_VS_DV,
-                    iso_time_contours=False,              # iso-time is grid-wide, see section 3
-                    chosen_vs_tolerance=FLAG_CHOSEN_VS_TOL,
-                    tolerance_sensitivity=FLAG_TOL_SENSITIVITY,
-                    target_jitter=FLAG_TARGET_JITTER,
-                    epoch_sensitivity=FLAG_EPOCH_SENSITIVITY,
-                    residual_curves=FLAG_RESIDUAL_CURVES,
+                    heatmap=FLAG_HEATMAP,
+                    iso_time_contours=FLAG_ISO_TIME_CONTOURS
                 ),
-
-                # Δa sweep (case + pareto)
-                delta_min_km=delta_range["delta_min_km"],
-                delta_max_km=delta_range["delta_max_km"],
-                delta_step_km=delta_range["delta_step_km"],
-
-                # tolerance sweep (case + chosen_vs_tolerance + tol sensitivity)
                 delta_a_fixed_km=delta_a_fixed_km,
-                tolerances_deg=tol_ladder,
-
-                # diagnostics knobs
-                pareto_include_wait=True,
-                tol_sens_include_series=tol_sens_series,
-                jitter_radius_deg=jitter_radius_deg,
-                jitter_samples=jitter_samples,
-                jitter_seed=jitter_seed,
-                jitter_tolerance_deg=jitter_tol_deg,
-                epoch_window_hours=epoch_window_hours,
-                epoch_samples=epoch_samples,
-                epoch_tolerance_deg=epoch_tol_deg,
-                residual_branch=residual_branch,
-                residual_m=residual_m,
-                residual_k=residual_k,
-                residual_nsamples=residual_nsamples,
-
-                # solver
+                tolerances_deg=[0.25],            # a single tolerance for the heatmap
+                inclination_deg=i_deg,
+                lat_band_deg=lat_band_deg,
+                n_lat=n_lat_heatmap,
+                n_lon=n_long_heatmap,
+                iso_levels_hours=iso_levels_hours,
                 max_wrap=max_wrap,
                 drift_time_cap_days=drift_time_cap_days,
                 verbose=verbose,
             )
-
-
-    # ---------------------------------------------------------
-    # 2) Averaged plots across a latitude band & all longitudes
-    #    (no target loop; this averages over many targets)
-    # ---------------------------------------------------------
-    if FLAG_AVG_VS_DELTA_A or FLAG_AVG_VS_TOLERANCE:
-        # Latitude band (deg): must be < inclination to ensure access
-        lat_band_deg = i_deg -1.0         # must be < inclination to ensure access
-        n_lat = 10                   # number of latitude samples in [-band,+band]
-        n_lon = 36                   # number of longitudes in [-180,180)
-
-        print("\n[AVG] Generating averaged plots across target grid...")
-        run_reconfig_plots(
-            gom=gom,
-            rom_a_km=rom_a_km,
-            epoch=epoch,
-            target_name="AVG",               # not used by averaged plots
-            target_lat_geod_deg=0.0,         # not used by averaged plots
-            target_lon_deg=0.0,              # not used by averaged plots
-            flags=PlotFlags(times_vs_delta_a=False, times_vs_tolerance=False,
-                            avg_vs_delta_a=FLAG_AVG_VS_DELTA_A, avg_vs_tolerance=FLAG_AVG_VS_TOLERANCE, heatmap=False),
-            delta_min_km=delta_range["delta_min_km"],
-            delta_max_km=delta_range["delta_max_km"],
-            delta_step_km=delta_range["delta_step_km"],
-            delta_a_fixed_km=delta_a_fixed_km,
-            tolerances_deg=tol_ladder,
-            inclination_deg=i_deg,
-            lat_band_deg=lat_band_deg,
-            n_lat=n_lat, n_lon=n_lon,
-            max_wrap=max_wrap,
-            drift_time_cap_days=drift_time_cap_days,
-            verbose=verbose,
-        )
-
-    # ==========================
-    # 3) Heatmaps & Iso-time map
-    # ==========================
-    if FLAG_HEATMAP or FLAG_ISO_TIME_CONTOURS:
-        lat_band_deg = i_deg - 1.0
-        n_lat_heatmap = 12           # across inclination band
-        n_long_heatmap = 42          # around Earth
-
-        print("\n[GRID] Generating world maps...")
-        run_reconfig_plots(
-            gom=gom,
-            rom_a_km=rom_a_km,
-            epoch=epoch,
-            target_name="GRID",               # not used by grid plots
-            target_lat_geod_deg=0.0,
-            target_lon_deg=0.0,
-            flags=PlotFlags(
-                times_vs_delta_a=False,
-                times_vs_tolerance=False,
-                avg_vs_delta_a=False,
-                avg_vs_tolerance=False,
-                heatmap=FLAG_HEATMAP,
-                iso_time_contours=FLAG_ISO_TIME_CONTOURS
-            ),
-            delta_a_fixed_km=delta_a_fixed_km,
-            tolerances_deg=[0.25],            # a single tolerance for the heatmap
-            inclination_deg=i_deg,
-            lat_band_deg=lat_band_deg,
-            n_lat=n_lat_heatmap,
-            n_lon=n_long_heatmap,
-            iso_levels_hours=iso_levels_hours,
-            max_wrap=max_wrap,
-            drift_time_cap_days=drift_time_cap_days,
-            verbose=verbose,
-        )
 
         print("\nAll plots saved under results/reconfig")
