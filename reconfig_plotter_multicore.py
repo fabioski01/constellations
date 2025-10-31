@@ -671,15 +671,6 @@ def plot_times_vs_tolerance_avg_targets(
         da_txt = f"Δa∈[{da_min:+.1f},{da_max:+.1f}] km (N={len(da_list)})"
         fname_da = f"dA{da_min:+.1f}to{da_max:+.1f}_N{len(da_list)}"
 
-    df = pd.DataFrame({
-        "delta_a_km": dAs,
-        "avg_total_s": avg_tot_s,
-        "avg_wait_s": avg_wait_s,
-        "avg_drift_s": avg_drift_s,
-    })
-    csv_fname = os.path.join(outdir, f"TimesAvgDeltaA_{n_lat}x{n_lon}_GOM{gom.a_km:.0f}_ROM{rom_a_km:.0f}_inc{inclination_deg:.1f}_band{lat_band_deg:.1f}_dA{delta_min_km:g}to{delta_max_km:g}_s{delta_step_km:g}.csv")
-    df.to_csv(csv_fname, index=False)
-
     fig.suptitle(
         f"Reconfig time vs tolerance — Averaged across {n_lat}×{n_lon} targets\n"
         f"GOM h={alt_g:.1f} km, ROM h={alt_r:.1f} km, i={inclination_deg:.2f}°; "
