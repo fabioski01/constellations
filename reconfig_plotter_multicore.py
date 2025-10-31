@@ -34,8 +34,8 @@ from datetime import datetime, timedelta, timezone
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import get_context
 import sys
+import pandas as pd
 
-# pull in your solver & helpers
 # Prefer multicore solver if available, fall back to single-core
 try:
     from reconfig_driftANDwaitTime_multicore import (
@@ -720,7 +720,6 @@ def plot_times_vs_delta_a_avg_targets(
         max_wrap, drift_time_cap_days, verbose
     )
 
-    import pandas as pd
     os.makedirs(outdir, exist_ok=True)
     csv_fname = (
         f"TimesAvgDeltaA_{n_lat}x{n_lon}_GOM{gom.a_km:.0f}_ROM{rom_a_km:.0f}_"
