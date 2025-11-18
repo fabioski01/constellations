@@ -670,13 +670,13 @@ def main():
     """
     # 1) Single source of truth: scenario inputs
     base_epoch = datetime(2025, 5, 5, 12, 0, 0, tzinfo=timezone.utc)
-    inc_deg    = 51.447684794794995
+    inc_deg    = 60.0
     raan0_deg  = 0.0
     u0_deg     = 0.0  # for circular, u=M when ω=0
 
-    gom_a_km   = constants.EARTH_RADIUS + 500.0
+    gom_a_km   = constants.EARTH_RADIUS + 700.0
     rom_a_km   = 6875.59534097
-    delta_a_km = 50.0  # example drift Δa; adjust as needed
+    delta_a_km = -200  # example drift Δa; adjust as needed
 
     # 2) Build planner Orbit and call helper
     gom = PlannerOrbit(
@@ -764,7 +764,7 @@ def main():
         )
         visualizer.add_orbit(
             orbits['rom_test'], epochs['rom_epoch'], 'ROM Propagated Orbit',
-            propagation_time_hours=1.0, color='red', linestyle=':'
+            propagation_time_hours=1.0, color='purple', linestyle=':'
         )
 
         tgt_lat_fmt = f"{target_lat_deg:+.6f}".replace("+", "p").replace("-", "m")
