@@ -30,7 +30,7 @@ from multiprocessing import get_context
 # import matplotlib.pyplot as plt
 # from matplotlib.ticker import MultipleLocator, AutoMinorLocator
 import sys
-from reconfig_phasing_RGT import PhasingRGT 
+from reconfig_phasing_RGT import PhasingRGT
 
 # Print guard so we only announce core usage once per process
 _PRINTED_CORE_CONFIG = False
@@ -40,8 +40,10 @@ _PRINTED_SOLVER_MODE_PIDS: set = set()  # print mode banner once per PID
 
 def _env_truthy(name: str, default: bool = False) -> bool:
     v = os.getenv(name)
-    if v is None: return default
+    if v is None:
+        return default
     return v.strip().lower() in ("1", "true", "yes", "y", "on")
+
 
 def _print_core_banner(n_jobs: int, requested, env_jobs_val, mp_start: str) -> None:
     # Print to stderr to avoid buffering/capture issues
@@ -59,36 +61,70 @@ def _print_core_banner(n_jobs: int, requested, env_jobs_val, mp_start: str) -> N
         )
         if aff is not None:
             try:
-                sys.stderr.write(f"[solver] CPU affinity set: {sorted(list(aff))}\n")
+                sys.stderr.write(
+                    f"[solver] CPU affinity set: {sorted(list(aff))}\n")
             except Exception:
                 pass
         sys.stderr.flush()
     except Exception:
         pass
 
+
 # ---------------------------
 # Constants and small helpers
 # ---------------------------
+target_planet = 'mars'  # 'earth' or 'mars'
 
-R_EARTH = constants.EARTH_RADIUS            # km (WGS-84 equatorial radius)
-MU_EARTH = constants.GRAVITATIONAL_CONSTANT      # km^3/s^2 (Earth μ)
-J2 = constants.J2_EARTH            # Earth's J2
-WGS84_f = 1.0 / 298.257223563
-WGS84_e2 = WGS84_f * (2.0 - WGS84_f)
+if target_planet == 'earth':
+    # Earth (WGS-84 / IERS-style)
+    # km (WGS-84 mean equatorial radius)
+    R_EARTH = constants.EARTH_RADIUS
+    MU_EARTH = constants.GRAVITATIONAL_CONSTANT       # km^3/s^2
+    J2 = constants.J2_EARTH                           # Earth's J2
+
+    WGS84_f = 1.0 / 298.257223563
+    WGS84_e2 = WGS84_f * (2.0 - WGS84_f)
+
+    # "Planet-generic" ellipsoid parameters (used everywhere below)
+    ELLIPSOID_F = WGS84_f
+    ELLIPSOID_E2 = WGS84_e2
+
+elif target_planet == 'mars':
+    # Mars (IAU / MOLA reference ellipsoid)
+    R_EARTH = constants.MARS_RADIUS                   # km (Mars mean radius)
+    MU_EARTH = constants.MARS_GRAVITATIONAL_CONSTANT  # km^3/s^2
+    J2 = constants.J2_MARS                            # Mars J2
+
+    # IAU 2015 / USGS Mars reference ellipsoid
+    MARS_A = 3396.19  # km, equatorial radius
+    MARS_B = 3376.20  # km, polar radius
+    MARS_ELLIPSOID_F = (MARS_A - MARS_B) / MARS_A
+    MARS_ELLIPSOID_E2 = MARS_ELLIPSOID_F * (2.0 - MARS_ELLIPSOID_F)
+
+    ELLIPSOID_F = MARS_ELLIPSOID_F
+    ELLIPSOID_E2 = MARS_ELLIPSOID_E2
+
+else:
+    raise ValueError(f"Unsupported target_planet: {target_planet}")
+
 
 DEG = pi / 180.0
 RAD = 1.0
 
+
 def rad2deg(x: float) -> float:
     return x / DEG
 
+
 def deg2rad(x: float) -> float:
     return x * DEG
+
 
 def wrap_2pi(x: float) -> float:
     """Wrap to [0, 2π)."""
     y = fmod(x, 2.0 * pi)
     return y + (2.0 * pi if y < 0.0 else 0.0)
+
 
 def wrap_pm_pi(x: float) -> float:
     """Wrap to (-π, π]."""
@@ -97,8 +133,10 @@ def wrap_pm_pi(x: float) -> float:
         y += 2.0 * pi
     return y - pi
 
+
 def clamp(v: float, vmin: float, vmax: float) -> float:
     return max(vmin, min(vmax, v))
+
 
 def sign_nonzero(x: float) -> float:
     return 1.0 if x >= 0.0 else -1.0
@@ -106,6 +144,7 @@ def sign_nonzero(x: float) -> float:
 # ---------------------------
 # Time / GMST utilities
 # ---------------------------
+
 
 def datetime_to_jd(dt: datetime) -> float:
     """UTC datetime -> Julian Date (UT)."""
@@ -121,37 +160,65 @@ def datetime_to_jd(dt: datetime) -> float:
     JD = floor(365.25 * (y + 4716)) + floor(30.6001 * (m + 1)) + D + B - 1524.5
     return JD
 
+
 def gmst_rad(dt: datetime) -> float:
     """
-    IAU-82 style GMST at UT1≈UTC (sufficient for planning):
+    Planetary sidereal/prime-meridian angle in inertial space at UT1≈UTC.
+
+    - Earth: IAU-82-style GMST (Greenwich sidereal angle).
       GMST [deg] = 280.46061837 + 360.98564736629*(JD-2451545.0)
                    + 0.000387933*T^2 - T^3/38710000
-      where T = (JD-2451545.0)/36525
-    Return wrapped radians in [0,2π).
+      T = (JD-2451545.0)/36525
+
+    - Mars: IAU-2000-style prime meridian angle W for Mars:
+      W [deg] = 176.630 + 350.89198226 * d
+      d = JD - 2451545.0   (days since J2000.0; TDB≈UTC here)
+
+    Returns wrapped radians in [0, 2π).
     """
     JD = datetime_to_jd(dt)
     D = JD - 2451545.0
-    T = D / 36525.0
-    gmst_deg = 280.46061837 + 360.98564736629 * D + 0.000387933 * T * T - (T**3) / 38710000.0
-    return wrap_2pi(deg2rad(gmst_deg))
+
+    if target_planet == 'earth':
+        T = D / 36525.0
+        gmst_deg = 280.46061837 + 360.98564736629 * D \
+            + 0.000387933 * T * T - (T**3) / 38710000.0
+        return wrap_2pi(deg2rad(gmst_deg))
+
+    elif target_planet == 'mars':
+        # Mars prime meridian angle W(t) (Airy-0 / VL1 frame)
+        W_deg = 176.630 + 350.89198226 * D
+        return wrap_2pi(deg2rad(W_deg))
+
+    else:
+        raise ValueError(f"Unsupported target_planet: {target_planet}")
+
 
 # ---------------------------
 # Geodetic ↔ geocentric latitude
 # ---------------------------
 
+
 def geodetic_to_geocentric_latitude(phi_gd: float) -> float:
     """
-    Convert geodetic latitude (rad) to geocentric latitude (rad) using WGS-84:
-      tan φ_c = (1 - e^2) * tan φ_gd
+    Convert geodetic latitude (rad) to geocentric latitude (rad) using the
+    current planet's reference ellipsoid:
+
+        tan φ_c = (1 - e^2) * tan φ_gd
+
+    where e^2 = ELLIPSOID_E2 (WGS-84 for Earth, IAU/MOLA ellipsoid for Mars).
     """
-    return atan((1.0 - WGS84_e2) * tan(phi_gd))
+    return atan((1.0 - ELLIPSOID_E2) * tan(phi_gd))
+
 
 # ---------------------------
 # Kepler / orbital utilities
 # ---------------------------
 
+
 def mean_motion(a_km: float) -> float:
     return sqrt(MU_EARTH / (a_km**3))  # rad/s
+
 
 def j2_rates(a_km: float, e: float, i_rad: float) -> Tuple[float, float, float]:
     """
@@ -171,9 +238,11 @@ def j2_rates(a_km: float, e: float, i_rad: float) -> Tuple[float, float, float]:
     R_over_p2 = (R_EARTH / p) ** 2
     R_over_a2 = (R_EARTH / a) ** 2
     dOmega = -1.5 * J2 * n * R_over_p2 * ci
-    domega =  0.75 * J2 * n * R_over_p2 * (5.0 * ci2 - 1.0)
-    dM = n + 0.75 * J2 * n * R_over_a2 * ((1.0 - e * e) ** -1.5) * (3.0 * ci2 - 1.0)
+    domega = 0.75 * J2 * n * R_over_p2 * (5.0 * ci2 - 1.0)
+    dM = n + 0.75 * J2 * n * R_over_a2 * \
+        ((1.0 - e * e) ** -1.5) * (3.0 * ci2 - 1.0)
     return dOmega, domega, dM
+
 
 def hohmann_half(a1: float, a2: float) -> Tuple[float, float, float]:
     """
@@ -192,6 +261,7 @@ def hohmann_half(a1: float, a2: float) -> Tuple[float, float, float]:
 # Geometry helpers
 # ---------------------------
 
+
 def u_required_branches(phi_t_geod_deg: float, i_rad: float) -> Tuple[float, float]:
     """
     Target geodetic latitude -> geocentric -> required u at overflight.
@@ -208,6 +278,7 @@ def u_required_branches(phi_t_geod_deg: float, i_rad: float) -> Tuple[float, flo
     u_desc = pi - (u_asc % (2.0 * pi))
     return (wrap_2pi(u_asc), wrap_2pi(u_desc))
 
+
 def ra_of_position(i_rad: float, u_rad: float, Omega_rad: float) -> float:
     """
     Right ascension (inertial) of satellite position vector:
@@ -218,6 +289,7 @@ def ra_of_position(i_rad: float, u_rad: float, Omega_rad: float) -> float:
 # ---------------------------
 # Orbit container
 # ---------------------------
+
 
 @dataclass
 class Orbit:
@@ -230,6 +302,7 @@ class Orbit:
 # ---------------------------
 # Planner
 # ---------------------------
+
 
 class AnalyticRaanPhasingPlanner:
     def __init__(
@@ -273,7 +346,8 @@ class AnalyticRaanPhasingPlanner:
         # Optional shared executor and start method
         self._executor: Optional[ProcessPoolExecutor] = executor
         self._mp_start = (
-            mp_start or os.getenv("RECONFIG_MP_START") or ("spawn" if os.name == "nt" else "fork")
+            mp_start or os.getenv("RECONFIG_MP_START") or (
+                "spawn" if os.name == "nt" else "fork")
         )
 
         # Reduce risk of oversubscription inside workers
@@ -303,7 +377,8 @@ class AnalyticRaanPhasingPlanner:
                 )
                 if aff is not None:
                     try:
-                        print(f"[solver] CPU affinity set: {sorted(list(aff))}", flush=True)
+                        print(
+                            f"[solver] CPU affinity set: {sorted(list(aff))}", flush=True)
                     except Exception:
                         pass
             except Exception:
@@ -328,8 +403,10 @@ class AnalyticRaanPhasingPlanner:
         # J2 rates per segment
         self.dOm_G, self.dom_G, self.dM_G = j2_rates(self.a_G, 0.0, self.i)
         self.dOm_D, self.dom_D, self.dM_D = j2_rates(self.a_D, 0.0, self.i)
-        self.dOm_T1, self.dom_T1, self.dM_T1 = j2_rates(self.aT1, self.eT1, self.i)
-        self.dOm_T2, self.dom_T2, self.dM_T2 = j2_rates(self.aT2, self.eT2, self.i)
+        self.dOm_T1, self.dom_T1, self.dM_T1 = j2_rates(
+            self.aT1, self.eT1, self.i)
+        self.dOm_T2, self.dom_T2, self.dM_T2 = j2_rates(
+            self.aT2, self.eT2, self.i)
 
         # Mean-longitude / mean-u rates
         self.dell_G = self.dOm_G + self.dom_G + self.dM_G
@@ -349,8 +426,10 @@ class AnalyticRaanPhasingPlanner:
     def solve_min_time(self, lon_tol_schedule: list[float] | None = None) -> Dict[str, Any]:
         u_asc, u_desc = u_required_branches(self.target_lat_deg, self.i)
 
-        asc_sol = self._solve_branch('ascending', u_asc, lon_tol_schedule=lon_tol_schedule)
-        desc_sol = self._solve_branch('descending', u_desc, lon_tol_schedule=lon_tol_schedule)
+        asc_sol = self._solve_branch(
+            'ascending', u_asc, lon_tol_schedule=lon_tol_schedule)
+        desc_sol = self._solve_branch(
+            'descending', u_desc, lon_tol_schedule=lon_tol_schedule)
 
         # Choose the best feasible
         candidates = [s for s in [asc_sol, desc_sol] if s.get('success')]
@@ -387,12 +466,13 @@ class AnalyticRaanPhasingPlanner:
         - Select the earliest candidate meeting the tolerance ladder.
         """
         # -------- knobs --------
-        NSCAN_KDISC    = 160         # discover k across Td interval 100-160
-        NSCAN_BRACKET  = 160         # bracket across Td for (r==0) and band edges 120-160
-        K_NEIGHBOR_PAD = 8 # 2-5
+        NSCAN_KDISC = 160         # discover k across Td interval 100-160
+        # bracket across Td for (r==0) and band edges 120-160
+        NSCAN_BRACKET = 160
+        K_NEIGHBOR_PAD = 8  # 2-5
         LON_TOL_SCHEDULE = lon_tol_schedule or [0.25]  # deg (tune as you like)
-        WAIT_CAP_HR    = 200       # set None to disable wait cap. Usually is never more than 150 hr
-        WAIT_CAP_S     = None if WAIT_CAP_HR is None else WAIT_CAP_HR * 3600.0
+        WAIT_CAP_HR = 200       # set None to disable wait cap. Usually is never more than 150 hr
+        WAIT_CAP_S = None if WAIT_CAP_HR is None else WAIT_CAP_HR * 3600.0
         # -----------------------
 
         # Build m-range sequentially here; evaluation per-m can be parallelized
@@ -400,7 +480,8 @@ class AnalyticRaanPhasingPlanner:
 
         # Branch-fixed constants and caps
         # Eq A uses const_u; WAIT cap converts to seconds if set
-        const_u = -(self.du_T1 * self.T1 + self.du_T2 * self.T2) + (u_req - self.u0)
+        const_u = -(self.du_T1 * self.T1 + self.du_T2 *
+                    self.T2) + (u_req - self.u0)
         td_base_lo = 0.0
         td_base_hi = self.drift_time_cap
         if td_base_hi <= td_base_lo + 1e-6:
@@ -415,7 +496,7 @@ class AnalyticRaanPhasingPlanner:
         A_min, A_max = min(A_vals), max(A_vals)
         m_min = int((A_min - const_u) // (2.0*pi))
         m_max = int((A_max - const_u) // (2.0*pi))
-        PAD   = 2
+        PAD = 2
         m_list = list(range(m_min - PAD, m_max + PAD + 1))
 
         # Build immutable state for workers
@@ -471,7 +552,8 @@ class AnalyticRaanPhasingPlanner:
             ex = self._executor
             created_local = False
             if ex is None:
-                ex = ProcessPoolExecutor(max_workers=self.n_jobs, mp_context=get_context(self._mp_start))
+                ex = ProcessPoolExecutor(
+                    max_workers=self.n_jobs, mp_context=get_context(self._mp_start))
                 created_local = True
             try:
                 for chunk in ex.map(
@@ -490,7 +572,8 @@ class AnalyticRaanPhasingPlanner:
         else:
             # Sequential evaluation using the same worker
             for m in m_list:
-                chunk = _solve_branch_m_task(state, u_req, const_u, branch_name, m)
+                chunk = _solve_branch_m_task(
+                    state, u_req, const_u, branch_name, m)
                 if chunk:
                     all_candidates.extend(chunk)
 
@@ -501,14 +584,16 @@ class AnalyticRaanPhasingPlanner:
         tol_used = None
         best = None
         for tol_deg in LON_TOL_SCHEDULE:
-            feas = [c for c in all_candidates if abs(c['lon_err_deg']) <= tol_deg]
+            feas = [c for c in all_candidates if abs(
+                c['lon_err_deg']) <= tol_deg]
             if feas:
                 best = min(feas, key=lambda s: s['total_time_s'])
                 tol_used = tol_deg
                 break
         if best is None:
             # No candidate inside the loosest tol: pick smallest error, then earliest
-            best = min(all_candidates, key=lambda s: (abs(s['lon_err_deg']), s['total_time_s']))
+            best = min(all_candidates, key=lambda s: (
+                abs(s['lon_err_deg']), s['total_time_s']))
 
         best['selection_meta'] = {
             'policy': 'earliest_within_tol' if tol_used is not None else 'fallback_tradeoff',
@@ -566,13 +651,17 @@ def _bisection_root(f, a: float, b: float) -> Optional[float]:
         m = 0.5*(a+b)
         fm = f(m)
         if fm == 1e9:
-            a = m; fa = f(a); continue
+            a = m
+            fa = f(a)
+            continue
         if abs(fm) < 1e-12 or (b-a) < 1e-6:
             return m
         if fa*fm <= 0.0:
-            b = m; fb = fm
+            b = m
+            fb = fm
         else:
-            a = m; fa = fm
+            a = m
+            fa = fm
     return 0.5*(a+b)
 
 
@@ -656,14 +745,14 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
 
     def package_candidate(Td_sol: float, Tw_sol: float, k_fix: int, tag: str) -> None:
         Ttot = total_time(Td_sol, Tw_sol)
-        tf   = epoch + timedelta(seconds=Ttot)
+        tf = epoch + timedelta(seconds=Ttot)
         Omega_f = wrap_2pi(Omega_f_of_Td(Td_sol, Tw_sol))
         u_f = wrap_2pi(u_req)
         M_f = u_f
         thetaG_tf = gmst_rad(tf)
         psi_final = atan2(cos(i) * sin(u_f), cos(u_f))
-        lam_f     = wrap_pm_pi(Omega_f + psi_final - thetaG_tf)
-        lon_err   = wrap_pm_pi(lam_f - target_lon)
+        lam_f = wrap_pm_pi(Omega_f + psi_final - thetaG_tf)
+        lon_err = wrap_pm_pi(lam_f - target_lon)
 
         candidates.append({
             'success': True, 'branch': branch_name,
@@ -698,7 +787,8 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
         return candidates
     kmin, kmax = min(kset), max(kset)
     for dk in range(1, K_NEIGHBOR_PAD + 1):
-        kset.add(kmin - dk); kset.add(kmax + dk)
+        kset.add(kmin - dk)
+        kset.add(kmax + dk)
 
     # For each fixed k, bracket/solve
     for k_fix in sorted(kset):
@@ -742,20 +832,22 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
                 rma, rmb = ra - tol_rad, rb - tol_rad
                 rpa, rpb = ra + tol_rad, rb + tol_rad
                 if rma * rmb <= 0.0:
-                    Td1 = _bisection_root(lambda t, tr=tol_rad: r_of_Td(t)[0] - tr, a, b)
+                    Td1 = _bisection_root(
+                        lambda t, tr=tol_rad: r_of_Td(t)[0] - tr, a, b)
                     if Td1 is not None:
                         r1, Tw1 = r_of_Td(Td1)
                         if Tw1 >= 0.0 and (WAIT_CAP_S is None or Tw1 <= WAIT_CAP_S):
                             package_candidate(Td1, Tw1, k_fix, '|r|=tol')
                 if rpa * rpb <= 0.0:
-                    Td2 = _bisection_root(lambda t, tr=tol_rad: r_of_Td(t)[0] + tr, a, b)
+                    Td2 = _bisection_root(
+                        lambda t, tr=tol_rad: r_of_Td(t)[0] + tr, a, b)
                     if Td2 is not None:
                         r2, Tw2 = r_of_Td(Td2)
                         if Tw2 >= 0.0 and (WAIT_CAP_S is None or Tw2 <= WAIT_CAP_S):
                             package_candidate(Td2, Tw2, k_fix, '|r|=tol')
 
         # near-miss fallback
-        if best_sample[1] is not None and not any(c for c in candidates if c['m_u_wrap']==m and c['k_lon_wrap']==k_fix):
+        if best_sample[1] is not None and not any(c for c in candidates if c['m_u_wrap'] == m and c['k_lon_wrap'] == k_fix):
             Td_nm = float(best_sample[1])
             r_nm, Tw_nm = r_of_Td(Td_nm)
             if Tw_nm >= 0.0 and (WAIT_CAP_S is None or Tw_nm <= WAIT_CAP_S):
@@ -770,11 +862,11 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
 
 def print_solution_summary(sol: dict) -> None:
     meta = sol.get('selection_meta', {})
-    wait_hr  = sol['T_wait'] / 3600.0
-    drift_hr = sol['T_d']    / 3600.0
-    tot_hr   = sol['total_time_s'] / 3600.0
-    tol      = meta.get('tolerance_used_deg')
-    tol_str  = f"{tol:.2f}°" if tol is not None else "— (fallback)"
+    wait_hr = sol['T_wait'] / 3600.0
+    drift_hr = sol['T_d'] / 3600.0
+    tot_hr = sol['total_time_s'] / 3600.0
+    tol = meta.get('tolerance_used_deg')
+    tol_str = f"{tol:.2f}°" if tol is not None else "— (fallback)"
     wcap_str = ("∞" if meta.get('wait_cap_hr') is None
                 else f"{meta['wait_cap_hr']:.1f} h")
     dcap_str = f"{meta['drift_cap_hr']:.1f} h"
@@ -791,6 +883,7 @@ def print_solution_summary(sol: dict) -> None:
 # ---------------------------
 # Glue for maneuver visualizer
 # ---------------------------
+
 
 def build_maneuver_sequence_for_visualizer(
     gom: Orbit,
@@ -832,42 +925,42 @@ def build_maneuver_sequence_for_visualizer(
 
     # Times
     T_wait = float(sol['T_wait'])
-    T1     = float(sol['T1'])
-    T_d    = float(sol['T_d'])
-    T2     = float(sol['T2'])
-    Ttot   = float(sol['total_time_s'])
+    T1 = float(sol['T1'])
+    T_d = float(sol['T_d'])
+    T2 = float(sol['T2'])
+    Ttot = float(sol['total_time_s'])
 
     # Orbits (semi-major axes of segments)
-    aG   = planner.a_G
-    aD   = planner.a_D
-    aT1  = planner.aT1
-    eT1  = planner.eT1
-    aT2  = planner.aT2
-    eT2  = planner.eT2
+    aG = planner.a_G
+    aD = planner.a_D
+    aT1 = planner.aT1
+    eT1 = planner.eT1
+    aT2 = planner.aT2
+    eT2 = planner.eT2
 
     # Mean anomaly increments by segment (rad)
-    dM_G   = mean_motion(aG)  * T_wait
-    dM_T1  = mean_motion(aT1) * T1
-    dM_D   = mean_motion(aD)  * T_d
-    dM_T2  = mean_motion(aT2) * T2
+    dM_G = mean_motion(aG) * T_wait
+    dM_T1 = mean_motion(aT1) * T1
+    dM_D = mean_motion(aD) * T_d
+    dM_T2 = mean_motion(aT2) * T2
 
     # Cumulative starts for each segment (deg), wrapped to [0,360)
-    M_waiting_deg   = (rad2deg(dM_G)) % 360.0
-    M_T1_start_deg  = (rad2deg(dM_G + dM_T1)) % 360.0
-    M_D_start_deg   = M_T1_start_deg
-    M_T2_start_deg  = (rad2deg(dM_G + dM_T1 + dM_D)) % 360.0
+    M_waiting_deg = (rad2deg(dM_G)) % 360.0
+    M_T1_start_deg = (rad2deg(dM_G + dM_T1)) % 360.0
+    M_D_start_deg = M_T1_start_deg
+    M_T2_start_deg = (rad2deg(dM_G + dM_T1 + dM_D)) % 360.0
     M_ROM_start_deg = (rad2deg(dM_G + dM_T1 + dM_D + dM_T2)) % 360.0
 
     # Epochs per segment start
     epoch_T1 = epoch + timedelta(seconds=T_wait)
-    epoch_D  = epoch_T1 + timedelta(seconds=T1)
-    epoch_T2 = epoch_D  + timedelta(seconds=T_d)
-    epoch_ROM= epoch_T2 + timedelta(seconds=T2)  # should match sol['tf']
+    epoch_D = epoch_T1 + timedelta(seconds=T1)
+    epoch_T2 = epoch_D + timedelta(seconds=T_d)
+    epoch_ROM = epoch_T2 + timedelta(seconds=T2)  # should match sol['tf']
 
     # Angles/RAANs
     RAAN0_deg = rad2deg(planner.Omega0)
     RAANf_deg = rad2deg(sol['Omega_f_rad'])
-    i_deg     = rad2deg(planner.i)
+    i_deg = rad2deg(planner.i)
 
     # Package orbit dictionaries for the visualizer API
     gom_orbit = {
@@ -909,17 +1002,17 @@ def build_maneuver_sequence_for_visualizer(
         'RAAN': RAANf_deg,
         'argument_of_periapsis': 0.0,
         # 'true_anomaly': rad2deg(sol['final_orbit']['M_rad']),  # previously used
-    # Use mean anomaly at epoch (SGP4 expects M; for circular ROM, ν≈M)
-    'mean_anomaly': rad2deg(sol['final_orbit']['M_rad']),
+        # Use mean anomaly at epoch (SGP4 expects M; for circular ROM, ν≈M)
+        'mean_anomaly': rad2deg(sol['final_orbit']['M_rad']),
     }
     rom_orbit_test = {
         'semi_major_axis': rom_a_km,
         'eccentricity': 0.0,
         'inclination': i_deg,
         'RAAN': RAANf_deg,
-        'argument_of_periapsis': 0.0,\
+        'argument_of_periapsis': 0.0, \
         # 'true_anomaly': M_ROM_start_deg,  # previously used
-    'mean_anomaly': M_ROM_start_deg,
+        'mean_anomaly': M_ROM_start_deg,
     }
 
     return {
@@ -959,6 +1052,7 @@ def build_maneuver_sequence_for_visualizer(
 # # Sweep Δa and plot times vs Δa
 # # ---------------------------
 
+
 def compute_reconfig_times_vs_delta_a(
     gom: Orbit,
     rom_a_km: float,
@@ -966,8 +1060,8 @@ def compute_reconfig_times_vs_delta_a(
     target_lat_geod_deg: float,
     target_lon_deg: float,
     delta_min_km: float = -200.0,
-    delta_max_km: float =  200.0,
-    delta_step_km: float =  5.0,
+    delta_max_km: float = 200.0,
+    delta_step_km: float = 5.0,
     max_wrap: int = 300,
     drift_time_cap_days: float = 15.0,
     verbose: bool = False,
@@ -977,9 +1071,10 @@ def compute_reconfig_times_vs_delta_a(
     """
     Returns (delta_a_km, total_time_s, wait_time_s, drift_time_s), using NaN where no solution exists.
     """
-    dAs = np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km, dtype=float)
+    dAs = np.arange(delta_min_km, delta_max_km +
+                    1e-9, delta_step_km, dtype=float)
     totals = np.full(dAs.shape, np.nan, dtype=float)
-    waits  = np.full(dAs.shape, np.nan, dtype=float)
+    waits = np.full(dAs.shape, np.nan, dtype=float)
     drifts = np.full(dAs.shape, np.nan, dtype=float)
     # if verbose:
     #     print(f"[Δa sweep] {len(dAs)} steps from {delta_min_km} to {delta_max_km} km (step {delta_step_km})...", flush=True)
@@ -996,13 +1091,16 @@ def compute_reconfig_times_vs_delta_a(
         except Exception:
             env_jobs_val = None
     requested = n_jobs if n_jobs is not None else env_jobs_val
-    use_workers = cpu_max if (requested is None or requested <= 0) else int(max(1, min(requested, cpu_max)))
-    start_method = os.getenv("RECONFIG_MP_START") or ("spawn" if os.name == "nt" else "fork")
+    use_workers = cpu_max if (requested is None or requested <= 0) else int(
+        max(1, min(requested, cpu_max)))
+    start_method = os.getenv("RECONFIG_MP_START") or (
+        "spawn" if os.name == "nt" else "fork")
     shared_ex: Optional[ProcessPoolExecutor] = None
     if use_workers > 1:
         # if verbose:
         #     print(f"[Δa sweep] Creating shared pool: workers={use_workers} start={start_method}", flush=True)
-        shared_ex = ProcessPoolExecutor(max_workers=use_workers, mp_context=get_context(start_method))
+        shared_ex = ProcessPoolExecutor(
+            max_workers=use_workers, mp_context=get_context(start_method))
 
     try:
         for idx, dA in enumerate(dAs):
@@ -1024,10 +1122,11 @@ def compute_reconfig_times_vs_delta_a(
                 executor=shared_ex,
                 mp_start=start_method,
             )
-            sol = planner.solve_min_time(lon_tol_schedule=lon_tol_schedule)  # <-- pass through
+            sol = planner.solve_min_time(
+                lon_tol_schedule=lon_tol_schedule)  # <-- pass through
             if sol.get('success'):
                 totals[idx] = sol['total_time_s']
-                waits[idx]  = sol['T_wait']
+                waits[idx] = sol['T_wait']
                 drifts[idx] = sol['T_d']
             # if verbose:
             #     # Print every ~10% progress
@@ -1049,7 +1148,7 @@ def compute_reconfig_times_vs_delta_a(
 if __name__ == "__main__":
     # Import the new plotter module
     from reconfig_plotter_multicore import run_reconfig_plots, PlotFlags
-    
+
     # Example inputs (your sample)
     epoch = datetime(2025, 5, 5, 12, 0, 0, tzinfo=timezone.utc)
     # i_deg = 51.4476847948
@@ -1060,15 +1159,23 @@ if __name__ == "__main__":
     #     Omega_rad = deg2rad(0.0),
     #     u_rad     = deg2rad(0.0)
     # )
+    i_deg = 50.0  # or whatever inclination you actually want
+
+    gom = Orbit(
+        a_km=R_EARTH + 300.0,   # 300 km altitude around Mars
+        i_rad=deg2rad(i_deg),
+        Omega_rad=deg2rad(0.0),
+        u_rad=deg2rad(0.0)
+    )
 
     # ROM altitude (semi-major axis)
     # rom_a_km = R_EARTH + 504.59534097
     # RGT (Repeat Ground Track) ROM settings
     RGT_USE = True
-    RGT_No  = 15          # revolutions
-    RGT_Nd  = 1           # days    
-    RGT_e   = 0.0         # eccentricity for RGT solution
-    RGT_FALLBACK_ALT_KM = 505.0  # fallback if RGT solver fails
+    RGT_No = 15          # revolutions
+    RGT_Nd = 1           # days
+    RGT_e = 0.0         # eccentricity for RGT solution
+    RGT_FALLBACK_ALT_KM = 250.0  # fallback if RGT solver fails
 
     # Targets list: add as many (name, lat_deg, lon_deg) tuples as you like
     targets = [
@@ -1088,20 +1195,19 @@ if __name__ == "__main__":
     FLAG_TIMES_VS_DELTA_A = False
     FLAG_TIMES_VS_TOLERANCE = False
     FLAG_AVG_VS_DELTA_A = True
-    FLAG_AVG_VS_TOLERANCE = False
-    FLAG_HEATMAP = False
+    FLAG_AVG_VS_TOLERANCE = True
+    FLAG_HEATMAP = True
     FLAG_PARETO_TIME_VS_DV_AVG = False
     FLAG_ISO_TIME_CONTOURS_AVG = False
 
     # Diagnostics
-    FLAG_PARETO_TIME_VS_DV    = False # averaged across grid
-    FLAG_ISO_TIME_CONTOURS    = False # works, to be detailed and expand with avg
-    FLAG_CHOSEN_VS_TOL        = False # works
-    FLAG_TOL_SENSITIVITY      = False # doesnt work, type error
-    FLAG_TARGET_JITTER        = False # doesnt work, type error
-    FLAG_EPOCH_SENSITIVITY    = False # works, need to expand with avg and detail
-    FLAG_RESIDUAL_CURVES      = False # doesnt work, name error
-
+    FLAG_PARETO_TIME_VS_DV = False  # averaged across grid
+    FLAG_ISO_TIME_CONTOURS = False  # works, to be detailed and expand with avg
+    FLAG_CHOSEN_VS_TOL = False  # works
+    FLAG_TOL_SENSITIVITY = False  # doesnt work, type error
+    FLAG_TARGET_JITTER = False  # doesnt work, type error
+    FLAG_EPOCH_SENSITIVITY = False  # works, need to expand with avg and detail
+    FLAG_RESIDUAL_CURVES = False  # doesnt work, name error
 
     # Common knobs
     max_wrap = 200
@@ -1110,25 +1216,26 @@ if __name__ == "__main__":
 
     # Plot parameter sets
     delta_range = dict(delta_min_km=-200, delta_max_km=200, delta_step_km=10)
-    tol_ladder  = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0] # used by time vs tolerance at given delta a 
+    tol_ladder = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5,
+                  1.0, 2.0, 5.0, 10.0]  # used by time vs tolerance at given delta a
     # tol_ladder  = [0.001, 0.25]
     delta_a_fixed_km = 50.0
 
     # Diagnostics params
     iso_levels_hours = [12.0, 24.0, 48.0, 72.0, 96.0]
-    tol_sens_series  = (True, True, True)  # plot total/wait/drift
+    tol_sens_series = (True, True, True)  # plot total/wait/drift
     jitter_radius_deg = 1.0
-    jitter_samples    = 200
-    jitter_seed       = 7
-    jitter_tol_deg    = 0.25
+    jitter_samples = 200
+    jitter_seed = 7
+    jitter_tol_deg = 0.25
     epoch_window_hours = 24.0
-    epoch_samples      = 49
-    epoch_tol_deg      = 0.25
+    epoch_samples = 49
+    epoch_tol_deg = 0.25
     # residuals: leave branch/m/k None to auto-pick best solution, or set explicitly
-    residual_branch    = None   # 'ascending' or 'descending' or None
-    residual_m         = None
-    residual_k         = None
-    residual_nsamples  = 600
+    residual_branch = None   # 'ascending' or 'descending' or None
+    residual_m = None
+    residual_k = None
+    residual_nsamples = 600
 
     # -----------------------------------------------
     # Sweep GOM altitude and inclination combinations
@@ -1136,25 +1243,39 @@ if __name__ == "__main__":
     #  - inclinations: 50°, 60°, and 98° only for 500 and 700 km
     # -----------------------------------------------
     ALT_LIST_KM = [500.0, 700.0, 1000.0]
+    ALT_LIST_KM = [400, 300.0, 200.0]  # Mars test altitudes
     for alt_km in ALT_LIST_KM:
-        incl_list = [50.0, 60.0] if alt_km == 1000.0 else [50.0, 60.0, 98.0]
+        incl_list = [50.0, 60.0] if alt_km == 1000.0 else [50.0, 60.0, 96.0]
         for i_deg in incl_list:
             print(f"\n=== Scenario: hG={alt_km:.0f} km, i={i_deg:.2f}° ===")
 
             # Build GOM and ROM (keep ~+5 km offset for ROM)
             gom = Orbit(
-                a_km = R_EARTH + alt_km,
-                i_rad= deg2rad(i_deg),
-                Omega_rad = deg2rad(0.0),
-                u_rad     = deg2rad(0.0)
+                a_km=R_EARTH + alt_km,
+                i_rad=deg2rad(i_deg),
+                Omega_rad=deg2rad(0.0),
+                u_rad=deg2rad(0.0)
             )
 
             # Compute ROM from RGT solver for this inclination
             if RGT_USE:
-                phasing = PhasingRGT()
-                a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
-                    i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
-                )
+                if target_planet == 'earth':
+                    phasing = PhasingRGT()
+                    a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                        i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                    )
+                elif target_planet == 'mars':
+                    phasing = PhasingRGT(
+                        J2=constants.J2_MARS,
+                        Rearth=constants.MARS_RADIUS,
+                        mu=constants.MARS_GRAVITATIONAL_CONSTANT,
+                        rotation_rate_earth=2.0 * pi /
+                        (24*3600 + 37*60 + 22.66),  # Mars sidereal day, rad/s
+                    )
+                    a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                        i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                    )
+
                 if converged and np.isfinite(a_solution):
                     rom_a_km = float(a_solution)
                     print(f"[RGT] ROM a={rom_a_km:.3f} km (h={rom_a_km - R_EARTH:.1f} km) "
@@ -1174,7 +1295,8 @@ if __name__ == "__main__":
                     FLAG_TOL_SENSITIVITY, FLAG_TARGET_JITTER,
                     FLAG_EPOCH_SENSITIVITY, FLAG_RESIDUAL_CURVES]):
                 for (target_name, tlat, tlon) in targets:
-                    print(f"\n[CASE] {target_name} ({tlat:+.3f}°, {tlon:+.3f}°)")
+                    print(
+                        f"\n[CASE] {target_name} ({tlat:+.3f}°, {tlon:+.3f}°)")
 
                     run_reconfig_plots(
                         gom=gom,
@@ -1230,18 +1352,19 @@ if __name__ == "__main__":
                         verbose=verbose,
                     )
 
-
             # ---------------------------------------------------------
             # 2) Averaged plots across a latitude band & all longitudes
             #    (no target loop; this averages over many targets)
             # ---------------------------------------------------------
             if FLAG_AVG_VS_DELTA_A or FLAG_AVG_VS_TOLERANCE or FLAG_PARETO_TIME_VS_DV_AVG or FLAG_ISO_TIME_CONTOURS_AVG:
                 # Latitude band (deg): must be < inclination to ensure access
-                lat_band_deg = i_deg -1.0         # must be < inclination to ensure access
+                lat_band_deg = i_deg - 1.0         # must be < inclination to ensure access
 
                 # Default grid
-                n_lat = 2                # number of latitude samples in [-band,+band]
-                n_lon = 3                  # number of longitudes in [-180,180)
+                # number of latitude samples in [-band,+band]
+                n_lat = 100  # 2
+                # s3                  # number of longitudes in [-180,180)
+                n_lon = 360
 
                 # Adjust grid sizes by inclination
                 if i_deg > 90.0:
@@ -1251,18 +1374,31 @@ if __name__ == "__main__":
 
                 # Compute ROM from RGT solver for this inclination
                 if RGT_USE:
-                    phasing = PhasingRGT()
-                    a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
-                        i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
-                    )
+                    if target_planet == 'earth':
+                        phasing = PhasingRGT()
+                        a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                            i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                        )
+                    elif target_planet == 'mars':
+                        phasing = PhasingRGT(
+                            J2=constants.J2_MARS,
+                            Rearth=constants.MARS_RADIUS,
+                            mu=constants.MARS_GRAVITATIONAL_CONSTANT,
+                            rotation_rate_earth=2.0 * pi /
+                            # Mars sidereal day, rad/s
+                            (24*3600 + 37*60 + 22.66),
+                        )
+                        a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                            i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                        )
                     if converged and np.isfinite(a_solution):
                         rom_a_km = float(a_solution)
                         print(f"[RGT] ROM a={rom_a_km:.3f} km (h={rom_a_km - R_EARTH:.1f} km) "
-                            f"from No/Nd={RGT_No}/{RGT_Nd}, e={RGT_e} (iters={iterations})")
+                              f"from No/Nd={RGT_No}/{RGT_Nd}, e={RGT_e} (iters={iterations})")
                     else:
                         rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
                         print(f"[RGT] WARN: RGT solver failed (iters={iterations}). "
-                            f"Falling back to h={RGT_FALLBACK_ALT_KM:.1f} km (a={rom_a_km:.3f} km).")
+                              f"Falling back to h={RGT_FALLBACK_ALT_KM:.1f} km (a={rom_a_km:.3f} km).")
                 else:
                     rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
 
@@ -1286,7 +1422,8 @@ if __name__ == "__main__":
                     delta_min_km=delta_range["delta_min_km"],
                     delta_max_km=delta_range["delta_max_km"],
                     delta_step_km=delta_range["delta_step_km"],
-                    delta_a_fixed_km=[50, 100, 200, 400], # only for tol plot with multiple deltaA
+                    # only for tol plot with multiple deltaA
+                    delta_a_fixed_km=[50, 100, 200, 400],
                     tolerances_deg=tol_ladder,
                     inclination_deg=i_deg,
                     lat_band_deg=lat_band_deg,
@@ -1302,8 +1439,8 @@ if __name__ == "__main__":
             if FLAG_HEATMAP or FLAG_ISO_TIME_CONTOURS:
                 lat_band_deg = i_deg - 1.0
                 # Default grid
-                n_lat_heatmap = 110          # across inclination band
-                n_long_heatmap = 360         # around Earth
+                n_lat_heatmap = 110  # 2  # 110          # across inclination band
+                n_long_heatmap = 360  # 3  # 360         # around Earth
 
                 # Adjust grid sizes by inclination
                 if i_deg > 90.0:
@@ -1313,47 +1450,61 @@ if __name__ == "__main__":
 
                 # Compute ROM from RGT solver for this inclination
                 if RGT_USE:
-                    phasing = PhasingRGT()
-                    a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
-                        i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
-                    )
+                    if target_planet == 'earth':
+                        phasing = PhasingRGT()
+                        a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                            i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                        )
+                    elif target_planet == 'mars':
+                        phasing = PhasingRGT(
+                            J2=constants.J2_MARS,
+                            Rearth=constants.MARS_RADIUS,
+                            mu=constants.MARS_GRAVITATIONAL_CONSTANT,
+                            rotation_rate_earth=2.0 * pi /
+                            # Mars sidereal day, rad/s
+                            (24*3600 + 37*60 + 22.66),
+                        )
+                        a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                            i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                        )
                     if converged and np.isfinite(a_solution):
                         rom_a_km = float(a_solution)
                         print(f"[RGT] ROM a={rom_a_km:.3f} km (h={rom_a_km - R_EARTH:.1f} km) "
-                            f"from No/Nd={RGT_No}/{RGT_Nd}, e={RGT_e} (iters={iterations})")
+                              f"from No/Nd={RGT_No}/{RGT_Nd}, e={RGT_e} (iters={iterations})")
                     else:
                         rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
                         print(f"[RGT] WARN: RGT solver failed (iters={iterations}). "
-                            f"Falling back to h={RGT_FALLBACK_ALT_KM:.1f} km (a={rom_a_km:.3f} km).")
+                              f"Falling back to h={RGT_FALLBACK_ALT_KM:.1f} km (a={rom_a_km:.3f} km).")
                 else:
                     rom_a_km = R_EARTH + RGT_FALLBACK_ALT_KM
 
                 print("\n[GRID] Generating world maps...")
                 run_reconfig_plots(
-                gom=gom,
-                rom_a_km=rom_a_km,
-                epoch=epoch,
-                target_name="GRID",               # not used by grid plots
-                target_lat_geod_deg=0.0,
-                target_lon_deg=0.0,
-                flags=PlotFlags(
-                    times_vs_delta_a=False,
-                    times_vs_tolerance=False,
-                    avg_vs_delta_a=False,
-                    avg_vs_tolerance=False,
-                    heatmap=FLAG_HEATMAP,
-                    iso_time_contours=FLAG_ISO_TIME_CONTOURS
-                ),
-                delta_a_fixed_km=delta_a_fixed_km,
-                tolerances_deg=[0.25],            # a single tolerance for the heatmap
-                inclination_deg=i_deg,
-                lat_band_deg=lat_band_deg,
-                n_lat=n_lat_heatmap,
-                n_lon=n_long_heatmap,
-                iso_levels_hours=iso_levels_hours,
-                max_wrap=max_wrap,
-                drift_time_cap_days=drift_time_cap_days,
-                verbose=verbose,
-            )
+                    gom=gom,
+                    rom_a_km=rom_a_km,
+                    epoch=epoch,
+                    target_name="GRID",               # not used by grid plots
+                    target_lat_geod_deg=0.0,
+                    target_lon_deg=0.0,
+                    flags=PlotFlags(
+                        times_vs_delta_a=False,
+                        times_vs_tolerance=False,
+                        avg_vs_delta_a=False,
+                        avg_vs_tolerance=False,
+                        heatmap=FLAG_HEATMAP,
+                        iso_time_contours=FLAG_ISO_TIME_CONTOURS
+                    ),
+                    delta_a_fixed_km=delta_a_fixed_km,
+                    # a single tolerance for the heatmap
+                    tolerances_deg=[0.25],
+                    inclination_deg=i_deg,
+                    lat_band_deg=lat_band_deg,
+                    n_lat=n_lat_heatmap,
+                    n_lon=n_long_heatmap,
+                    iso_levels_hours=iso_levels_hours,
+                    max_wrap=max_wrap,
+                    drift_time_cap_days=drift_time_cap_days,
+                    verbose=verbose,
+                )
 
         print("\nAll plots saved under results/reconfig")

@@ -36,6 +36,23 @@ from multiprocessing import get_context
 import sys
 import pandas as pd
 
+TARGET_PLANET = "mars"   # or "earth"
+
+if TARGET_PLANET == "mars":
+    # Mars radii in metres (equatorial/polar)
+    MARS_A_M = 3396.19e3
+    MARS_B_M = 3376.20e3
+    _mars_globe = ccrs.Globe(
+        semimajor_axis=MARS_A_M,
+        semiminor_axis=MARS_B_M,
+        ellipse=None,         # don't force WGS-84
+    )
+    MAP_CRS = ccrs.PlateCarree(globe=_mars_globe)
+else:
+    # default Earth globe
+    MAP_CRS = ccrs.PlateCarree()
+
+
 # Prefer multicore solver if available, fall back to single-core
 try:
     from reconfig_driftANDwaitTime_multicore import (
@@ -69,10 +86,8 @@ MU_EARTH = constants.GRAVITATIONAL_CONSTANT  # km^3/s^2
 # ---------------------------
 
 # ...existing imports...
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import get_context
-import sys
 # ...existing code...
+
 
 def _env_truthy(name: str, default: bool = False) -> bool:
     v = os.getenv(name)
@@ -80,33 +95,41 @@ def _env_truthy(name: str, default: bool = False) -> bool:
         return default
     return v.strip().lower() in ("1", "true", "yes", "y", "on")
 
+
 def _print_pool_banner(n_workers: int, start_method: str, tag: str) -> None:
     try:
         try:
-            aff = os.sched_getaffinity(0); aff_count = len(aff)
+            aff = os.sched_getaffinity(0)
+            aff_count = len(aff)
         except Exception:
-            aff = None; aff_count = os.cpu_count() or 1
+            aff = None
+            aff_count = os.cpu_count() or 1
         sys.stderr.write(
             f"[{tag}] pool: workers={n_workers} start={start_method} "
             f"cpu_max={os.cpu_count()} affinity_count={aff_count} pid={os.getpid()}\n"
         )
         if aff is not None:
-            sys.stderr.write(f"[{tag}] CPU affinity set: {sorted(list(aff))}\n")
+            sys.stderr.write(
+                f"[{tag}] CPU affinity set: {sorted(list(aff))}\n")
         sys.stderr.flush()
     except Exception:
         pass
+
 
 def _resolve_pool(requested_jobs: Optional[int] = None, tag: str = "plot"):
     cpu_max = os.cpu_count() or 1
     env_jobs = os.getenv("RECONFIG_N_JOBS")
     env_val = None
     try:
-        if env_jobs is not None: env_val = int(env_jobs)
+        if env_jobs is not None:
+            env_val = int(env_jobs)
     except Exception:
         env_val = None
     req = requested_jobs if requested_jobs is not None else env_val
-    n_workers = cpu_max if (req is None or req <= 0) else int(max(1, min(req, cpu_max)))
-    start_method = os.getenv("RECONFIG_MP_START") or ("spawn" if os.name == "nt" else "fork")
+    n_workers = cpu_max if (req is None or req <= 0) else int(
+        max(1, min(req, cpu_max)))
+    start_method = os.getenv("RECONFIG_MP_START") or (
+        "spawn" if os.name == "nt" else "fork")
     ex = None
     if n_workers > 1:
         # avoid BLAS oversubscription in workers
@@ -115,7 +138,8 @@ def _resolve_pool(requested_jobs: Optional[int] = None, tag: str = "plot"):
         os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
         os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
         _print_pool_banner(n_workers, start_method, tag)
-        ex = ProcessPoolExecutor(max_workers=n_workers, mp_context=get_context(start_method))
+        ex = ProcessPoolExecutor(
+            max_workers=n_workers, mp_context=get_context(start_method))
     return ex, n_workers, start_method
 
 
@@ -130,7 +154,8 @@ def _worker_deltaA_sweep(args):
     sys.stderr.write(
         f"[avg-dA] target lat={float(lat):+.3f} lon={float(lon):+.3f} "
         f"Δa[{float(dmin):g},{float(dmax):g}] step={float(dstep):g} "
-        f"pid={os.getpid()}" + (f" cpu={cpu_id}" if cpu_id is not None else "") + "\n"
+        f"pid={os.getpid()}" +
+        (f" cpu={cpu_id}" if cpu_id is not None else "") + "\n"
     )
     sys.stderr.flush()
 
@@ -141,9 +166,11 @@ def _worker_deltaA_sweep(args):
         float(dmin), float(dmax), float(dstep),
         int(max_wrap), float(cap_days),
         verbose=True,   # <-- show “[Δa sweep] …” lines
-        n_jobs=1        # <-- single-core inside worker (pool is outer parallelism)
+        # <-- single-core inside worker (pool is outer parallelism)
+        n_jobs=1
     )
     return (tot, wai, dri)
+
 
 def _worker_tol_sweep(args):
     gom, rom_a_km, epoch, lat, lon, da_fixed, tols, max_wrap, cap_days = args
@@ -160,6 +187,7 @@ def _worker_tol_sweep(args):
         int(max_wrap), float(cap_days), verbose=_env_truthy("RECONFIG_SWEEP_VERBOSE", False)
     )
     return (tot, wai, dri)
+
 
 def _worker_heatmap_point(args):
     gom, rom_a_km, epoch, lat, lon, da_fixed, tol_deg, max_wrap, cap_days, i, j = args
@@ -181,6 +209,7 @@ def _worker_heatmap_point(args):
 # small utilities
 # ---------------------------
 
+
 def _call_with_supported_kwargs(func, *args, verbose=False, **kwargs):
     """
     Call `func` with only the kwargs it declares.
@@ -192,30 +221,36 @@ def _call_with_supported_kwargs(func, *args, verbose=False, **kwargs):
     if verbose:
         dropped = [k for k in kwargs if k not in allowed]
         if dropped:
-            print(f"[warn] dropping unsupported kwargs for {func.__name__}: {dropped}")
+            print(
+                f"[warn] dropping unsupported kwargs for {func.__name__}: {dropped}")
     return func(*args, **filtered)
+
 
 def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
+
 
 def _hohmann_dv(a1_km: float, a2_km: float) -> tuple[float, float, float]:
     # returns (dv1, dv2, dv_total) in km/s
     mu = MU_EARTH  # km^3/s^2 (you already import this constant)
     r1 = float(a1_km)
     r2 = float(a2_km)
-    v1   = (mu / r1) ** 0.5
-    v2   = (mu / r2) ** 0.5
+    v1 = (mu / r1) ** 0.5
+    v2 = (mu / r2) ** 0.5
     v_tr1 = (mu * (2.0 / r1 - 1.0 / ((r1 + r2) * 0.5))) ** 0.5
     v_tr2 = (mu * (2.0 / r2 - 1.0 / ((r1 + r2) * 0.5))) ** 0.5
     dv1 = abs(v_tr1 - v1)
     dv2 = abs(v2 - v_tr2)
     return dv1, dv2, (dv1 + dv2)
 
+
 def minutes(s: float) -> float:
     return s / 60.0
 
+
 def hours(s: float) -> float:
     return s / 3600.0
+
 
 def _fmt_target_tag(name: str, lat: float, lon: float) -> str:
     lat_tag = f"{lat:+.3f}".replace("+", "p").replace("-", "m")
@@ -225,6 +260,7 @@ def _fmt_target_tag(name: str, lat: float, lon: float) -> str:
 # --------------------------------------------------------------------------------------
 # Core helpers
 # --------------------------------------------------------------------------------------
+
 
 def _safe_solve(
     gom: Orbit,
@@ -253,7 +289,8 @@ def _safe_solve(
             max_wrap=max_wrap,
             drift_time_cap_days=drift_time_cap_days,
         )
-        lon_tol_sched = None if tolerance_deg is None else [float(tolerance_deg)]
+        lon_tol_sched = None if tolerance_deg is None else [
+            float(tolerance_deg)]
         sol = planner.solve_min_time(lon_tol_schedule=lon_tol_sched)
         if sol.get('success'):
             return (float(sol['total_time_s']),
@@ -262,6 +299,7 @@ def _safe_solve(
         return (np.nan, np.nan, np.nan)
     except Exception:
         return (np.nan, np.nan, np.nan)
+
 
 def compute_reconfig_times_vs_tolerance(
     gom: Orbit,
@@ -281,7 +319,7 @@ def compute_reconfig_times_vs_tolerance(
     """
     tols = np.asarray(tolerances_deg, dtype=float)
     totals = np.full_like(tols, np.nan, dtype=float)
-    waits  = np.full_like(tols, np.nan, dtype=float)
+    waits = np.full_like(tols, np.nan, dtype=float)
     drifts = np.full_like(tols, np.nan, dtype=float)
 
     for i, tol in enumerate(tols):
@@ -296,6 +334,7 @@ def compute_reconfig_times_vs_tolerance(
         totals[i], waits[i], drifts[i] = total, wait, drift
 
     return tols, totals, waits, drifts
+
 
 def solve_once(
     gom: Orbit, rom_a_km: float, epoch: datetime,
@@ -314,8 +353,10 @@ def solve_once(
         epoch_gom=epoch, target_lat_geod_deg=tgt_lat_deg, target_lon_deg=tgt_lon_deg,
         max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days
     )
-    lon_tol_schedule = None if tolerance_deg is None else [float(tolerance_deg)]
+    lon_tol_schedule = None if tolerance_deg is None else [
+        float(tolerance_deg)]
     return planner.solve_min_time(lon_tol_schedule=lon_tol_schedule)
+
 
 def _pareto_frontier_indices(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     """
@@ -334,6 +375,7 @@ def _pareto_frontier_indices(x: np.ndarray, y: np.ndarray) -> np.ndarray:
 # Target grids
 # --------------------------------------------------------------------------------------
 
+
 def build_target_grid(
     inclination_deg: float,
     lat_band_deg: float,
@@ -350,7 +392,8 @@ def build_target_grid(
     Returns (lats_deg array shape (n_lat,), lons_deg array shape (n_lon,))
     """
     if lat_band_deg >= abs(inclination_deg):
-        raise ValueError("lat_band_deg must be smaller than the inclination to guarantee access.")
+        raise ValueError(
+            "lat_band_deg must be smaller than the inclination to guarantee access.")
     lats = np.linspace(-lat_band_deg, +lat_band_deg, n_lat, dtype=float)
     lons = np.linspace(-180.0, 180.0, n_lon, endpoint=False, dtype=float)
     return lats, lons
@@ -375,7 +418,7 @@ def plot_times_vs_delta_a_case(
     outdir: str = "results/reconfig/times_deltaA",
     verbose: bool = False,
 ) -> plt.Figure:
-    
+
     # Get tolerance info by running one case first to extract default tolerance
     test_planner = AnalyticRaanPhasingPlanner(
         gom=gom, rom_a_km=rom_a_km, delta_a_km=0.0, epoch_gom=epoch,
@@ -383,7 +426,8 @@ def plot_times_vs_delta_a_case(
         max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days
     )
     test_sol = test_planner.solve_min_time()
-    tolerance_used = test_sol.get('selection_meta', {}).get('tolerance_used_deg', 0.25)
+    tolerance_used = test_sol.get('selection_meta', {}).get(
+        'tolerance_used_deg', 0.25)
     if tolerance_used is None:
         tolerance_used = 0.25  # fallback default
 
@@ -392,21 +436,27 @@ def plot_times_vs_delta_a_case(
         delta_min_km, delta_max_km, delta_step_km, max_wrap, drift_time_cap_days, verbose
     )
     totals_h = totals / 3600.0
-    waits_h  = waits  / 3600.0
+    waits_h = waits / 3600.0
     drifts_h = drifts / 3600.0
 
     fig, axs = plt.subplots(3, 1, sharex=True, figsize=(9, 13))
-    axs[0].plot(dAs, totals_h, lw=1.8, color='k');            axs[0].set_ylabel("Total [h]")
-    axs[1].plot(dAs, waits_h,  lw=1.8, color='tab:blue');     axs[1].set_ylabel("Wait [h]")
-    axs[2].plot(dAs, drifts_h, lw=1.8, color='tab:orange');   axs[2].set_ylabel("Drift [h]"); axs[2].set_xlabel("Δa [km]")
-    for ax in axs: ax.grid(True, which='both', alpha=0.3); ax.axvline(0.0, color='0.7', ls='--', lw=1)
-    
+    axs[0].plot(dAs, totals_h, lw=1.8, color='k')
+    axs[0].set_ylabel("Total [h]")
+    axs[1].plot(dAs, waits_h,  lw=1.8, color='tab:blue')
+    axs[1].set_ylabel("Wait [h]")
+    axs[2].plot(dAs, drifts_h, lw=1.8, color='tab:orange')
+    axs[2].set_ylabel("Drift [h]")
+    axs[2].set_xlabel("Δa [km]")
+    for ax in axs:
+        ax.grid(True, which='both', alpha=0.3)
+        ax.axvline(0.0, color='0.7', ls='--', lw=1)
+
     # Handle case where target_name might be None
     target_display = target_name if target_name is not None else "Target"
-    
+
     # Handle case where epoch might be None
     epoch_str = epoch.strftime('%Y-%m-%d') if epoch is not None else "Unknown"
-    
+
     # Debug: check for None values before formatting
     print(f"[DEBUG] target_display: {target_display}")
     print(f"[DEBUG] gom.a_km: {gom.a_km}")
@@ -414,7 +464,7 @@ def plot_times_vs_delta_a_case(
     print(f"[DEBUG] gom.i_rad: {gom.i_rad}")
     print(f"[DEBUG] tolerance_used: {tolerance_used}")
     print(f"[DEBUG] epoch_str: {epoch_str}")
-    
+
     fig.suptitle(f"Reconfig time vs Δa — {target_display} ({target_lat_geod_deg:+.3f}°, {target_lon_deg:+.3f}°)\n"
                  f"GOM h={(gom.a_km-R_EARTH):.1f} km, ROM h={(rom_a_km-R_EARTH):.1f} km, i={rad2deg(gom.i_rad):.3f}°\n"
                  f"tolerance={tolerance_used:.4f}° (auto), epoch {epoch_str}")
@@ -445,27 +495,31 @@ def plot_times_vs_tolerance_case(
         delta_a_fixed_km, tolerances_deg, max_wrap, drift_time_cap_days, verbose
     )
     totals_h = totals / 3600.0
-    waits_h  = waits  / 3600.0
+    waits_h = waits / 3600.0
     drifts_h = drifts / 3600.0
 
     tol_min = np.nanmin(tols)
     tol_max = np.nanmax(tols)
 
     fig, axs = plt.subplots(3, 1, sharex=True, figsize=(9, 13))
-    axs[0].plot(tols, totals_h, lw=1.8, marker='o', ms=3, color='k');            axs[0].set_ylabel("Total [h]")
-    axs[1].plot(tols, waits_h,  lw=1.8, marker='o', ms=3, color='tab:blue');     axs[1].set_ylabel("Wait [h]")
-    axs[2].plot(tols, drifts_h, lw=1.8, marker='o', ms=3, color='tab:orange');   axs[2].set_ylabel("Drift [h]"); axs[2].set_xlabel("Tolerance [deg]")
+    axs[0].plot(tols, totals_h, lw=1.8, marker='o', ms=3, color='k')
+    axs[0].set_ylabel("Total [h]")
+    axs[1].plot(tols, waits_h,  lw=1.8, marker='o', ms=3, color='tab:blue')
+    axs[1].set_ylabel("Wait [h]")
+    axs[2].plot(tols, drifts_h, lw=1.8, marker='o', ms=3, color='tab:orange')
+    axs[2].set_ylabel("Drift [h]")
+    axs[2].set_xlabel("Tolerance [deg]")
     for ax in axs:
         ax.grid(True, which='both', alpha=0.3)
         ax.set_xscale('log')
         ax.set_xlim(tol_min, tol_max)
-    
+
     # Handle case where target_name might be None
     target_display = target_name if target_name is not None else "Target"
-    
+
     # Handle case where epoch might be None
     epoch_str = epoch.strftime('%Y-%m-%d') if epoch is not None else "Unknown"
-    
+
     fig.suptitle(f"Reconfig time vs tolerance — {target_display} ({target_lat_geod_deg:+.3f}°, {target_lon_deg:+.3f}°)\n"
                  f"GOM a={gom.a_km:.1f} km, ROM a={rom_a_km:.1f} km, inc={rad2deg(gom.i_rad):.3f}°\n"
                  f"Δa={delta_a_fixed_km:+.1f} km, epoch {epoch_str}")
@@ -487,10 +541,14 @@ def _avg_over_targets_delta_a(
     delta_min_km: float, delta_max_km: float, delta_step_km: float,
     max_wrap: int, drift_time_cap_days: float, verbose=False
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    
-    dAs = np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km, dtype=float)
+
+    dAs = np.arange(delta_min_km, delta_max_km +
+                    1e-9, delta_step_km, dtype=float)
     n = dAs.size
-    sum_tot = np.zeros(n); sum_wait = np.zeros(n); sum_drift = np.zeros(n); counts = np.zeros(n, dtype=int)
+    sum_tot = np.zeros(n)
+    sum_wait = np.zeros(n)
+    sum_drift = np.zeros(n)
+    counts = np.zeros(n, dtype=int)
 
     targets = [(lat, lon) for lat in lats_deg for lon in lons_deg]
     ex, _, _ = _resolve_pool(tag="avg-dA")
@@ -498,11 +556,13 @@ def _avg_over_targets_delta_a(
         if ex is None:
             for (lat, lon) in targets:
                 if _env_truthy("RECONFIG_PRINT_TARGETS", False):
-                    steps = len(np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km))
+                    steps = len(
+                        np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km))
                     sys.stderr.write(
                         f"[avg-dA] target lat={lat:+.3f} lon={lon:+.3f} "
                         f"Δa[{delta_min_km:g},{delta_max_km:g}] step={delta_step_km:g} (N={steps}) pid={os.getpid()}\n"
-                    ); sys.stderr.flush()
+                    )
+                    sys.stderr.flush()
                 dAs_loc, tot, wai, dri = compute_reconfig_times_vs_delta_a(
                     gom, rom_a_km, epoch, float(lat), float(lon),
                     delta_min_km, delta_max_km, delta_step_km,
@@ -513,18 +573,19 @@ def _avg_over_targets_delta_a(
                 if not np.allclose(dAs_loc, dAs, rtol=0, atol=1e-12):
                     # align by index where equal, otherwise skip mismatched points
                     for idx_glob, da in enumerate(dAs):
-                        j = int(np.where(np.isclose(dAs_loc, da, atol=1e-12))[0][0]) if np.any(np.isclose(dAs_loc, da, atol=1e-12)) else -1
+                        j = int(np.where(np.isclose(dAs_loc, da, atol=1e-12))
+                                [0][0]) if np.any(np.isclose(dAs_loc, da, atol=1e-12)) else -1
                         if j >= 0 and np.isfinite(tot[j]):
-                            sum_tot[idx_glob]  += tot[j]
+                            sum_tot[idx_glob] += tot[j]
                             sum_wait[idx_glob] += wai[j]
-                            sum_drift[idx_glob]+= dri[j]
-                            counts[idx_glob]   += 1
+                            sum_drift[idx_glob] += dri[j]
+                            counts[idx_glob] += 1
                 else:
                     mask = np.isfinite(tot)
-                    sum_tot[mask]  += tot[mask]
+                    sum_tot[mask] += tot[mask]
                     sum_wait[mask] += wai[mask]
-                    sum_drift[mask]+= dri[mask]
-                    counts[mask]   += 1
+                    sum_drift[mask] += dri[mask]
+                    counts[mask] += 1
         else:
             args_iter = (
                 (gom, rom_a_km, epoch, float(lat), float(lon),
@@ -534,19 +595,20 @@ def _avg_over_targets_delta_a(
             )
             for (tot, wai, dri) in ex.map(_worker_deltaA_sweep, args_iter):
                 mask = np.isfinite(tot)
-                sum_tot[mask]  += tot[mask]
+                sum_tot[mask] += tot[mask]
                 sum_wait[mask] += wai[mask]
-                sum_drift[mask]+= dri[mask]
-                counts[mask]   += 1
+                sum_drift[mask] += dri[mask]
+                counts[mask] += 1
     finally:
         if ex is not None:
             ex.shutdown(wait=True)
 
     with np.errstate(invalid='ignore', divide='ignore'):
-        avg_tot   = np.where(counts>0, sum_tot / counts, np.nan)
-        avg_wait  = np.where(counts>0, sum_wait / counts, np.nan)
-        avg_drift = np.where(counts>0, sum_drift / counts, np.nan)
+        avg_tot = np.where(counts > 0, sum_tot / counts, np.nan)
+        avg_wait = np.where(counts > 0, sum_wait / counts, np.nan)
+        avg_drift = np.where(counts > 0, sum_drift / counts, np.nan)
     return dAs, avg_tot, avg_wait, avg_drift
+
 
 def _avg_over_targets_tolerance(
     gom: Orbit, rom_a_km: float, epoch,
@@ -554,10 +616,13 @@ def _avg_over_targets_tolerance(
     delta_a_fixed_km: float, tolerances_deg: List[float],
     max_wrap: int, drift_time_cap_days: float, verbose=False
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    
+
     tols = np.asarray(tolerances_deg, dtype=float)
     n = tols.size
-    sum_tot = np.zeros(n); sum_wait = np.zeros(n); sum_drift = np.zeros(n); counts = np.zeros(n, dtype=int)
+    sum_tot = np.zeros(n)
+    sum_wait = np.zeros(n)
+    sum_drift = np.zeros(n)
+    counts = np.zeros(n, dtype=int)
 
     targets = [(lat, lon) for lat in lats_deg for lon in lons_deg]
     ex, workers, _ = _resolve_pool(tag="avg-tol")
@@ -569,23 +634,30 @@ def _avg_over_targets_tolerance(
                                                    delta_a_fixed_km, tolerances_deg,
                                                    max_wrap, drift_time_cap_days))
                 mask = np.isfinite(tot)
-                sum_tot[mask]  += tot[mask]; sum_wait[mask] += wai[mask]; sum_drift[mask] += dri[mask]; counts[mask] += 1
+                sum_tot[mask] += tot[mask]
+                sum_wait[mask] += wai[mask]
+                sum_drift[mask] += dri[mask]
+                counts[mask] += 1
         else:
             args_iter = ((gom, rom_a_km, epoch, lat, lon,
                           delta_a_fixed_km, tolerances_deg,
                           max_wrap, drift_time_cap_days) for (lat, lon) in targets)
             for (tot, wai, dri) in ex.map(_worker_tol_sweep, args_iter):
                 mask = np.isfinite(tot)
-                sum_tot[mask]  += tot[mask]; sum_wait[mask] += wai[mask]; sum_drift[mask] += dri[mask]; counts[mask] += 1
+                sum_tot[mask] += tot[mask]
+                sum_wait[mask] += wai[mask]
+                sum_drift[mask] += dri[mask]
+                counts[mask] += 1
     finally:
         if ex is not None:
             ex.shutdown(wait=True)
 
     with np.errstate(invalid='ignore', divide='ignore'):
-        avg_tot   = np.where(counts>0, sum_tot / counts, np.nan)
-        avg_wait  = np.where(counts>0, sum_wait / counts, np.nan)
-        avg_drift = np.where(counts>0, sum_drift / counts, np.nan)
+        avg_tot = np.where(counts > 0, sum_tot / counts, np.nan)
+        avg_wait = np.where(counts > 0, sum_wait / counts, np.nan)
+        avg_drift = np.where(counts > 0, sum_drift / counts, np.nan)
     return tols, avg_tot, avg_wait, avg_drift
+
 
 def plot_times_vs_tolerance_avg_targets(
     gom: Orbit,
@@ -613,10 +685,13 @@ def plot_times_vs_tolerance_avg_targets(
     # Normalize Δa input to a list
     try:
         from collections.abc import Iterable as _Iterable
-        is_iter = isinstance(delta_a_fixed_km, _Iterable) and not isinstance(delta_a_fixed_km, (str, bytes))
+        is_iter = isinstance(delta_a_fixed_km, _Iterable) and not isinstance(
+            delta_a_fixed_km, (str, bytes))
     except Exception:
-        is_iter = hasattr(delta_a_fixed_km, "__iter__") and not isinstance(delta_a_fixed_km, (str, bytes))
-    da_list = [float(delta_a_fixed_km)] if not is_iter else [float(x) for x in delta_a_fixed_km]
+        is_iter = hasattr(delta_a_fixed_km, "__iter__") and not isinstance(
+            delta_a_fixed_km, (str, bytes))
+    da_list = [float(delta_a_fixed_km)] if not is_iter else [
+        float(x) for x in delta_a_fixed_km]
 
     # Common tolerance axis (use the provided list)
     tols_global = np.asarray(tolerances_deg, dtype=float)
@@ -636,12 +711,13 @@ def plot_times_vs_tolerance_avg_targets(
         # Sanity: ensure tolerance axes match
         if not np.allclose(tols, tols_global, rtol=0, atol=1e-12):
             if verbose:
-                print("[warn] tolerances from solver differ from requested; proceeding with returned axis.")
+                print(
+                    "[warn] tolerances from solver differ from requested; proceeding with returned axis.")
 
         # Plot (hours)
         axs[0].plot(tols, avg_tot_s/3600.0,  lw=1.8, marker='o', ms=3)
         axs[1].plot(tols, avg_wait_s/3600.0, lw=1.8, marker='o', ms=3)
-        axs[2].plot(tols, avg_drift_s/3600.0,lw=1.8, marker='o', ms=3)
+        axs[2].plot(tols, avg_drift_s/3600.0, lw=1.8, marker='o', ms=3)
         legends.append(f"Δa={da:+.1f} km")
 
     # Labels per subplot
@@ -685,6 +761,7 @@ def plot_times_vs_tolerance_avg_targets(
     fig.savefig(os.path.join(outdir, fname), dpi=200, bbox_inches='tight')
     return fig
 
+
 def plot_times_vs_delta_a_avg_targets(
     gom: Orbit,
     rom_a_km: float,
@@ -726,9 +803,13 @@ def plot_times_vs_delta_a_avg_targets(
 
     # Plot (hours)
     fig, axs = plt.subplots(3, 1, sharex=True, figsize=(10, 9))
-    axs[0].plot(dAs, avg_tot_s/3600.0,  lw=1.8); axs[0].set_ylabel("Total [h]")
-    axs[1].plot(dAs, avg_wait_s/3600.0, lw=1.8); axs[1].set_ylabel("Wait [h]")
-    axs[2].plot(dAs, avg_drift_s/3600.0,lw=1.8); axs[2].set_ylabel("Drift [h]"); axs[2].set_xlabel("Δa [km]")
+    axs[0].plot(dAs, avg_tot_s/3600.0,  lw=1.8)
+    axs[0].set_ylabel("Total [h]")
+    axs[1].plot(dAs, avg_wait_s/3600.0, lw=1.8)
+    axs[1].set_ylabel("Wait [h]")
+    axs[2].plot(dAs, avg_drift_s/3600.0, lw=1.8)
+    axs[2].set_ylabel("Drift [h]")
+    axs[2].set_xlabel("Δa [km]")
     for ax in axs:
         ax.grid(True, which='both', alpha=0.3)
         ax.axvline(0.0, color='0.7', ls='--', lw=1)
@@ -755,15 +836,17 @@ def plot_times_vs_delta_a_avg_targets(
 # Heatmaps (total / wait / drift) + fading 1h GOM ground track
 # --------------------------------------------------------------------------------------
 
+
 def _eci_from_circular(i_rad, Omega_rad, u_rad, r=1.0):
     cO, sO = np.cos(Omega_rad), np.sin(Omega_rad)
     ci, si = np.cos(i_rad),     np.sin(i_rad)
     cu, su = np.cos(u_rad),     np.sin(u_rad)
     # r_pf = [cu, su, 0]; R3(Ω) R1(i) r_pf:
-    x =  cO*cu - sO*ci*su
-    y =  sO*cu + cO*ci*su
-    z =  si*su
-    return np.array([x,y,z])*r
+    x = cO*cu - sO*ci*su
+    y = sO*cu + cO*ci*su
+    z = si*su
+    return np.array([x, y, z])*r
+
 
 def _groundtrack_GOM_first_hour(gom: Orbit, epoch, dt_s=10.0, hours=1.0) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -772,30 +855,35 @@ def _groundtrack_GOM_first_hour(gom: Orbit, epoch, dt_s=10.0, hours=1.0) -> Tupl
     dOm, dom, dM = j2_rates(gom.a_km, 0.0, gom.i_rad)
     du = dom + dM
     N = max(2, int(round(hours*3600.0/dt_s))+1)
-    lats = np.zeros(N); lons = np.zeros(N)
+    lats = np.zeros(N)
+    lons = np.zeros(N)
     for k, t in enumerate(np.linspace(0.0, hours*3600.0, N)):
         Om = gom.Omega_rad + dOm*t
-        u  = gom.u_rad     + du*t
+        u = gom.u_rad + du*t
         r_eci = _eci_from_circular(gom.i_rad, Om, u, r=1.0)
         theta = gmst_rad(epoch + np.timedelta64(int(t), 's').astype(object))
         # ECI->ECEF rotation about Z by +theta:
         c, s = np.cos(theta), np.sin(theta)
-        x =  c*r_eci[0] + s*r_eci[1]
+        x = c*r_eci[0] + s*r_eci[1]
         y = -s*r_eci[0] + c*r_eci[1]
-        z =  r_eci[2]
-        r = np.linalg.norm([x,y,z])
+        z = r_eci[2]
+        r = np.linalg.norm([x, y, z])
         lats[k] = np.degrees(np.arcsin(z/r))
         lon_raw = np.degrees(np.arctan2(y, x))
         lons[k] = ((lon_raw + 180.0) % 360.0) - 180.0
     return lats, lons
 
+
 def _plot_lonwrap_segments(ax, lons_deg, lats_deg, **kw):
-    lons = np.asarray(lons_deg); lats = np.asarray(lats_deg)
+    lons = np.asarray(lons_deg)
+    lats = np.asarray(lats_deg)
     jumps = np.where(np.abs(np.diff(lons)) > 180.0)[0]
-    starts = np.r_[0, jumps+1]; ends = np.r_[jumps+1, len(lons)]
-    for a,b in zip(starts, ends):
+    starts = np.r_[0, jumps+1]
+    ends = np.r_[jumps+1, len(lons)]
+    for a, b in zip(starts, ends):
         if b-a >= 2:
             ax.plot(lons[a:b], lats[a:b], **kw)
+
 
 def plot_heatmaps_for_case(
     gom: Orbit,
@@ -812,12 +900,13 @@ def plot_heatmaps_for_case(
     outdir: str = "results/reconfig/heatmaps",
     verbose: bool = False,
 ) -> plt.Figure:
-    
-    lats_vec, lons_vec = build_target_grid(inclination_deg, lat_band_deg, n_lat, n_lon)
+
+    lats_vec, lons_vec = build_target_grid(
+        inclination_deg, lat_band_deg, n_lat, n_lon)
     LAT, LON = np.meshgrid(lats_vec, lons_vec, indexing='ij')
 
     total_s = np.full((n_lat, n_lon), np.nan, dtype=float)
-    wait_s  = np.full((n_lat, n_lon), np.nan, dtype=float)
+    wait_s = np.full((n_lat, n_lon), np.nan, dtype=float)
     drift_s = np.full((n_lat, n_lon), np.nan, dtype=float)
 
     ex, _, _ = _resolve_pool(tag="heatmap")
@@ -826,30 +915,36 @@ def plot_heatmaps_for_case(
             for i in range(n_lat):
                 for j in range(n_lon):
                     i2, j2, tot, wai, dri = _worker_heatmap_point((
-                        gom, rom_a_km, epoch, float(LAT[i,j]), float(LON[i,j]),
+                        gom, rom_a_km, epoch, float(
+                            LAT[i, j]), float(LON[i, j]),
                         float(delta_a_fixed_km), float(tolerance_deg),
                         max_wrap, drift_time_cap_days, i, j
                     ))
-                    total_s[i2,j2]=tot; wait_s[i2,j2]=wai; drift_s[i2,j2]=dri
+                    total_s[i2, j2] = tot
+                    wait_s[i2, j2] = wai
+                    drift_s[i2, j2] = dri
         else:
             args = [(
-                gom, rom_a_km, epoch, float(LAT[i,j]), float(LON[i,j]),
+                gom, rom_a_km, epoch, float(LAT[i, j]), float(LON[i, j]),
                 float(delta_a_fixed_km), float(tolerance_deg),
                 max_wrap, drift_time_cap_days, i, j
             ) for i in range(n_lat) for j in range(n_lon)]
             for (i2, j2, tot, wai, dri) in ex.map(_worker_heatmap_point, args):
-                total_s[i2,j2]=tot; wait_s[i2,j2]=wai; drift_s[i2,j2]=dri
+                total_s[i2, j2] = tot
+                wait_s[i2, j2] = wai
+                drift_s[i2, j2] = dri
     finally:
-        if ex is not None: ex.shutdown(wait=True)
+        if ex is not None:
+            ex.shutdown(wait=True)
 
     # convert to hours for readability
     total_h = total_s / 3600.0
-    wait_h  = wait_s  / 3600.0
+    wait_h = wait_s / 3600.0
     drift_h = drift_s / 3600.0
 
     # figure with Cartopy PlateCarree projection to show full Earth background
     fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True,
-                             subplot_kw={"projection": ccrs.PlateCarree()})
+                             subplot_kw={"projection": MAP_CRS})
     world_extent = (-180.0, 180.0, -90.0, 90.0)
     band_extent = (-180.0, 180.0, -lat_band_deg, +lat_band_deg)
 
@@ -864,14 +959,19 @@ def plot_heatmaps_for_case(
             vmax = vmin + 1e-3
         return vmin, vmax
 
-    items = [("Total time [h]", total_h), ("Wait time [h]", wait_h), ("Drift time [h]", drift_h)]
+    items = [("Total time [h]", total_h), ("Wait time [h]", wait_h),
+             ("Drift time [h]", drift_h)]
     for ax, (title, data) in zip(axes, items):
         # Full Earth grayscale background
         ax.set_global()
-        ax.add_feature(cfeature.LAND, color='lightgray', zorder=0)
-        ax.add_feature(cfeature.OCEAN, color='white', zorder=0)
-        ax.coastlines(color='black', linewidth=0.5, zorder=1)
-        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
+        if TARGET_PLANET == "earth":
+            ax.add_feature(cfeature.LAND, color='lightgray', zorder=0)
+            ax.add_feature(cfeature.OCEAN, color='white', zorder=0)
+            ax.coastlines(color='black', linewidth=0.5, zorder=1)
+        else:
+            # Mars: no built-in land/ocean/coastlines. Just a plain backdrop.
+            ax.set_facecolor("#2b1b12")  # dark reddish "Mars" background
+        gl = ax.gridlines(crs=MAP_CRS, draw_labels=True,
                           color="gray", alpha=0.5, linestyle="--",
                           x_inline=False, y_inline=False)
         gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, 30))
@@ -884,21 +984,24 @@ def plot_heatmaps_for_case(
         # Semi-transparent heatmap overlay only over latitude band
         vmin, vmax = finite_bounds(data)
         im = ax.imshow(
-            data, origin='lower', extent=band_extent, aspect='auto',
-            vmin=vmin, vmax=vmax, cmap='viridis', alpha=0.65, zorder=2
+            data, origin="lower", extent=band_extent, aspect="auto",
+            vmin=vmin, vmax=vmax, cmap="viridis", alpha=0.65,
+            transform=MAP_CRS, zorder=2,    # <-- important when using custom globe
         )
         # Ensure full globe extent remains after imshow
-        ax.set_extent(world_extent, crs=ccrs.PlateCarree())
+        ax.set_extent(world_extent, crs=MAP_CRS)
 
         ax.set_ylabel("Latitude [deg]")
         ax.set_title(title)
-        cbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.02)
+        cbar = fig.colorbar(im, ax=ax, orientation='vertical',
+                            fraction=0.046, pad=0.02)
         cbar.ax.set_ylabel(title)
 
     axes[-1].set_xlabel("Longitude [deg]")
 
     # overlay first-hour GOM ground track (fading alpha)
-    gt_lat, gt_lon = _groundtrack_GOM_first_hour(gom, epoch, dt_s=20.0, hours=1.0)
+    gt_lat, gt_lon = _groundtrack_GOM_first_hour(
+        gom, epoch, dt_s=20.0, hours=1.0)
     # draw with fading alpha by chunking
     N = len(gt_lon)
     chunks = 20
@@ -908,7 +1011,8 @@ def plot_heatmaps_for_case(
         for ax in axes:
             _plot_lonwrap_segments(
                 ax, gt_lon[s:e], gt_lat[s:e],
-                color='k', lw=1.5, alpha=alpha, transform=ccrs.PlateCarree(), zorder=3
+                color="k", lw=1.5, alpha=alpha,
+                transform=MAP_CRS, zorder=3
             )
 
     fig.suptitle(
@@ -925,6 +1029,7 @@ def plot_heatmaps_for_case(
 # ---------------------------
 # Pareto: total time vs Δv
 # ---------------------------
+
 
 def plot_pareto_time_vs_dv(
     gom: Orbit, rom_a_km: float, epoch: datetime,
@@ -950,12 +1055,13 @@ def plot_pareto_time_vs_dv(
     except NameError:
         # Minimal circular-to-circular Hohmann Δv (km/s)
         MU = constants.GRAVITATIONAL_CONSTANT  # km^3/s^2
+
         def _hoh_dv(a1_km: float, a2_km: float):
             v1 = np.sqrt(MU / a1_km)
             v2 = np.sqrt(MU / a2_km)
             a_tr = 0.5 * (a1_km + a2_km)
-            v_peri_tr  = np.sqrt(MU * (2.0/a1_km - 1.0/a_tr))
-            v_apo_tr   = np.sqrt(MU * (2.0/a2_km - 1.0/a_tr))
+            v_peri_tr = np.sqrt(MU * (2.0/a1_km - 1.0/a_tr))
+            v_apo_tr = np.sqrt(MU * (2.0/a2_km - 1.0/a_tr))
             dv1 = abs(v_peri_tr - v1)
             dv2 = abs(v2 - v_apo_tr)
             return dv1, dv2, dv1 + dv2
@@ -996,7 +1102,7 @@ def plot_pareto_time_vs_dv(
 
     # times (hours)
     total_h = np.full_like(dA, np.nan, dtype=float)
-    wait_h  = np.full_like(dA, np.nan, dtype=float)
+    wait_h = np.full_like(dA, np.nan, dtype=float)
     drift_h = np.full_like(dA, np.nan, dtype=float)
 
     for i, da in enumerate(dA):
@@ -1015,7 +1121,7 @@ def plot_pareto_time_vs_dv(
         )
         if sol.get("success"):
             total_h[i] = hours(sol["total_time_s"])
-            wait_h[i]  = hours(sol["T_wait"])
+            wait_h[i] = hours(sol["T_wait"])
             drift_h[i] = hours(sol["T_d"])
 
         if verbose:
@@ -1033,16 +1139,19 @@ def plot_pareto_time_vs_dv(
         md = m & np.isfinite(drift_h)
         # vertical sticks (drift -> total), plus markers for wait & drift
         if np.any(md):
-            ax.vlines(dv[md], drift_h[md], total_h[md], colors="0.75", lw=1, alpha=0.6, zorder=2)
-            ax.scatter(dv[md], drift_h[md], s=18, marker="v", label="Drift time", zorder=3)
+            ax.vlines(dv[md], drift_h[md], total_h[md],
+                      colors="0.75", lw=1, alpha=0.6, zorder=2)
+            ax.scatter(dv[md], drift_h[md], s=18, marker="v",
+                       label="Drift time", zorder=3)
         if np.any(mw):
-            ax.scatter(dv[mw], wait_h[mw], s=18, marker="^", label="Wait time", zorder=3)
+            ax.scatter(dv[mw], wait_h[mw], s=18, marker="^",
+                       label="Wait time", zorder=3)
 
     # Pareto front (time vs Δv) — non-dominated set (minimize both)
     if mark_frontier and np.any(m):
         idx = np.argsort(dv[m])
         dv_sorted = dv[m][idx]
-        t_sorted  = total_h[m][idx]
+        t_sorted = total_h[m][idx]
         front_mask = np.zeros_like(dv_sorted, dtype=bool)
         best_t = np.inf
         for j in range(len(idx)):
@@ -1055,14 +1164,18 @@ def plot_pareto_time_vs_dv(
     ax.set_xlabel("Δv (km/s)")
     ax.set_ylabel("Reconfiguration time (h)")
     ax.grid(True, alpha=0.3)
-    ax.set_title(f"Pareto: time vs Δv  | tol={tolerance_deg:g}°  |  {target_name}")
+    ax.set_title(
+        f"Pareto: time vs Δv  | tol={tolerance_deg:g}°  |  {target_name}")
     ax.legend(loc="best")
 
     tag = _fmt_target_tag(target_name, tgt_lat_deg, tgt_lon_deg)
-    fig.savefig(os.path.join(outdir, f"pareto_time_vs_dv_{tag}.png"), dpi=200, bbox_inches="tight")
+    fig.savefig(os.path.join(
+        outdir, f"pareto_time_vs_dv_{tag}.png"), dpi=200, bbox_inches="tight")
     return fig
 
 # --------------- Averaged Pareto: time vs Δv ----------------
+
+
 def plot_pareto_time_vs_dv_avg_targets(
     gom: Orbit,
     rom_a_km: float,
@@ -1096,7 +1209,8 @@ def plot_pareto_time_vs_dv_avg_targets(
     ensure_dir(outdir)
 
     # Build targets
-    lats_deg, lons_deg = build_target_grid(inclination_deg, lat_band_deg, n_lat, n_lon)
+    lats_deg, lons_deg = build_target_grid(
+        inclination_deg, lat_band_deg, n_lat, n_lon)
 
     # Average times vs Δa over the targets
     dA_km, avg_tot_s, avg_wait_s, avg_drift_s = _avg_over_targets_delta_a(
@@ -1122,8 +1236,8 @@ def plot_pareto_time_vs_dv_avg_targets(
     # Drop NaNs and sort by Δv (clean curve & frontier)
     mask = np.isfinite(dv_kms) & np.isfinite(avg_tot_s)
     dv = dv_kms[mask]
-    t_tot_h   = (avg_tot_s[mask]   / 3600.0)
-    t_wait_h  = (avg_wait_s[mask]  / 3600.0)
+    t_tot_h = (avg_tot_s[mask] / 3600.0)
+    t_wait_h = (avg_wait_s[mask] / 3600.0)
     t_drift_h = (avg_drift_s[mask] / 3600.0)
 
     order = np.argsort(dv)
@@ -1181,6 +1295,7 @@ def plot_pareto_time_vs_dv_avg_targets(
 # Iso-time contours (Δa × tolerance)
 # ---------------------------
 
+
 def plot_iso_time_contours(
     gom: Orbit, rom_a_km: float, epoch: datetime,
     target_name: str, tgt_lat_deg: float, tgt_lon_deg: float,
@@ -1192,7 +1307,8 @@ def plot_iso_time_contours(
     verbose: bool = False
 ):
     ensure_dir(outdir)
-    dA = np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km, dtype=float)
+    dA = np.arange(delta_min_km, delta_max_km +
+                   1e-9, delta_step_km, dtype=float)
     T = np.array(list(tol_list_deg), dtype=float)
 
     Z = np.full((len(T), len(dA)), np.nan, dtype=float)  # total time (h)
@@ -1215,8 +1331,10 @@ def plot_iso_time_contours(
     ax.set_ylabel("Tolerance (deg)")
     ax.set_title(f"Iso-time contours | {target_name}")
     tag = _fmt_target_tag(target_name, tgt_lat_deg, tgt_lon_deg)
-    fig.savefig(os.path.join(outdir, f"iso_time_contours_{tag}.png"), dpi=220, bbox_inches="tight")
+    fig.savefig(os.path.join(
+        outdir, f"iso_time_contours_{tag}.png"), dpi=220, bbox_inches="tight")
     plt.close(fig)
+
 
 def plot_iso_time_contours_avg_targets(
     gom: Orbit, rom_a_km: float, epoch: datetime,
@@ -1224,9 +1342,10 @@ def plot_iso_time_contours_avg_targets(
     lat_band_deg: float,
     n_lat: int, n_lon: int,
     delta_min_km: float = 0.0,
-    delta_max_km: float =  300.0,
+    delta_max_km: float = 300.0,
     delta_step_km: float = 10.0,
-    tol_list_deg: Iterable[float] = (0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10),
+    tol_list_deg: Iterable[float] = (
+        0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10),
     drift_time_cap_days: float = 30.0,
     max_wrap: int = 300,
     outdir: str = "results/reconfig/iso_time_avg",
@@ -1239,19 +1358,21 @@ def plot_iso_time_contours_avg_targets(
     ensure_dir(outdir)
 
     # Build target grid
-    lats_deg, lons_deg = build_target_grid(inclination_deg, lat_band_deg, n_lat, n_lon)
+    lats_deg, lons_deg = build_target_grid(
+        inclination_deg, lat_band_deg, n_lat, n_lon)
 
     # Axes
-    dA = np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km, dtype=float)
-    T  = np.array(list(tol_list_deg), dtype=float)
+    dA = np.arange(delta_min_km, delta_max_km +
+                   1e-9, delta_step_km, dtype=float)
+    T = np.array(list(tol_list_deg), dtype=float)
     na, nt = len(dA), len(T)
 
     # Accumulators for averaging
     sum_time_h = np.zeros((nt, na), dtype=float)
-    counts     = np.zeros((nt, na), dtype=int)
+    counts = np.zeros((nt, na), dtype=int)
 
     total_targets = len(lats_deg) * len(lons_deg)
-    done_targets  = 0
+    done_targets = 0
     # pp = ProgressPrinter(total_targets, name="IsoAvg", interval_s=60.0)
     if verbose:
         print(f"[IsoAvg] Grid: {n_lat}×{n_lon} targets (±{lat_band_deg:.1f}°), "
@@ -1271,7 +1392,7 @@ def plot_iso_time_contours_avg_targets(
                     )
                     if sol.get("success") and abs(sol["lon_err_deg"]) <= tol + 1e-6:
                         sum_time_h[it, ia] += hours(sol["total_time_s"])
-                        counts[it, ia]     += 1
+                        counts[it, ia] += 1
             done_targets += 1
             # pp.maybe(done_targets)
             if verbose and (done_targets % max(1, total_targets // 10) == 0):
@@ -1342,7 +1463,8 @@ def plot_chosen_solution_vs_tolerance(
     gom: Orbit, rom_a_km: float, epoch: datetime,
     target_name: str, tgt_lat_deg: float, tgt_lon_deg: float,
     delta_a_fixed_km: float,
-    tol_list_deg: Iterable[float] = (0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2),
+    tol_list_deg: Iterable[float] = (
+        0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2),
     drift_time_cap_days: float = 30.0,
     max_wrap: int = 120,
     outdir: str = "results/reconfig/sol_vs_tol",
@@ -1351,11 +1473,11 @@ def plot_chosen_solution_vs_tolerance(
     ensure_dir(outdir)
     T = np.array(list(tol_list_deg), dtype=float)
     total_h = np.full_like(T, np.nan, dtype=float)
-    wait_h  = np.full_like(T, np.nan, dtype=float)
+    wait_h = np.full_like(T, np.nan, dtype=float)
     drift_h = np.full_like(T, np.nan, dtype=float)
-    m_sel   = np.full_like(T, np.nan, dtype=float)
-    k_sel   = np.full_like(T, np.nan, dtype=float)
-    branch  = []
+    m_sel = np.full_like(T, np.nan, dtype=float)
+    k_sel = np.full_like(T, np.nan, dtype=float)
+    branch = []
 
     for i, tol in enumerate(T):
         sol = solve_once(
@@ -1364,17 +1486,18 @@ def plot_chosen_solution_vs_tolerance(
         )
         if sol.get("success"):
             total_h[i] = hours(sol["total_time_s"])
-            wait_h[i]  = hours(sol["T_wait"])
+            wait_h[i] = hours(sol["T_wait"])
             drift_h[i] = hours(sol["T_d"])
             meta = sol.get("selection_meta", {})
-            m_sel[i]  = meta.get("chosen_m", np.nan)
-            k_sel[i]  = meta.get("chosen_k", np.nan)
+            m_sel[i] = meta.get("chosen_m", np.nan)
+            k_sel[i] = meta.get("chosen_k", np.nan)
             branch.append(sol.get("branch", ""))
         else:
             branch.append("")
 
         if verbose:
-            print(f"[SolVsTol] tol={tol:g}°  total={total_h[i]:.2f}h  m={m_sel[i]} k={k_sel[i]} branch={branch[-1]}")
+            print(
+                f"[SolVsTol] tol={tol:g}°  total={total_h[i]:.2f}h  m={m_sel[i]} k={k_sel[i]} branch={branch[-1]}")
 
     fig, axs = plt.subplots(3, 1, figsize=(8, 9), sharex=True)
 
@@ -1382,29 +1505,36 @@ def plot_chosen_solution_vs_tolerance(
     axs[0].plot(T, wait_h,  marker='o', label="wait", alpha=0.8)
     axs[0].plot(T, drift_h, marker='o', label="drift", alpha=0.8)
     axs[0].set_ylabel("Time (h)")
-    axs[0].grid(True, alpha=0.3); axs[0].legend()
+    axs[0].grid(True, alpha=0.3)
+    axs[0].legend()
 
-    axs[1].step(T, m_sel, where='post'); axs[1].set_ylabel("m (u-wrap)")
+    axs[1].step(T, m_sel, where='post')
+    axs[1].set_ylabel("m (u-wrap)")
     axs[1].grid(True, alpha=0.3)
 
-    axs[2].step(T, k_sel, where='post'); axs[2].set_ylabel("k (lon-wrap)")
+    axs[2].step(T, k_sel, where='post')
+    axs[2].set_ylabel("k (lon-wrap)")
     axs[2].set_xlabel("Tolerance (deg)")
     axs[2].grid(True, alpha=0.3)
 
-    fig.suptitle(f"Chosen solution vs tolerance | Δa={delta_a_fixed_km:+.1f} km | {target_name}")
+    fig.suptitle(
+        f"Chosen solution vs tolerance | Δa={delta_a_fixed_km:+.1f} km | {target_name}")
     tag = _fmt_target_tag(target_name, tgt_lat_deg, tgt_lon_deg)
-    fig.savefig(os.path.join(outdir, f"chosen_vs_tol_{tag}_dA{delta_a_fixed_km:+.1f}.png"), dpi=220, bbox_inches="tight")
+    fig.savefig(os.path.join(
+        outdir, f"chosen_vs_tol_{tag}_dA{delta_a_fixed_km:+.1f}.png"), dpi=220, bbox_inches="tight")
     plt.close(fig)
 
 # ---------------------------
 # Tolerance sensitivity curves (several Δa)
 # ---------------------------
 
+
 def plot_tolerance_sensitivity_curves(
     gom: Orbit, rom_a_km: float, epoch: datetime,
     target_name: str, tgt_lat_deg: float, tgt_lon_deg: float,
     delta_list_km: Iterable[float],
-    tol_list_deg: Iterable[float] = (0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2),
+    tol_list_deg: Iterable[float] = (
+        0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2),
     drift_time_cap_days: float = 30.0,
     max_wrap: int = 120,
     outdir: str = "results/reconfig/tol_sensitivity",
@@ -1433,12 +1563,14 @@ def plot_tolerance_sensitivity_curves(
     ax.grid(True, alpha=0.3)
     ax.legend()
     tag = _fmt_target_tag(target_name, tgt_lat_deg, tgt_lon_deg)
-    fig.savefig(os.path.join(outdir, f"tol_sensitivity_{tag}.png"), dpi=220, bbox_inches="tight")
+    fig.savefig(os.path.join(
+        outdir, f"tol_sensitivity_{tag}.png"), dpi=220, bbox_inches="tight")
     plt.close(fig)
 
 # ---------------------------
 # Target jitter study (random offsets around target)
 # ---------------------------
+
 
 def plot_target_jitter_study(
     gom: Orbit, rom_a_km: float, epoch: datetime,
@@ -1470,22 +1602,28 @@ def plot_target_jitter_study(
             delta_a_fixed_km, drift_time_cap_days, max_wrap, tolerance_deg=tol_fixed_deg
         )
         if sol.get("success"):
-            times_h[i]  = hours(sol["total_time_s"])
-            waits_h[i]  = hours(sol["T_wait"])
+            times_h[i] = hours(sol["total_time_s"])
+            waits_h[i] = hours(sol["T_wait"])
             drifts_h[i] = hours(sol["T_d"])
 
     fig, axs = plt.subplots(1, 2, figsize=(11, 4.8))
     axs[0].hist(times_h[~np.isnan(times_h)], bins=24, alpha=0.85)
-    axs[0].set_xlabel("Total time (h)"); axs[0].set_ylabel("count"); axs[0].grid(True, alpha=0.25)
+    axs[0].set_xlabel("Total time (h)")
+    axs[0].set_ylabel("count")
+    axs[0].grid(True, alpha=0.25)
     axs[0].set_title("Distribution of total times")
 
     sc = axs[1].scatter(dlon, dlat, c=times_h, s=20)
-    axs[1].set_xlabel("lon offset (deg)"); axs[1].set_ylabel("lat offset (deg)")
-    axs[1].grid(True, alpha=0.25); axs[1].set_title("Offsets colored by total time (h)")
-    cbar = fig.colorbar(sc, ax=axs[1]); cbar.set_label("Total time (h)")
+    axs[1].set_xlabel("lon offset (deg)")
+    axs[1].set_ylabel("lat offset (deg)")
+    axs[1].grid(True, alpha=0.25)
+    axs[1].set_title("Offsets colored by total time (h)")
+    cbar = fig.colorbar(sc, ax=axs[1])
+    cbar.set_label("Total time (h)")
 
     tag = _fmt_target_tag(target_name, tgt_lat_deg, tgt_lon_deg)
-    fig.suptitle(f"Target jitter study | Δa={delta_a_fixed_km:+.1f} km, tol={tol_fixed_deg}° | {target_name}")
+    fig.suptitle(
+        f"Target jitter study | Δa={delta_a_fixed_km:+.1f} km, tol={tol_fixed_deg}° | {target_name}")
     fig.savefig(os.path.join(outdir, f"jitter_{tag}_dA{delta_a_fixed_km:+.1f}_tol{tol_fixed_deg}.png"),
                 dpi=210, bbox_inches="tight")
     plt.close(fig)
@@ -1493,6 +1631,7 @@ def plot_target_jitter_study(
 # ---------------------------
 # Epoch sensitivity (sweep start epoch over 24h)
 # ---------------------------
+
 
 def plot_epoch_sensitivity(
     gom: Orbit, rom_a_km: float, base_epoch: datetime,
@@ -1527,7 +1666,8 @@ def plot_epoch_sensitivity(
     ax.set_xlabel("Start epoch offset (hours)")
     ax.set_ylabel("Total reconfig time (h)")
     ax.grid(True, alpha=0.3)
-    ax.set_title(f"Epoch sensitivity | Δa={delta_a_fixed_km:+.1f} km, tol={tol_fixed_deg}° | {target_name}")
+    ax.set_title(
+        f"Epoch sensitivity | Δa={delta_a_fixed_km:+.1f} km, tol={tol_fixed_deg}° | {target_name}")
     tag = _fmt_target_tag(target_name, tgt_lat_deg, tgt_lon_deg)
     fig.savefig(os.path.join(outdir, f"epoch_sensitivity_{tag}_dA{delta_a_fixed_km:+.1f}.png"),
                 dpi=210, bbox_inches="tight")
@@ -1537,13 +1677,15 @@ def plot_epoch_sensitivity(
 # Residual curves for selected (m,k)
 # ---------------------------
 
+
 def _residual_functions(planner: AnalyticRaanPhasingPlanner, branch: str, m: int, k: int, u_req: float):
     """
     Recreate residual r(Td) = phi(Td) - (λ_t + 2πk) and give helper closures, using the same
     formulas as the planner.
     """
     # Eq A: du_G*Tw + du_D*Td = const_u + 2π m
-    const_u = -(planner.du_T1 * planner.T1 + planner.du_T2 * planner.T2) + (u_req - planner.u0)
+    const_u = -(planner.du_T1 * planner.T1 + planner.du_T2 *
+                planner.T2) + (u_req - planner.u0)
     A_m = const_u + 2.0*np.pi*m
 
     def Tw_of_Td(Td):
@@ -1577,6 +1719,7 @@ def _residual_functions(planner: AnalyticRaanPhasingPlanner, branch: str, m: int
         return phi - lam_t
 
     return residual, Tw_of_Td
+
 
 def plot_residual_curves_for_selected_mk(
     gom: Orbit, rom_a_km: float, epoch: datetime,
@@ -1636,7 +1779,7 @@ def plot_residual_curves_for_selected_mk(
         return
 
     r = np.array([residual(t) for t in Td_feas])
-    r_deg = np.degrees(np.where(r==1e9, np.nan, r))
+    r_deg = np.degrees(np.where(r == 1e9, np.nan, r))
 
     fig, ax = plt.subplots(figsize=(9.0, 4.8))
     ax.plot(Td_feas/3600.0, r_deg, lw=1.6)
@@ -1646,7 +1789,8 @@ def plot_residual_curves_for_selected_mk(
     ax.set_xlabel("Drift time Td (h)")
     ax.set_ylabel("Residual r(Td) [deg]")
     ax.grid(True, alpha=0.3)
-    ax.set_title(f"Residual curve (m={m}, k={k}, {branch}) | Δa={delta_a_fixed_km:+.1f} km, tol={tol_fixed_deg}° | {target_name}")
+    ax.set_title(
+        f"Residual curve (m={m}, k={k}, {branch}) | Δa={delta_a_fixed_km:+.1f} km, tol={tol_fixed_deg}° | {target_name}")
 
     tag = _fmt_target_tag(target_name, tgt_lat_deg, tgt_lon_deg)
     fig.savefig(os.path.join(outdir, f"residual_curve_{tag}_dA{delta_a_fixed_km:+.1f}.png"),
@@ -1656,6 +1800,7 @@ def plot_residual_curves_for_selected_mk(
 # --------------------------------------------------------------------------------------
 # Orchestrator
 # --------------------------------------------------------------------------------------
+
 
 @dataclass
 class PlotFlags:
@@ -1696,7 +1841,7 @@ def run_reconfig_plots(
     # case: Δa sweep (core + Pareto)
     # -----------------------------
     delta_min_km: float = -200.0,
-    delta_max_km: float =  200.0,
+    delta_max_km: float = 200.0,
     delta_step_km: float = 2.0,
 
     # ------------------------------------------------
@@ -1715,13 +1860,17 @@ def run_reconfig_plots(
 
     # -------------- diagnostics knobs --------------
     # Pareto time vs ΔV
-    pareto_include_wait: bool = True,           # whether to show wait/drift/total in Pareto labels
+    # whether to show wait/drift/total in Pareto labels
+    pareto_include_wait: bool = True,
     # Iso-time contours (hours)
-    iso_levels_hours: Optional[List[float]] = None,  # e.g. [12, 24, 48, 72, 96]
+    # e.g. [12, 24, 48, 72, 96]
+    iso_levels_hours: Optional[List[float]] = None,
     # Tolerance sensitivity curves (case study)
-    tol_sens_include_series: Tuple[bool, bool, bool] = (True, True, True),  # (total, wait, drift)
+    tol_sens_include_series: Tuple[bool, bool, bool] = (
+        True, True, True),  # (total, wait, drift)
     # Target jitter study
-    jitter_radius_deg: float = 1.0,             # radial jitter (deg) around the target
+    # radial jitter (deg) around the target
+    jitter_radius_deg: float = 1.0,
     jitter_samples: int = 200,                  # number of random samples
     jitter_seed: int = 7,
     jitter_tolerance_deg: float = 0.25,         # fixed tol for jitter plot
@@ -1730,7 +1879,8 @@ def run_reconfig_plots(
     epoch_samples: int = 49,                    # odd number to include center
     epoch_tolerance_deg: float = 0.25,          # fixed tol for epoch plot
     # Residual curves
-    residual_branch: Optional[str] = None,      # 'ascending'/'descending'/None(auto)
+    # 'ascending'/'descending'/None(auto)
+    residual_branch: Optional[str] = None,
     residual_m: Optional[int] = None,           # specific m, or None for best
     residual_k: Optional[int] = None,           # specific k, or None for best
     residual_nsamples: int = 600,               # Td samples across feasible band
@@ -1774,10 +1924,13 @@ def run_reconfig_plots(
         iso_levels_hours = [12.0, 24.0, 48.0, 72.0, 96.0]
 
     # Derived inclination / latitude band for grid-based plots
-    use_inc_deg = rad2deg(gom.i_rad) if inclination_deg is None else float(inclination_deg)
-    use_band_deg = min(use_inc_deg - 1.0, 0.9 * use_inc_deg) if (lat_band_deg is None) else float(lat_band_deg)
+    use_inc_deg = rad2deg(
+        gom.i_rad) if inclination_deg is None else float(inclination_deg)
+    use_band_deg = min(use_inc_deg - 1.0, 0.9 *
+                       use_inc_deg) if (lat_band_deg is None) else float(lat_band_deg)
     if use_band_deg <= 0.0 and (flags.avg_vs_delta_a or flags.avg_vs_tolerance or flags.heatmap or flags.iso_time_contours):
-        raise ValueError("Latitude band must be positive and smaller than inclination for grid-based plots.")
+        raise ValueError(
+            "Latitude band must be positive and smaller than inclination for grid-based plots.")
 
     # --------------------------
     # Core: case-study plots
@@ -1826,7 +1979,8 @@ def run_reconfig_plots(
     if flags.heatmap:
         print("Generating heatmaps over target grid...")
         # choose a mid-ladder tolerance for the heatmap by default
-        heat_tol = tolerances_deg[min(5, len(tolerances_deg) - 1)]  # ~0.1–0.25°
+        heat_tol = tolerances_deg[min(
+            5, len(tolerances_deg) - 1)]  # ~0.1–0.25°
         figs['heatmap'] = plot_heatmaps_for_case(
             gom, rom_a_km, epoch,
             use_inc_deg, use_band_deg, n_lat, n_lon,
@@ -1840,8 +1994,10 @@ def run_reconfig_plots(
     # --------------------------
     if flags.pareto_time_vs_dv:
         # per-target Pareto
-        dA_list = np.arange(delta_min_km, delta_max_km + 1e-9, delta_step_km, dtype=float)
-        tol_for_pareto = tolerances_deg[min(5, len(tolerances_deg)-1)]  # mid ladder
+        dA_list = np.arange(delta_min_km, delta_max_km +
+                            1e-9, delta_step_km, dtype=float)
+        tol_for_pareto = tolerances_deg[min(
+            5, len(tolerances_deg)-1)]  # mid ladder
         figs["pareto_case"] = plot_pareto_time_vs_dv(
             gom, rom_a_km, epoch,
             target_name or "Target", target_lat_geod_deg, target_lon_deg,
@@ -1919,51 +2075,52 @@ def run_reconfig_plots(
 
     if flags.tolerance_sensitivity:
         figs['tol_sensitivity'] = _call_with_supported_kwargs(plot_tolerance_sensitivity_curves,
-            gom, rom_a_km, epoch,
-            target_name, target_lat_geod_deg, target_lon_deg,
-            delta_a_fixed_km, tolerances_deg,
-            include_series=tol_sens_include_series,  # (total, wait, drift)
-            max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days,
-            outdir="results/reconfig/tolerance_sensitivity", verbose=verbose
-        )
+                                                              gom, rom_a_km, epoch,
+                                                              target_name, target_lat_geod_deg, target_lon_deg,
+                                                              delta_a_fixed_km, tolerances_deg,
+                                                              # (total, wait, drift)
+                                                              include_series=tol_sens_include_series,
+                                                              max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days,
+                                                              outdir="results/reconfig/tolerance_sensitivity", verbose=verbose
+                                                              )
 
     if flags.target_jitter:
         figs['jitter'] = _call_with_supported_kwargs(plot_target_jitter_study,
-            gom, rom_a_km, epoch,
-            center_name=target_name,
-            center_lat_deg=target_lat_geod_deg,
-            center_lon_deg=target_lon_deg,
-            jitter_radius_deg=jitter_radius_deg,
-            n_samples=jitter_samples,
-            seed=jitter_seed,
-            delta_a_fixed_km=delta_a_fixed_km,
-            tolerance_deg=jitter_tolerance_deg,
-            max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days,
-            outdir="results/reconfig/jitter", verbose=verbose
-        )
+                                                     gom, rom_a_km, epoch,
+                                                     center_name=target_name,
+                                                     center_lat_deg=target_lat_geod_deg,
+                                                     center_lon_deg=target_lon_deg,
+                                                     jitter_radius_deg=jitter_radius_deg,
+                                                     n_samples=jitter_samples,
+                                                     seed=jitter_seed,
+                                                     delta_a_fixed_km=delta_a_fixed_km,
+                                                     tolerance_deg=jitter_tolerance_deg,
+                                                     max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days,
+                                                     outdir="results/reconfig/jitter", verbose=verbose
+                                                     )
 
     if flags.epoch_sensitivity:
         figs['epoch_sensitivity'] = _call_with_supported_kwargs(plot_epoch_sensitivity,
-            gom, rom_a_km, epoch,
-            target_name, target_lat_geod_deg, target_lon_deg,
-            delta_a_fixed_km=delta_a_fixed_km,
-            tolerance_deg=epoch_tolerance_deg,
-            window_hours=epoch_window_hours,
-            n_samples=epoch_samples,
-            max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days,
-            outdir="results/reconfig/epoch_sensitivity", verbose=verbose
-        )
+                                                                gom, rom_a_km, epoch,
+                                                                target_name, target_lat_geod_deg, target_lon_deg,
+                                                                delta_a_fixed_km=delta_a_fixed_km,
+                                                                tolerance_deg=epoch_tolerance_deg,
+                                                                window_hours=epoch_window_hours,
+                                                                n_samples=epoch_samples,
+                                                                max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days,
+                                                                outdir="results/reconfig/epoch_sensitivity", verbose=verbose
+                                                                )
 
     if flags.residual_curves:
         figs['residuals'] = _call_with_supported_kwargs(plot_residual_curves_for_selected_mk,
-            gom, rom_a_km, epoch,
-            target_name, target_lat_geod_deg, target_lon_deg,
-            delta_a_fixed_km=delta_a_fixed_km,
-            branch=residual_branch, m_sel=residual_m, k_sel=residual_k,
-            nsamples=residual_nsamples,
-            max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days,
-            outdir="results/reconfig/residuals", verbose=verbose
-        )
+                                                        gom, rom_a_km, epoch,
+                                                        target_name, target_lat_geod_deg, target_lon_deg,
+                                                        delta_a_fixed_km=delta_a_fixed_km,
+                                                        branch=residual_branch, m_sel=residual_m, k_sel=residual_k,
+                                                        nsamples=residual_nsamples,
+                                                        max_wrap=max_wrap, drift_time_cap_days=drift_time_cap_days,
+                                                        outdir="results/reconfig/residuals", verbose=verbose
+                                                        )
 
     return figs
 
