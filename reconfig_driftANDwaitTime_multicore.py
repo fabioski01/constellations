@@ -32,6 +32,28 @@ from multiprocessing import get_context
 import sys
 from reconfig_phasing_RGT import PhasingRGT 
 
+ALT_LIST_KM = [700.0, 500.0, 1000.0]
+# ALT_LIST_KM = [700.0]
+FLAG_AVG_VS_DELTA_A = True
+FLAG_AVG_VS_TOLERANCE = False
+FLAG_HEATMAP = False
+FLAG_PARETO_TIME_VS_DV_AVG = False
+FLAG_ISO_TIME_CONTOURS_AVG = False
+
+# If flags are passed as command-line arguments, use those
+if len(sys.argv) > 1:
+    ALT_LIST_KM = [float(sys.argv[1])]
+    if len(sys.argv) > 2:
+        FLAG_AVG_VS_DELTA_A = bool(int(sys.argv[2]))
+    if len(sys.argv) > 3:
+        FLAG_AVG_VS_TOLERANCE = bool(int(sys.argv[3]))
+    if len(sys.argv) > 4:
+        FLAG_HEATMAP = bool(int(sys.argv[4]))
+    if len(sys.argv) > 5:
+        FLAG_PARETO_TIME_VS_DV_AVG = bool(int(sys.argv[5]))
+    if len(sys.argv) > 6:
+        FLAG_ISO_TIME_CONTOURS_AVG = bool(int(sys.argv[6]))
+
 # Print guard so we only announce core usage once per process
 _PRINTED_CORE_CONFIG = False
 _CORE_BANNER_PID = os.getpid()  # track which process printed
@@ -1087,11 +1109,11 @@ if __name__ == "__main__":
 
     FLAG_TIMES_VS_DELTA_A = False
     FLAG_TIMES_VS_TOLERANCE = False
-    FLAG_AVG_VS_DELTA_A = True
-    FLAG_AVG_VS_TOLERANCE = False
-    FLAG_HEATMAP = False
-    FLAG_PARETO_TIME_VS_DV_AVG = False
-    FLAG_ISO_TIME_CONTOURS_AVG = False
+    # FLAG_AVG_VS_DELTA_A = True
+    # FLAG_AVG_VS_TOLERANCE = False
+    # FLAG_HEATMAP = False
+    # FLAG_PARETO_TIME_VS_DV_AVG = False
+    # FLAG_ISO_TIME_CONTOURS_AVG = False
 
     # Diagnostics
     FLAG_PARETO_TIME_VS_DV    = False # averaged across grid
@@ -1109,10 +1131,10 @@ if __name__ == "__main__":
     verbose = False
 
     # Plot parameter sets
-    delta_range = dict(delta_min_km=-200, delta_max_km=200, delta_step_km=10)
+    delta_range = dict(delta_min_km=-100, delta_max_km=100, delta_step_km=2)
     tol_ladder  = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0] # used by time vs tolerance at given delta a 
     # tol_ladder  = [0.001, 0.25]
-    delta_a_fixed_km = 50.0
+    delta_a_fixed_km = -200.0
 
     # Diagnostics params
     iso_levels_hours = [12.0, 24.0, 48.0, 72.0, 96.0]
@@ -1135,9 +1157,20 @@ if __name__ == "__main__":
     #  - altitudes: 500, 700, 1000 km
     #  - inclinations: 50°, 60°, and 98° only for 500 and 700 km
     # -----------------------------------------------
-    ALT_LIST_KM = [500.0, 700.0, 1000.0]
-    for alt_km in ALT_LIST_KM:
-        incl_list = [50.0, 60.0] if alt_km == 1000.0 else [50.0, 60.0, 98.0]
+    # ALT_LIST_KM = [500.0, 700.0, 1000.0]
+    for alt_km in ALT_LIST_KM:  
+
+        # Set delta_min_km based on GOM altitude
+        if alt_km == 500.0:
+            delta_min_km = -200 
+        elif alt_km == 700.0:
+            delta_min_km = -300
+        elif alt_km == 1000.0:
+            delta_min_km = -600
+        else:
+            delta_min_km = -300  # default/fallback
+                  
+        incl_list = [50.0, 60.0, 98.0] if alt_km == 1000.0 else [98.0]
         for i_deg in incl_list:
             print(f"\n=== Scenario: hG={alt_km:.0f} km, i={i_deg:.2f}° ===")
 
@@ -1147,7 +1180,7 @@ if __name__ == "__main__":
                 i_rad= deg2rad(i_deg),
                 Omega_rad = deg2rad(0.0),
                 u_rad     = deg2rad(0.0)
-            )
+            ) 
 
             # Compute ROM from RGT solver for this inclination
             if RGT_USE:
@@ -1240,14 +1273,14 @@ if __name__ == "__main__":
                 lat_band_deg = i_deg -1.0         # must be < inclination to ensure access
 
                 # Default grid
-                n_lat = 2                # number of latitude samples in [-band,+band]
-                n_lon = 3                  # number of longitudes in [-180,180)
+                n_lat = 72                # number of latitude samples in [-band,+band]
+                n_lon = 240                  # number of longitudes in [-180,180)
 
                 # Adjust grid sizes by inclination
                 if i_deg > 90.0:
-                    n_lat = 18
+                    n_lat = 120
                 elif abs(i_deg - 60.0) < 1e-9:
-                    n_lat = 13
+                    n_lat = 80
 
                 # Compute ROM from RGT solver for this inclination
                 if RGT_USE:
@@ -1283,7 +1316,7 @@ if __name__ == "__main__":
                         pareto_time_vs_dv_avg=FLAG_PARETO_TIME_VS_DV_AVG,     # added
                         iso_time_contours_avg=FLAG_ISO_TIME_CONTOURS_AVG       # added
                     ),
-                    delta_min_km=delta_range["delta_min_km"],
+                    delta_min_km=delta_min_km,
                     delta_max_km=delta_range["delta_max_km"],
                     delta_step_km=delta_range["delta_step_km"],
                     delta_a_fixed_km=[50, 100, 200, 400], # only for tol plot with multiple deltaA
@@ -1302,14 +1335,14 @@ if __name__ == "__main__":
             if FLAG_HEATMAP or FLAG_ISO_TIME_CONTOURS:
                 lat_band_deg = i_deg - 1.0
                 # Default grid
-                n_lat_heatmap = 110          # across inclination band
-                n_long_heatmap = 360         # around Earth
+                n_lat_heatmap = 220          # across inclination band
+                n_long_heatmap = 720         # around Earth
 
                 # Adjust grid sizes by inclination
                 if i_deg > 90.0:
-                    n_lat_heatmap = 180
+                    n_lat_heatmap = 360
                 elif abs(i_deg - 60.0) < 1e-9:
-                    n_lat_heatmap = 130
+                    n_lat_heatmap = 240
 
                 # Compute ROM from RGT solver for this inclination
                 if RGT_USE:
