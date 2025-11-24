@@ -1172,7 +1172,7 @@ if __name__ == "__main__":
     # rom_a_km = R_EARTH + 504.59534097
     # RGT (Repeat Ground Track) ROM settings
     RGT_USE = True
-    RGT_No = 15          # revolutions
+    RGT_No = 13          # revolutions
     RGT_Nd = 1           # days
     RGT_e = 0.0         # eccentricity for RGT solution
     RGT_FALLBACK_ALT_KM = 250.0  # fallback if RGT solver fails
@@ -1362,9 +1362,9 @@ if __name__ == "__main__":
 
                 # Default grid
                 # number of latitude samples in [-band,+band]
-                n_lat = 100  # 2
+                n_lat = 36  # 2
                 # s3                  # number of longitudes in [-180,180)
-                n_lon = 360
+                n_lon = 72
 
                 # Adjust grid sizes by inclination
                 if i_deg > 90.0:

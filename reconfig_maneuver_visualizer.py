@@ -670,12 +670,12 @@ def main():
     """
     # 1) Single source of truth: scenario inputs
     base_epoch = datetime(2025, 5, 5, 12, 0, 0, tzinfo=timezone.utc)
-    inc_deg    = 51.447684794794995
+    inc_deg    = 50
     raan0_deg  = 0.0
     u0_deg     = 0.0  # for circular, u=M when ω=0
 
-    gom_a_km   = constants.EARTH_RADIUS + 500.0
-    rom_a_km   = 6875.59534097
+    gom_a_km   = constants.MARS_RADIUS + 400.0
+    rom_a_km   = constants.MARS_RADIUS + 256.9
     delta_a_km = 50.0  # example drift Δa; adjust as needed
 
     # 2) Build planner Orbit and call helper
