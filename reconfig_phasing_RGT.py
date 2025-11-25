@@ -414,7 +414,201 @@ class PhasingRGT:
         print(f"Plot saved to: {savefile}")
         plt.show()
 
+    # ---------------------------------------------------------
+    # NEW METHODS FOR TIME-BASED REVISIT (e.g., 2h, 12h, 24h)
+    # ---------------------------------------------------------
 
+    def _revisit_time_error(self, a, i, e, target_time_sec):
+        """
+        Computes error between actual revisit time and target time.
+        Revisit happens when relative longitude covers 2pi.
+        Rate_rel = (M_dot + omega_dot) + (|rot_planet| + Omega_dot)
+        """
+        M_dot = self.compute_precession_M(i, a, e)
+        omega_dot = self.compute_precession_omega_argperiapsis(i, a, e)
+        Omega_dot = self.compute_precession_Omega_RAAN(i, a, e)
+        
+        # Denominator logic handles retrograde (Venus) vs prograde
+        # Logic consistent with your target_function
+        if self.rotation_rate_earth < 0:
+            denom_planet = abs(self.rotation_rate_earth) + Omega_dot
+        else:
+            denom_planet = self.rotation_rate_earth - Omega_dot
+            
+        # Total relative angular velocity
+        w_relative = (M_dot + omega_dot) + denom_planet
+        
+        T_actual = 2 * np.pi / w_relative
+        return T_actual - target_time_sec
+
+    def solve_for_revisit_time(self, i, e, hours, a_guess=None):
+        """
+        Solves for 'a' that gives a revisit every N hours.
+        Uses a simple Secant method similar to your existing solver.
+        """
+        target_sec = hours * 3600.0
+        
+        if a_guess is None:
+            # Rough Keplerian guess to start
+            n_target = 2 * np.pi / target_sec
+            a_guess = (self.mu / n_target**2)**(1/3)
+
+        # Simple solver loop
+        a0 = a_guess
+        a1 = a_guess + 10.0
+        tol = 1e-4 # seconds
+        
+        for _ in range(50):
+            err0 = self._revisit_time_error(a0, i, e, target_sec)
+            err1 = self._revisit_time_error(a1, i, e, target_sec)
+            
+            if abs(err1) < tol:
+                return a1, True
+            
+            # Secant step
+            if abs(err1 - err0) < 1e-12: break
+            a_next = a1 - err1 * (a1 - a0) / (err1 - err0)
+            
+            # Safety bounds (Venus surface to 100k km)
+            a_next = max(self.Rearth + 100, min(a_next, self.Rearth + 100000))
+            
+            a0, a1 = a1, a_next
+            
+        return a1, False
+
+    def plot_revisit_intervals(self, hours_list=None, incl_step=2, e=0.0, savefile="results/venus_hours_revisit.png"):
+        """
+        Plots Altitude vs Inclination for fixed time intervals (e.g. 2h, 4h).
+        """
+        if hours_list is None:
+            hours_list = [2, 4, 6, 8, 12, 24]
+
+        inclinations = np.arange(0, 181, incl_step) # 0 to 180 for Venus
+        plt.figure(figsize=(10, 6))
+
+        for h in hours_list:
+            altitudes = []
+            valid_incs = []
+            
+            # Smart guess update: use previous result as guess for next inclination
+            a_guess = None 
+            
+            for inc in inclinations:
+                a_sol, converged = self.solve_for_revisit_time(inc, e, h, a_guess)
+                
+                # Filter out subsurface results
+                alt = a_sol - self.Rearth
+                if alt > 0: 
+                    altitudes.append(alt)
+                    valid_incs.append(inc)
+                    a_guess = a_sol # Update guess for speed
+            
+            if valid_incs:
+                plt.plot(valid_incs, altitudes, linewidth=2, label=f"{h} Hours")
+
+        plt.xlabel("Inclination (deg)")
+        plt.ylabel("Altitude (km)")
+        plt.title(f"{self.planet_name} Altitude vs Inclination for Fixed Revisit Times")
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.legend()
+        plt.tight_layout()
+        
+        import os
+        os.makedirs(os.path.dirname(savefile) or ".", exist_ok=True)
+        plt.savefig(savefile, dpi=200)
+        print(f"Plot saved to: {savefile}")
+        plt.show()
+
+    def plot_altitude_vs_revisit_time(self, inclination, min_hours=1.5, max_hours=24, 
+                                     step_hours=0.5, e=0.0, 
+                                     savefile="results/venus_altitude_vs_revisit.png"):
+        """
+        Plot Altitude vs Revisit Time for a fixed inclination.
+        
+        Parameters:
+        -----------
+        inclination : float
+            Fixed inclination in degrees (e.g., 0 or 50)
+        min_hours : float, optional
+            Minimum revisit time in hours (default: 1.5)
+        max_hours : float, optional
+            Maximum revisit time in hours (default: 24)
+        step_hours : float, optional
+            Step size for revisit times (default: 0.5)
+        e : float, optional
+            Eccentricity (default: 0.0)
+        savefile : str, optional
+            Path to save the plot
+        """
+        hours_range = np.arange(min_hours, max_hours + step_hours, step_hours)
+        altitudes = []
+        valid_hours = []
+        
+        print(f"\nSolving for altitudes at i={inclination}° for revisit times from {min_hours} to {max_hours} hours...")
+        
+        # Use previous solution as guess for next iteration
+        a_guess = None
+        
+        for h in hours_range:
+            a_sol, converged = self.solve_for_revisit_time(inclination, e, h, a_guess)
+            
+            if converged:
+                alt = a_sol - self.Rearth
+                if alt > 0:  # Valid altitude above surface
+                    altitudes.append(alt)
+                    valid_hours.append(h)
+                    a_guess = a_sol  # Update guess
+                    print(f"  {h:.1f} hours → {alt:.1f} km altitude")
+                else:
+                    print(f"  {h:.1f} hours → subsurface (skipped)")
+            else:
+                print(f"  {h:.1f} hours → no convergence")
+        
+        if not valid_hours:
+            print("No valid solutions found!")
+            return
+        
+        # Create the plot with enhanced formatting
+        fig, ax = plt.subplots(figsize=(12, 7))
+        ax.plot(valid_hours, altitudes, 'b-', linewidth=2.5, marker='o', markersize=5)
+        
+        # Enhanced axis labels with larger font
+        ax.set_xlabel("Revisit Time (hours)", fontsize=14, fontweight='bold')
+        ax.set_ylabel("Altitude (km)", fontsize=14, fontweight='bold')
+        
+        # X-axis: Integer labels only
+        x_min_int = int(np.ceil(min_hours))
+        x_max_int = int(np.floor(max_hours))
+        ax.set_xticks(range(x_min_int, x_max_int + 1))  # Integer ticks only
+        ax.set_xlim(min_hours, max_hours)
+        
+        # Y-axis: Logarithmic scale with better formatting
+        ax.set_yscale('log')
+        from matplotlib.ticker import LogLocator, LogFormatter
+        ax.yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
+        ax.yaxis.set_major_formatter(LogFormatter(base=10.0, labelOnlyBase=False))
+        ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100))
+        
+        # Enhanced grid
+        ax.grid(True, which='major', linestyle='-', linewidth=0.8, alpha=0.6)
+        ax.grid(True, which='minor', linestyle=':', linewidth=0.5, alpha=0.4)
+        
+        # Title
+        ax.set_title(f"{self.planet_name} Altitude vs Revisit Time at {inclination}° Inclination", 
+                     fontsize=15, fontweight='bold', pad=15)
+        
+        # Tick label sizes
+        ax.tick_params(axis='both', which='major', labelsize=12)
+        ax.tick_params(axis='both', which='minor', labelsize=10)
+        
+        plt.tight_layout()
+        
+        import os
+        os.makedirs(os.path.dirname(savefile) or ".", exist_ok=True)
+        plt.savefig(savefile, dpi=300)
+        print(f"\nPlot saved to: {savefile}")
+        plt.show()
+        
 # Backward compatibility: provide module-level functions that use a default instance
 _default_phasing_rgt = PhasingRGT()
 
@@ -499,19 +693,46 @@ if __name__ == "__main__":
     # For Venus RGT analysis
     phasing_venus = PhasingRGT(planet='venus')
 
-    # Plot RGT altitude vs inclination for Venus
-    # Ratios are typically 3400:1 to 3900:1 for practical altitudes
-    phasing_venus.plot_rgt_vs_inclinations(
-        ratios=[3400.0, 3500.0, 3600.0, 3700.0, 3800.0, 3900.0],
-        incl_step=10,
-        a_initial_guess_map={
-            3400.0: constants.VENUS_RADIUS + 1230.0,  # ~1230 km altitude
-            3500.0: constants.VENUS_RADIUS + 1067.0,  # ~1067 km altitude
-            3600.0: constants.VENUS_RADIUS + 910.0,   # ~910 km altitude
-            3700.0: constants.VENUS_RADIUS + 760.0,   # ~760 km altitude (typical)
-            3800.0: constants.VENUS_RADIUS + 615.0,   # ~615 km altitude
-            3900.0: constants.VENUS_RADIUS + 475.0,   # ~475 km altitude
-        },
-        e=0.0,
-    savefile="results/venus_rgt_vs_inclination.png"
+    # # Plot RGT altitude vs inclination for Venus
+    # # Ratios are typically 3400:1 to 3900:1 for practical altitudes
+    # phasing_venus.plot_rgt_vs_inclinations(
+    #     ratios=[3400.0, 3500.0, 3600.0, 3700.0, 3800.0, 3900.0],
+    #     incl_step=10,
+    #     a_initial_guess_map={
+    #         3400.0: constants.VENUS_RADIUS + 1230.0,  # ~1230 km altitude
+    #         3500.0: constants.VENUS_RADIUS + 1067.0,  # ~1067 km altitude
+    #         3600.0: constants.VENUS_RADIUS + 910.0,   # ~910 km altitude
+    #         3700.0: constants.VENUS_RADIUS + 760.0,   # ~760 km altitude (typical)
+    #         3800.0: constants.VENUS_RADIUS + 615.0,   # ~615 km altitude
+    #         3900.0: constants.VENUS_RADIUS + 475.0,   # ~475 km altitude
+    #     },
+    #     e=0.0,
+    # savefile="results/venus_rgt_vs_inclination.png"
+    # )
+
+    # # ---------------------------------------------------------
+    # # RUN THE VENUS HOURS PLOT
+    # # ---------------------------------------------------------
+    # phasing_venus = PhasingRGT(planet='venus')
+    
+    # print("Generating Venus Revisit Altitude Plot...")
+    # phasing_venus.plot_revisit_intervals(
+    #     hours_list=[2, 4, 6, 8, 12, 24], 
+    #     incl_step=5,
+    #     savefile="results/venus_revisit_intervals.png"
+    # )
+
+    # print("Generating Venus Revisit Altitude Plot...")
+    # phasing_venus.plot_revisit_intervals(
+    #     hours_list=[1.5, 1.6, 1.7, 1.8, 1.9, 2], 
+    #     incl_step=5,
+    #     savefile="results/venus_revisit_intervals_low.png"
+    # )
+
+    phasing_venus.plot_altitude_vs_revisit_time(
+        inclination=50.0,  # Choose 0 or 50 deg
+        min_hours=1.3,
+        max_hours=24.0,
+        step_hours=0.1,
+        savefile="results/venus_altitude_vs_revisit_50deg.png"
     )
