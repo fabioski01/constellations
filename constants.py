@@ -17,3 +17,10 @@ MST_CONSTANT_MARS = 14.8665              # MST at J2000.0 at Airy-0 [hours]
 # MST rate [hours of MST per Earth day]
 MARS_OMEGA = 23.3578631
 J2_MARS = 1.96045e-3
+
+VENUS_GRAVITATIONAL_CONSTANT = 324858.5920  # Venus grav. parameter μ [km³/s²]
+VENUS_RADIUS = 6051.8                        # Mean radius [km]
+# Venus sidereal rotation rate [deg/hour]; negative = retrograde
+VENUS_ROTATION_RATE = -0.061722
+# Venus J2 from Magellan gravity solutions (small but non-zero)
+J2_VENUS = 4.458e-6

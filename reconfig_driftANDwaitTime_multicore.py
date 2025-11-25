@@ -104,6 +104,21 @@ elif target_planet == 'mars':
     ELLIPSOID_F = MARS_ELLIPSOID_F
     ELLIPSOID_E2 = MARS_ELLIPSOID_E2
 
+elif target_planet == 'venus':
+    # Venus (IAU / Magellan reference ellipsoid)
+    R_EARTH = constants.VENUS_RADIUS                   # km (Venus mean radius)
+    MU_EARTH = constants.VENUS_GRAVITATIONAL_CONSTANT  # km^3/s^2
+    J2 = constants.J2_VENUS                            # Venus J2
+
+    # IAU 2000 / Magellan Venus reference ellipsoid
+    VENUS_A = 6051.8  # km, equatorial radius
+    VENUS_B = 6051.8  # km, polar radius (nearly spherical)
+    VENUS_ELLIPSOID_F = (VENUS_A - VENUS_B) / VENUS_A
+    VENUS_ELLIPSOID_E2 = VENUS_ELLIPSOID_F * (2.0 - VENUS_ELLIPSOID_F)
+
+    ELLIPSOID_F = VENUS_ELLIPSOID_F
+    ELLIPSOID_E2 = VENUS_ELLIPSOID_E2
+
 else:
     raise ValueError(f"Unsupported target_planet: {target_planet}")
 
@@ -188,6 +203,12 @@ def gmst_rad(dt: datetime) -> float:
     elif target_planet == 'mars':
         # Mars prime meridian angle W(t) (Airy-0 / VL1 frame)
         W_deg = 176.630 + 350.89198226 * D
+        return wrap_2pi(deg2rad(W_deg))
+    
+    elif target_planet == 'venus':
+        # Venus prime meridian angle (IAU 2000)
+        # W [deg] = 160.20 +  1.4813688 * d
+        W_deg = 160.20 + 1.4813688 * D
         return wrap_2pi(deg2rad(W_deg))
 
     else:
@@ -1159,10 +1180,10 @@ if __name__ == "__main__":
     #     Omega_rad = deg2rad(0.0),
     #     u_rad     = deg2rad(0.0)
     # )
-    i_deg = 50.0  # or whatever inclination you actually want
+    i_deg = 60.0  # or whatever inclination you actually want
 
     gom = Orbit(
-        a_km=R_EARTH + 300.0,   # 300 km altitude around Mars
+        a_km=R_EARTH + 400.0,   # 400 km altitude around Venus
         i_rad=deg2rad(i_deg),
         Omega_rad=deg2rad(0.0),
         u_rad=deg2rad(0.0)
@@ -1171,8 +1192,8 @@ if __name__ == "__main__":
     # ROM altitude (semi-major axis)
     # rom_a_km = R_EARTH + 504.59534097
     # RGT (Repeat Ground Track) ROM settings
-    RGT_USE = True
-    RGT_No = 13          # revolutions
+    RGT_USE = False
+    RGT_No = 15          # revolutions
     RGT_Nd = 1           # days
     RGT_e = 0.0         # eccentricity for RGT solution
     RGT_FALLBACK_ALT_KM = 250.0  # fallback if RGT solver fails
@@ -1194,8 +1215,8 @@ if __name__ == "__main__":
 
     FLAG_TIMES_VS_DELTA_A = False
     FLAG_TIMES_VS_TOLERANCE = False
-    FLAG_AVG_VS_DELTA_A = True
-    FLAG_AVG_VS_TOLERANCE = True
+    FLAG_AVG_VS_DELTA_A = False
+    FLAG_AVG_VS_TOLERANCE = False
     FLAG_HEATMAP = True
     FLAG_PARETO_TIME_VS_DV_AVG = False
     FLAG_ISO_TIME_CONTOURS_AVG = False
@@ -1219,7 +1240,7 @@ if __name__ == "__main__":
     tol_ladder = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5,
                   1.0, 2.0, 5.0, 10.0]  # used by time vs tolerance at given delta a
     # tol_ladder  = [0.001, 0.25]
-    delta_a_fixed_km = 50.0
+    delta_a_fixed_km = -150.0
 
     # Diagnostics params
     iso_levels_hours = [12.0, 24.0, 48.0, 72.0, 96.0]
@@ -1243,9 +1264,9 @@ if __name__ == "__main__":
     #  - inclinations: 50°, 60°, and 98° only for 500 and 700 km
     # -----------------------------------------------
     ALT_LIST_KM = [500.0, 700.0, 1000.0]
-    ALT_LIST_KM = [400, 300.0, 200.0]  # Mars test altitudes
+    ALT_LIST_KM = [400]  # Mars test altitudes
     for alt_km in ALT_LIST_KM:
-        incl_list = [50.0, 60.0] if alt_km == 1000.0 else [50.0, 60.0, 96.0]
+        incl_list = [50.0, 60.0] if alt_km == 1000.0 else [60.0]
         for i_deg in incl_list:
             print(f"\n=== Scenario: hG={alt_km:.0f} km, i={i_deg:.2f}° ===")
 
@@ -1275,7 +1296,17 @@ if __name__ == "__main__":
                     a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
                         i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
                     )
-
+                elif target_planet == 'venus':
+                    phasing = PhasingRGT(
+                        J2=constants.J2_VENUS,
+                        Rearth=constants.VENUS_RADIUS,
+                        mu=constants.VENUS_GRAVITATIONAL_CONSTANT,
+                        rotation_rate_earth=2.0 * pi /
+                        (243*24*3600),  # Venus sidereal day, rad/s
+                    )
+                    a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                        i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                    )
                 if converged and np.isfinite(a_solution):
                     rom_a_km = float(a_solution)
                     print(f"[RGT] ROM a={rom_a_km:.3f} km (h={rom_a_km - R_EARTH:.1f} km) "
@@ -1391,6 +1422,17 @@ if __name__ == "__main__":
                         a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
                             i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
                         )
+                    elif target_planet == 'venus':
+                        phasing = PhasingRGT(
+                            J2=constants.J2_VENUS,
+                            Rearth=constants.VENUS_RADIUS,
+                            mu=constants.VENUS_GRAVITATIONAL_CONSTANT,
+                            rotation_rate_earth=2.0 * pi /
+                            (243*24*3600),  # Venus sidereal day, rad/s
+                        )
+                        a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                            i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                        )
                     if converged and np.isfinite(a_solution):
                         rom_a_km = float(a_solution)
                         print(f"[RGT] ROM a={rom_a_km:.3f} km (h={rom_a_km - R_EARTH:.1f} km) "
@@ -1463,6 +1505,17 @@ if __name__ == "__main__":
                             rotation_rate_earth=2.0 * pi /
                             # Mars sidereal day, rad/s
                             (24*3600 + 37*60 + 22.66),
+                        )
+                        a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
+                            i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd
+                        )
+                    elif target_planet == 'venus':
+                        phasing = PhasingRGT(
+                            J2=constants.J2_VENUS,
+                            Rearth=constants.VENUS_RADIUS,
+                            mu=constants.VENUS_GRAVITATIONAL_CONSTANT,
+                            rotation_rate_earth=2.0 * pi /
+                            (243*24*3600),  # Venus sidereal day, rad/s
                         )
                         a_solution, converged, iterations = phasing.solve_for_semi_major_axis(
                             i=i_deg, e=RGT_e, No=RGT_No, Nd=RGT_Nd

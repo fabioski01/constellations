@@ -1,0 +1,1823 @@
+[avg-dA] pool: workers=48 start=fork cpu_max=48 affinity_count=40 pid=2745866
+[avg-dA] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+
+=== Scenario: hG=400 km, i=60.00° ===
+
+[AVG] Generating averaged plots across target grid...
+Generating average times vs Δa over target grid...
+[avg-dA] target lat=-59.000 lon=-180.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=-59.000 lon=-175.000 Δa[-200,200] step=10 pid=2745907
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-170.000 Δa[-200,200] step=10 pid=2745908
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-165.000 Δa[-200,200] step=10 pid=2745909
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-160.000 Δa[-200,200] step=10 pid=2745910
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-155.000 Δa[-200,200] step=10 pid=2745911
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-130.000 Δa[-200,200] step=10 pid=2745916
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745906
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-150.000 Δa[-200,200] step=10 pid=2745912
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-145.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=-59.000 lon=-90.000 Δa[-200,200] step=10 pid=2745924
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-140.000 Δa[-200,200] step=10 pid=2745914
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-135.000 Δa[-200,200] step=10 pid=2745915
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-125.000 Δa[-200,200] step=10 pid=2745917
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745907
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-120.000 Δa[-200,200] step=10 pid=2745918
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-115.000 Δa[-200,200] step=10 pid=2745919
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-110.000 Δa[-200,200] step=10 pid=2745920
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-105.000 Δa[-200,200] step=10 pid=2745921
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=+25.000 Δa[-200,200] step=10 pid=2745947
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-100.000 Δa[-200,200] step=10 pid=2745922
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745908
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-95.000 Δa[-200,200] step=10 pid=2745923
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-85.000 Δa[-200,200] step=10 pid=2745925
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745909
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-80.000 Δa[-200,200] step=10 pid=2745926
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-75.000 Δa[-200,200] step=10 pid=2745927
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-70.000 Δa[-200,200] step=10 pid=2745928
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-65.000 Δa[-200,200] step=10 pid=2745929
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-60.000 Δa[-200,200] step=10 pid=2745930
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-55.000 Δa[-200,200] step=10 pid=2745931
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-50.000 Δa[-200,200] step=10 pid=2745932
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-45.000 Δa[-200,200] step=10 pid=2745933
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-40.000 Δa[-200,200] step=10 pid=2745934
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-35.000 Δa[-200,200] step=10 pid=2745935
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745910
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-30.000 Δa[-200,200] step=10 pid=2745936
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-25.000 Δa[-200,200] step=10 pid=2745937
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-20.000 Δa[-200,200] step=10 pid=2745938
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-15.000 Δa[-200,200] step=10 pid=2745939
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745911
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=-10.000 Δa[-200,200] step=10 pid=2745940
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=-5.000 Δa[-200,200] step=10 pid=2745941
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=+0.000 Δa[-200,200] step=10 pid=2745942
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=+5.000 Δa[-200,200] step=10 pid=2745943
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=+10.000 Δa[-200,200] step=10 pid=2745944
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=+15.000 Δa[-200,200] step=10 pid=2745945
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=+20.000 Δa[-200,200] step=10 pid=2745946
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=+30.000 Δa[-200,200] step=10 pid=2745948
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=+35.000 Δa[-200,200] step=10 pid=2745949
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=+40.000 Δa[-200,200] step=10 pid=2745950
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[avg-dA] target lat=-59.000 lon=+45.000 Δa[-200,200] step=10 pid=2745951
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=+50.000 Δa[-200,200] step=10 pid=2745952
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[avg-dA] target lat=-59.000 lon=+55.000 Δa[-200,200] step=10 pid=2745953
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745916
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745912
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745913
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745924
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745918
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745914
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745938
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745915
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745922
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745917
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745923
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745919
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745920
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745927
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745921
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745947
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745932
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745925
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745926
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745928
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745940
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745941
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745942
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745929
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745943
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745930
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745931
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745946
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745948
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745933
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745949
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745934
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745951
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745950
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745952
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745935
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745936
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745953
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745937
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745939
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745944
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=329, mp_start=fork, pid=2745945
+[avg-dA] target lat=-59.000 lon=+60.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=-59.000 lon=+65.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=-59.000 lon=+70.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=-59.000 lon=+75.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=-59.000 lon=+80.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=-59.000 lon=+85.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=-59.000 lon=+90.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=-59.000 lon=+95.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-59.000 lon=+100.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=-59.000 lon=+105.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=-59.000 lon=+110.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=-59.000 lon=+115.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=-59.000 lon=+120.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=-59.000 lon=+125.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=-59.000 lon=+130.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=-59.000 lon=+135.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=-59.000 lon=+140.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=-59.000 lon=+145.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=-59.000 lon=+150.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=-59.000 lon=+155.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=-59.000 lon=+160.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=-59.000 lon=+165.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=-59.000 lon=+170.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=-59.000 lon=+175.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=-49.167 lon=-180.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=-49.167 lon=-175.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=-49.167 lon=-170.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=-49.167 lon=-165.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=-49.167 lon=-160.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=-49.167 lon=-155.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=-49.167 lon=-150.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=-49.167 lon=-145.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=-49.167 lon=-140.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=-49.167 lon=-135.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=-49.167 lon=-130.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=-49.167 lon=-125.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=-49.167 lon=-120.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=-49.167 lon=-115.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=-49.167 lon=-110.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=-49.167 lon=-105.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=-49.167 lon=-100.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=-49.167 lon=-95.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=-49.167 lon=-90.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=-49.167 lon=-85.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=-49.167 lon=-80.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=-49.167 lon=-75.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=-49.167 lon=-70.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=-49.167 lon=-65.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=-49.167 lon=-60.000 Δa[-200,200] step=10 pid=2745934
+[avg-dA] target lat=-49.167 lon=-55.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=-49.167 lon=-50.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=-49.167 lon=-45.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=-49.167 lon=-40.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-49.167 lon=-35.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=-49.167 lon=-30.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=-49.167 lon=-25.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=-49.167 lon=-20.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=-49.167 lon=-15.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=-49.167 lon=-10.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=-49.167 lon=-5.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=-49.167 lon=+0.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=-49.167 lon=+5.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=-49.167 lon=+10.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=-49.167 lon=+15.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=-49.167 lon=+20.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=-49.167 lon=+25.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=-49.167 lon=+30.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=-49.167 lon=+35.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=-49.167 lon=+40.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=-49.167 lon=+45.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=-49.167 lon=+50.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=-49.167 lon=+55.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=-49.167 lon=+60.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=-49.167 lon=+65.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=-49.167 lon=+70.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=-49.167 lon=+75.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=-49.167 lon=+80.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=-49.167 lon=+85.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=-49.167 lon=+90.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=-49.167 lon=+95.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=-49.167 lon=+100.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=-49.167 lon=+105.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=-49.167 lon=+110.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=-49.167 lon=+115.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=-49.167 lon=+120.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=-49.167 lon=+125.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=-49.167 lon=+130.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=-49.167 lon=+135.000 Δa[-200,200] step=10 pid=2745927
+[avg-dA] target lat=-49.167 lon=+140.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=-49.167 lon=+145.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=-49.167 lon=+150.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=-49.167 lon=+155.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=-49.167 lon=+160.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=-49.167 lon=+165.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-49.167 lon=+170.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=-49.167 lon=+175.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=-39.333 lon=-180.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=-39.333 lon=-175.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=-39.333 lon=-170.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=-39.333 lon=-165.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=-39.333 lon=-160.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=-39.333 lon=-155.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=-39.333 lon=-150.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=-39.333 lon=-145.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=-39.333 lon=-140.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=-39.333 lon=-135.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=-39.333 lon=-130.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=-39.333 lon=-125.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=-39.333 lon=-120.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=-39.333 lon=-115.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=-39.333 lon=-110.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=-39.333 lon=-105.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=-39.333 lon=-100.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=-39.333 lon=-95.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=-39.333 lon=-90.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=-39.333 lon=-85.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=-39.333 lon=-80.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=-39.333 lon=-75.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=-39.333 lon=-70.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=-39.333 lon=-65.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=-39.333 lon=-60.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=-39.333 lon=-55.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=-39.333 lon=-50.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=-39.333 lon=-45.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=-39.333 lon=-40.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=-39.333 lon=-35.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=-39.333 lon=-30.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=-39.333 lon=-25.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=-39.333 lon=-20.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=-39.333 lon=-15.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=-39.333 lon=-10.000 Δa[-200,200] step=10 pid=2745934
+[avg-dA] target lat=-39.333 lon=-5.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=-39.333 lon=+0.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=-39.333 lon=+5.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-39.333 lon=+10.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=-39.333 lon=+15.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=-39.333 lon=+20.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=-39.333 lon=+25.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=-39.333 lon=+30.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=-39.333 lon=+35.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=-39.333 lon=+40.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=-39.333 lon=+45.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=-39.333 lon=+50.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=-39.333 lon=+55.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=-39.333 lon=+60.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=-39.333 lon=+65.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=-39.333 lon=+70.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=-39.333 lon=+75.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=-39.333 lon=+80.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=-39.333 lon=+85.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=-39.333 lon=+90.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=-39.333 lon=+95.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=-39.333 lon=+100.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=-39.333 lon=+105.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=-39.333 lon=+110.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=-39.333 lon=+115.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=-39.333 lon=+120.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=-39.333 lon=+125.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=-39.333 lon=+130.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=-39.333 lon=+135.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=-39.333 lon=+140.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=-39.333 lon=+145.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=-39.333 lon=+150.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=-39.333 lon=+155.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=-39.333 lon=+160.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=-39.333 lon=+165.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=-39.333 lon=+170.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=-39.333 lon=+175.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=-29.500 lon=-180.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=-29.500 lon=-175.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=-29.500 lon=-170.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=-29.500 lon=-165.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=-29.500 lon=-160.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=-29.500 lon=-155.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-29.500 lon=-150.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=-29.500 lon=-145.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=-29.500 lon=-140.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=-29.500 lon=-135.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=-29.500 lon=-130.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=-29.500 lon=-125.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=-29.500 lon=-120.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=-29.500 lon=-115.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=-29.500 lon=-110.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=-29.500 lon=-105.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=-29.500 lon=-100.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=-29.500 lon=-95.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=-29.500 lon=-90.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=-29.500 lon=-85.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=-29.500 lon=-80.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=-29.500 lon=-75.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=-29.500 lon=-70.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=-29.500 lon=-65.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=-29.500 lon=-60.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=-29.500 lon=-55.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=-29.500 lon=-50.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=-29.500 lon=-45.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=-29.500 lon=-40.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=-29.500 lon=-35.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=-29.500 lon=-30.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=-29.500 lon=-25.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=-29.500 lon=-20.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=-29.500 lon=-15.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=-29.500 lon=-10.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=-29.500 lon=-5.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=-29.500 lon=+0.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=-29.500 lon=+5.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=-29.500 lon=+10.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=-29.500 lon=+15.000 Δa[-200,200] step=10 pid=2745927
+[avg-dA] target lat=-29.500 lon=+20.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=-29.500 lon=+25.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=-29.500 lon=+30.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=-29.500 lon=+35.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=-29.500 lon=+40.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=-29.500 lon=+45.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=-29.500 lon=+50.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=-29.500 lon=+55.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=-29.500 lon=+60.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=-29.500 lon=+65.000 Δa[-200,200] step=10 pid=2745934
+[avg-dA] target lat=-29.500 lon=+70.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-29.500 lon=+75.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=-29.500 lon=+80.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=-29.500 lon=+85.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=-29.500 lon=+90.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=-29.500 lon=+95.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=-29.500 lon=+100.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=-29.500 lon=+105.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=-29.500 lon=+110.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=-29.500 lon=+115.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=-29.500 lon=+120.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=-29.500 lon=+125.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=-29.500 lon=+130.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=-29.500 lon=+135.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=-29.500 lon=+140.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=-29.500 lon=+145.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=-29.500 lon=+150.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=-29.500 lon=+155.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=-29.500 lon=+160.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=-29.500 lon=+165.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=-29.500 lon=+170.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=-29.500 lon=+175.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=-19.667 lon=-180.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=-19.667 lon=-175.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=-19.667 lon=-170.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=-19.667 lon=-165.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=-19.667 lon=-160.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=-19.667 lon=-155.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=-19.667 lon=-150.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=-19.667 lon=-145.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=-19.667 lon=-140.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=-19.667 lon=-135.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=-19.667 lon=-130.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=-19.667 lon=-125.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=-19.667 lon=-120.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=-19.667 lon=-115.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=-19.667 lon=-110.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=-19.667 lon=-105.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=-19.667 lon=-100.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=-19.667 lon=-95.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-19.667 lon=-90.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=-19.667 lon=-85.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=-19.667 lon=-80.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=-19.667 lon=-75.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=-19.667 lon=-70.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=-19.667 lon=-65.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=-19.667 lon=-60.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=-19.667 lon=-55.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=-19.667 lon=-50.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=-19.667 lon=-45.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=-19.667 lon=-40.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=-19.667 lon=-35.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=-19.667 lon=-30.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=-19.667 lon=-25.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=-19.667 lon=-20.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=-19.667 lon=-15.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=-19.667 lon=-10.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=-19.667 lon=-5.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=-19.667 lon=+0.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=-19.667 lon=+5.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=-19.667 lon=+10.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=-19.667 lon=+15.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=-19.667 lon=+20.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=-19.667 lon=+25.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=-19.667 lon=+30.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=-19.667 lon=+35.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=-19.667 lon=+40.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=-19.667 lon=+45.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=-19.667 lon=+50.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=-19.667 lon=+55.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=-19.667 lon=+60.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=-19.667 lon=+65.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=-19.667 lon=+70.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=-19.667 lon=+75.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=-19.667 lon=+80.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=-19.667 lon=+85.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=-19.667 lon=+90.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=-19.667 lon=+95.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=-19.667 lon=+100.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=-19.667 lon=+105.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-19.667 lon=+110.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=-19.667 lon=+115.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=-19.667 lon=+120.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=-19.667 lon=+125.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=-19.667 lon=+130.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=-19.667 lon=+135.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=-19.667 lon=+140.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=-19.667 lon=+145.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=-19.667 lon=+150.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=-19.667 lon=+155.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=-19.667 lon=+160.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=-19.667 lon=+165.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=-19.667 lon=+170.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=-19.667 lon=+175.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=-9.833 lon=-180.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=-9.833 lon=-175.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=-9.833 lon=-170.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=-9.833 lon=-165.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=-9.833 lon=-160.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=-9.833 lon=-155.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=-9.833 lon=-150.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=-9.833 lon=-145.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=-9.833 lon=-140.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=-9.833 lon=-135.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=-9.833 lon=-130.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=-9.833 lon=-125.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=-9.833 lon=-120.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=-9.833 lon=-115.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=-9.833 lon=-110.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=-9.833 lon=-105.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=-9.833 lon=-100.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=-9.833 lon=-95.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=-9.833 lon=-90.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=-9.833 lon=-85.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=-9.833 lon=-80.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=-9.833 lon=-75.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=-9.833 lon=-70.000 Δa[-200,200] step=10 pid=2745927
+[avg-dA] target lat=-9.833 lon=-65.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=-9.833 lon=-60.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=-9.833 lon=-55.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=-9.833 lon=-50.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=-9.833 lon=-45.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-9.833 lon=-40.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=-9.833 lon=-35.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=-9.833 lon=-30.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=-9.833 lon=-25.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=-9.833 lon=-20.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=-9.833 lon=-15.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=-9.833 lon=-10.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=-9.833 lon=-5.000 Δa[-200,200] step=10 pid=2745934
+[avg-dA] target lat=-9.833 lon=+0.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=-9.833 lon=+5.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=-9.833 lon=+10.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=-9.833 lon=+15.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=-9.833 lon=+20.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=-9.833 lon=+25.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=-9.833 lon=+30.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=-9.833 lon=+35.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=-9.833 lon=+40.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=-9.833 lon=+45.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=-9.833 lon=+50.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=-9.833 lon=+55.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=-9.833 lon=+60.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=-9.833 lon=+65.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=-9.833 lon=+70.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=-9.833 lon=+75.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=-9.833 lon=+80.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=-9.833 lon=+85.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=-9.833 lon=+90.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=-9.833 lon=+95.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=-9.833 lon=+100.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=-9.833 lon=+105.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=-9.833 lon=+110.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=-9.833 lon=+115.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=-9.833 lon=+120.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=-9.833 lon=+125.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=-9.833 lon=+130.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=-9.833 lon=+135.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=-9.833 lon=+140.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=-9.833 lon=+145.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=-9.833 lon=+150.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=-9.833 lon=+155.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=-9.833 lon=+160.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=-9.833 lon=+165.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=-9.833 lon=+170.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=-9.833 lon=+175.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+0.000 lon=-180.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+0.000 lon=-175.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+0.000 lon=-170.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+0.000 lon=-165.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+0.000 lon=-160.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=+0.000 lon=-155.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+0.000 lon=-150.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+0.000 lon=-145.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+0.000 lon=-140.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+0.000 lon=-135.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+0.000 lon=-130.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+0.000 lon=-125.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+0.000 lon=-120.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+0.000 lon=-115.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+0.000 lon=-110.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+0.000 lon=-105.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+0.000 lon=-100.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+0.000 lon=-95.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+0.000 lon=-90.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+0.000 lon=-85.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+0.000 lon=-80.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+0.000 lon=-75.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+0.000 lon=-70.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+0.000 lon=-65.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=+0.000 lon=-60.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+0.000 lon=-55.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=+0.000 lon=-50.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+0.000 lon=-45.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+0.000 lon=-40.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=+0.000 lon=-35.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=+0.000 lon=-30.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+0.000 lon=-25.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=+0.000 lon=-20.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+0.000 lon=-15.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+0.000 lon=-10.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+0.000 lon=-5.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+0.000 lon=+0.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+0.000 lon=+5.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+0.000 lon=+10.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+0.000 lon=+15.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+0.000 lon=+20.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+0.000 lon=+25.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+0.000 lon=+30.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+0.000 lon=+35.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+0.000 lon=+40.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+0.000 lon=+45.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+0.000 lon=+50.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+0.000 lon=+55.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=+0.000 lon=+60.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+0.000 lon=+65.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+0.000 lon=+70.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+0.000 lon=+75.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+0.000 lon=+80.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+0.000 lon=+85.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=+0.000 lon=+90.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+0.000 lon=+95.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+0.000 lon=+100.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+0.000 lon=+105.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+0.000 lon=+110.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+0.000 lon=+115.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+0.000 lon=+120.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+0.000 lon=+125.000 Δa[-200,200] step=10 pid=2745927
+[avg-dA] target lat=+0.000 lon=+130.000 Δa[-200,200] step=10 pid=2745934
+[avg-dA] target lat=+0.000 lon=+135.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+0.000 lon=+140.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+0.000 lon=+145.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+0.000 lon=+150.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+0.000 lon=+155.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=+0.000 lon=+160.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+0.000 lon=+165.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+0.000 lon=+170.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+0.000 lon=+175.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+9.833 lon=-180.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+9.833 lon=-175.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+9.833 lon=-170.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=+9.833 lon=-165.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+9.833 lon=-160.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+9.833 lon=-155.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+9.833 lon=-150.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+9.833 lon=-145.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+9.833 lon=-140.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+9.833 lon=-135.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+9.833 lon=-130.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+9.833 lon=-125.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+9.833 lon=-120.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+9.833 lon=-115.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+9.833 lon=-110.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+9.833 lon=-105.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+9.833 lon=-100.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+9.833 lon=-95.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+9.833 lon=-90.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+9.833 lon=-85.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=+9.833 lon=-80.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+9.833 lon=-75.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+9.833 lon=-70.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+9.833 lon=-65.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+9.833 lon=-60.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+9.833 lon=-55.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+9.833 lon=-50.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+9.833 lon=-45.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+9.833 lon=-40.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+9.833 lon=-35.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=+9.833 lon=-30.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+9.833 lon=-25.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+9.833 lon=-20.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+9.833 lon=-15.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+9.833 lon=-10.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+9.833 lon=-5.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=+9.833 lon=+0.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+9.833 lon=+5.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+9.833 lon=+10.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+9.833 lon=+15.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+9.833 lon=+20.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+9.833 lon=+25.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+9.833 lon=+30.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+9.833 lon=+35.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+9.833 lon=+40.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+9.833 lon=+45.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+9.833 lon=+50.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+9.833 lon=+55.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+9.833 lon=+60.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+9.833 lon=+65.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+9.833 lon=+70.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+9.833 lon=+75.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=+9.833 lon=+80.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+9.833 lon=+85.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+9.833 lon=+90.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=+9.833 lon=+95.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=+9.833 lon=+100.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+9.833 lon=+105.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+9.833 lon=+110.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+9.833 lon=+115.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+9.833 lon=+120.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+9.833 lon=+125.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=+9.833 lon=+130.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=+9.833 lon=+135.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+9.833 lon=+140.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+9.833 lon=+145.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+9.833 lon=+150.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+9.833 lon=+155.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+9.833 lon=+160.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+9.833 lon=+165.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+9.833 lon=+170.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+9.833 lon=+175.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+19.667 lon=-180.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+19.667 lon=-175.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+19.667 lon=-170.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+19.667 lon=-165.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+19.667 lon=-160.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+19.667 lon=-155.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+19.667 lon=-150.000 Δa[-200,200] step=10 pid=2745934
+[avg-dA] target lat=+19.667 lon=-145.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+19.667 lon=-140.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+19.667 lon=-135.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+19.667 lon=-130.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+19.667 lon=-125.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+19.667 lon=-120.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+19.667 lon=-115.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+19.667 lon=-110.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+19.667 lon=-105.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+19.667 lon=-100.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+19.667 lon=-95.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+19.667 lon=-90.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+19.667 lon=-85.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+19.667 lon=-80.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+19.667 lon=-75.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+19.667 lon=-70.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+19.667 lon=-65.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+19.667 lon=-60.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+19.667 lon=-55.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+19.667 lon=-50.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=+19.667 lon=-45.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+19.667 lon=-40.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+19.667 lon=-35.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+19.667 lon=-30.000 Δa[-200,200] step=10 pid=2745927
+[avg-dA] target lat=+19.667 lon=-25.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=+19.667 lon=-20.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+19.667 lon=-15.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+19.667 lon=-10.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+19.667 lon=-5.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=+19.667 lon=+0.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=+19.667 lon=+5.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+19.667 lon=+10.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+19.667 lon=+15.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+19.667 lon=+20.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+19.667 lon=+25.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+19.667 lon=+30.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+19.667 lon=+35.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+19.667 lon=+40.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+19.667 lon=+45.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+19.667 lon=+50.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+19.667 lon=+55.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+19.667 lon=+60.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+19.667 lon=+65.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=+19.667 lon=+70.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+19.667 lon=+75.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+19.667 lon=+80.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+19.667 lon=+85.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+19.667 lon=+90.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+19.667 lon=+95.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+19.667 lon=+100.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+19.667 lon=+105.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+19.667 lon=+110.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+19.667 lon=+115.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+19.667 lon=+120.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+19.667 lon=+125.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+19.667 lon=+130.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+19.667 lon=+135.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+19.667 lon=+140.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+19.667 lon=+145.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+19.667 lon=+150.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+19.667 lon=+155.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+19.667 lon=+160.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+19.667 lon=+165.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=+19.667 lon=+170.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+19.667 lon=+175.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+29.500 lon=-180.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+29.500 lon=-175.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=+29.500 lon=-170.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+29.500 lon=-165.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=+29.500 lon=-160.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+29.500 lon=-155.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+29.500 lon=-150.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+29.500 lon=-145.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+29.500 lon=-140.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+29.500 lon=-135.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+29.500 lon=-130.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+29.500 lon=-125.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=+29.500 lon=-120.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+29.500 lon=-115.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+29.500 lon=-110.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+29.500 lon=-105.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=+29.500 lon=-100.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+29.500 lon=-95.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+29.500 lon=-90.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+29.500 lon=-85.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+29.500 lon=-80.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+29.500 lon=-75.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+29.500 lon=-70.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+29.500 lon=-65.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+29.500 lon=-60.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+29.500 lon=-55.000 Δa[-200,200] step=10 pid=2745934
+[avg-dA] target lat=+29.500 lon=-50.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+29.500 lon=-45.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+29.500 lon=-40.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+29.500 lon=-35.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=+29.500 lon=-30.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+29.500 lon=-25.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+29.500 lon=-20.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+29.500 lon=-15.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+29.500 lon=-10.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+29.500 lon=-5.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+29.500 lon=+0.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+29.500 lon=+5.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+29.500 lon=+10.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+29.500 lon=+15.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+29.500 lon=+20.000 Δa[-200,200] step=10 pid=2745927
+[avg-dA] target lat=+29.500 lon=+25.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=+29.500 lon=+30.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+29.500 lon=+35.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+29.500 lon=+40.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+29.500 lon=+45.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+29.500 lon=+50.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+29.500 lon=+55.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+29.500 lon=+60.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+29.500 lon=+65.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=+29.500 lon=+70.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+29.500 lon=+75.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+29.500 lon=+80.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+29.500 lon=+85.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+29.500 lon=+90.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+29.500 lon=+95.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+29.500 lon=+100.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+29.500 lon=+105.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+29.500 lon=+110.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+29.500 lon=+115.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=+29.500 lon=+120.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+29.500 lon=+125.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+29.500 lon=+130.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=+29.500 lon=+135.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+29.500 lon=+140.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+29.500 lon=+145.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=+29.500 lon=+150.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+29.500 lon=+155.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+29.500 lon=+160.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+29.500 lon=+165.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+29.500 lon=+170.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+29.500 lon=+175.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+39.333 lon=-180.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+39.333 lon=-175.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+39.333 lon=-170.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+39.333 lon=-165.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+39.333 lon=-160.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+39.333 lon=-155.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+39.333 lon=-150.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+39.333 lon=-145.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+39.333 lon=-140.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+39.333 lon=-135.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=+39.333 lon=-130.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+39.333 lon=-125.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+39.333 lon=-120.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+39.333 lon=-115.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+39.333 lon=-110.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+39.333 lon=-105.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+39.333 lon=-100.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+39.333 lon=-95.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+39.333 lon=-90.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+39.333 lon=-85.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+39.333 lon=-80.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+39.333 lon=-75.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+39.333 lon=-70.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+39.333 lon=-65.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+39.333 lon=-60.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+39.333 lon=-55.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+39.333 lon=-50.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+39.333 lon=-45.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+39.333 lon=-40.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=+39.333 lon=-35.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+39.333 lon=-30.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+39.333 lon=-25.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+39.333 lon=-20.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+39.333 lon=-15.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+39.333 lon=-10.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+39.333 lon=-5.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=+39.333 lon=+0.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=+39.333 lon=+5.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+39.333 lon=+10.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+39.333 lon=+15.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+39.333 lon=+20.000 Δa[-200,200] step=10 pid=2745934
+[avg-dA] target lat=+39.333 lon=+25.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+39.333 lon=+30.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=+39.333 lon=+35.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+39.333 lon=+40.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+39.333 lon=+45.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+39.333 lon=+50.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+39.333 lon=+55.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+39.333 lon=+60.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+39.333 lon=+65.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+39.333 lon=+70.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+39.333 lon=+75.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+39.333 lon=+80.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=+39.333 lon=+85.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+39.333 lon=+90.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+39.333 lon=+95.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+39.333 lon=+100.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+39.333 lon=+105.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+39.333 lon=+110.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+39.333 lon=+115.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+39.333 lon=+120.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+39.333 lon=+125.000 Δa[-200,200] step=10 pid=2745927
+[avg-dA] target lat=+39.333 lon=+130.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+39.333 lon=+135.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=+39.333 lon=+140.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+39.333 lon=+145.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+39.333 lon=+150.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+39.333 lon=+155.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=+39.333 lon=+160.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+39.333 lon=+165.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+39.333 lon=+170.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+39.333 lon=+175.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+49.167 lon=-180.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=+49.167 lon=-175.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+49.167 lon=-170.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+49.167 lon=-165.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+49.167 lon=-160.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+49.167 lon=-155.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+49.167 lon=-150.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+49.167 lon=-145.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+49.167 lon=-140.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+49.167 lon=-135.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+49.167 lon=-130.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+49.167 lon=-125.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+49.167 lon=-120.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+49.167 lon=-115.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=+49.167 lon=-110.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+49.167 lon=-105.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+49.167 lon=-100.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+49.167 lon=-95.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+49.167 lon=-90.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+49.167 lon=-85.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+49.167 lon=-80.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+49.167 lon=-75.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+49.167 lon=-70.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+49.167 lon=-65.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+49.167 lon=-60.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+49.167 lon=-55.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=+49.167 lon=-50.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+49.167 lon=-45.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+49.167 lon=-40.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+49.167 lon=-35.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=+49.167 lon=-30.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+49.167 lon=-25.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+49.167 lon=-20.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+49.167 lon=-15.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=+49.167 lon=-10.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+49.167 lon=-5.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+49.167 lon=+0.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+49.167 lon=+5.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+49.167 lon=+10.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+49.167 lon=+15.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+49.167 lon=+20.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+49.167 lon=+25.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+49.167 lon=+30.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+49.167 lon=+35.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+49.167 lon=+40.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+49.167 lon=+45.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+49.167 lon=+50.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+49.167 lon=+55.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+49.167 lon=+60.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+49.167 lon=+65.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+49.167 lon=+70.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+49.167 lon=+75.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+49.167 lon=+80.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+49.167 lon=+85.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+49.167 lon=+90.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=+49.167 lon=+95.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+49.167 lon=+100.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+49.167 lon=+105.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+49.167 lon=+110.000 Δa[-200,200] step=10 pid=2745950
+[avg-dA] target lat=+49.167 lon=+115.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+49.167 lon=+120.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+49.167 lon=+125.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+49.167 lon=+130.000 Δa[-200,200] step=10 pid=2745927
+[avg-dA] target lat=+49.167 lon=+135.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+49.167 lon=+140.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+49.167 lon=+145.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+49.167 lon=+150.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=+49.167 lon=+155.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+49.167 lon=+160.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+49.167 lon=+165.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+49.167 lon=+170.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+49.167 lon=+175.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+59.000 lon=-180.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+59.000 lon=-175.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+59.000 lon=-170.000 Δa[-200,200] step=10 pid=2745917
+[avg-dA] target lat=+59.000 lon=-165.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=+59.000 lon=-160.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+59.000 lon=-155.000 Δa[-200,200] step=10 pid=2745938
+[avg-dA] target lat=+59.000 lon=-150.000 Δa[-200,200] step=10 pid=2745934
+[avg-dA] target lat=+59.000 lon=-145.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+59.000 lon=-140.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+59.000 lon=-135.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+59.000 lon=-130.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+59.000 lon=-125.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+59.000 lon=-120.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+59.000 lon=-115.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+59.000 lon=-110.000 Δa[-200,200] step=10 pid=2745933
+[avg-dA] target lat=+59.000 lon=-105.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+59.000 lon=-100.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+59.000 lon=-95.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+59.000 lon=-90.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+59.000 lon=-85.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+59.000 lon=-80.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+59.000 lon=-75.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+59.000 lon=-70.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+59.000 lon=-65.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+59.000 lon=-60.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+59.000 lon=-55.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+59.000 lon=-50.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+59.000 lon=-45.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=+59.000 lon=-40.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+59.000 lon=-35.000 Δa[-200,200] step=10 pid=2745906
+[avg-dA] target lat=+59.000 lon=-30.000 Δa[-200,200] step=10 pid=2745953
+[avg-dA] target lat=+59.000 lon=-25.000 Δa[-200,200] step=10 pid=2745931
+[avg-dA] target lat=+59.000 lon=-20.000 Δa[-200,200] step=10 pid=2745919
+[avg-dA] target lat=+59.000 lon=-15.000 Δa[-200,200] step=10 pid=2745918
+[avg-dA] target lat=+59.000 lon=-10.000 Δa[-200,200] step=10 pid=2745937
+[avg-dA] target lat=+59.000 lon=-5.000 Δa[-200,200] step=10 pid=2745939
+[avg-dA] target lat=+59.000 lon=+0.000 Δa[-200,200] step=10 pid=2745925
+[avg-dA] target lat=+59.000 lon=+5.000 Δa[-200,200] step=10 pid=2745912
+[avg-dA] target lat=+59.000 lon=+10.000 Δa[-200,200] step=10 pid=2745928
+[avg-dA] target lat=+59.000 lon=+15.000 Δa[-200,200] step=10 pid=2745908
+[avg-dA] target lat=+59.000 lon=+20.000 Δa[-200,200] step=10 pid=2745948
+[avg-dA] target lat=+59.000 lon=+25.000 Δa[-200,200] step=10 pid=2745951
+[avg-dA] target lat=+59.000 lon=+30.000 Δa[-200,200] step=10 pid=2745911
+[avg-dA] target lat=+59.000 lon=+35.000 Δa[-200,200] step=10 pid=2745936
+[avg-dA] target lat=+59.000 lon=+40.000 Δa[-200,200] step=10 pid=2745947
+[avg-dA] target lat=+59.000 lon=+45.000 Δa[-200,200] step=10 pid=2745945
+[avg-dA] target lat=+59.000 lon=+50.000 Δa[-200,200] step=10 pid=2745924
+[avg-dA] target lat=+59.000 lon=+55.000 Δa[-200,200] step=10 pid=2745943
+[avg-dA] target lat=+59.000 lon=+60.000 Δa[-200,200] step=10 pid=2745935
+[avg-dA] target lat=+59.000 lon=+65.000 Δa[-200,200] step=10 pid=2745921
+[avg-dA] target lat=+59.000 lon=+70.000 Δa[-200,200] step=10 pid=2745932
+[avg-dA] target lat=+59.000 lon=+75.000 Δa[-200,200] step=10 pid=2745910
+[avg-dA] target lat=+59.000 lon=+80.000 Δa[-200,200] step=10 pid=2745946
+[avg-dA] target lat=+59.000 lon=+85.000 Δa[-200,200] step=10 pid=2745922
+[avg-dA] target lat=+59.000 lon=+90.000 Δa[-200,200] step=10 pid=2745907
+[avg-dA] target lat=+59.000 lon=+95.000 Δa[-200,200] step=10 pid=2745923
+[avg-dA] target lat=+59.000 lon=+100.000 Δa[-200,200] step=10 pid=2745914
+[avg-dA] target lat=+59.000 lon=+105.000 Δa[-200,200] step=10 pid=2745929
+[avg-dA] target lat=+59.000 lon=+110.000 Δa[-200,200] step=10 pid=2745942
+[avg-dA] target lat=+59.000 lon=+115.000 Δa[-200,200] step=10 pid=2745915
+[avg-dA] target lat=+59.000 lon=+120.000 Δa[-200,200] step=10 pid=2745913
+[avg-dA] target lat=+59.000 lon=+125.000 Δa[-200,200] step=10 pid=2745949
+[avg-dA] target lat=+59.000 lon=+130.000 Δa[-200,200] step=10 pid=2745940
+[avg-dA] target lat=+59.000 lon=+135.000 Δa[-200,200] step=10 pid=2745941
+[avg-dA] target lat=+59.000 lon=+140.000 Δa[-200,200] step=10 pid=2745916
+[avg-dA] target lat=+59.000 lon=+145.000 Δa[-200,200] step=10 pid=2745930
+[avg-dA] target lat=+59.000 lon=+150.000 Δa[-200,200] step=10 pid=2745920
+[avg-dA] target lat=+59.000 lon=+155.000 Δa[-200,200] step=10 pid=2745952
+[avg-dA] target lat=+59.000 lon=+160.000 Δa[-200,200] step=10 pid=2745926
+[avg-dA] target lat=+59.000 lon=+165.000 Δa[-200,200] step=10 pid=2745944
+[avg-dA] target lat=+59.000 lon=+170.000 Δa[-200,200] step=10 pid=2745909
+[avg-dA] target lat=+59.000 lon=+175.000 Δa[-200,200] step=10 pid=2745918
+[avg-tol] pool: workers=48 start=fork cpu_max=48 affinity_count=40 pid=2745866
+[avg-tol] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+Generating average times vs tolerance over target grid...
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754006
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754007
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754009
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754008
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754013
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754010
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754011
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754012
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754014
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754015
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754022
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754025
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754016
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754027
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754037
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754017
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754038
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754039
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754018
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754019
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754043
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754042
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754046
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754047
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754048
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754020
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754049
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754021
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754053
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754023
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754024
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754026
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754028
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754029
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754030
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754031
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754032
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754033
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754034
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754035
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754036
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754040
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754041
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754044
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754045
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754050
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754051
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=318, mp_start=fork, pid=2754052
+[avg-tol] pool: workers=48 start=fork cpu_max=48 affinity_count=40 pid=2745866
+[avg-tol] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974395
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974396
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974399
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974397
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974402
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974398
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974405
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974400
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974401
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974403
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974414
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974418
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974421
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974404
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974423
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974406
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974426
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974407
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974438
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974430
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974408
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974409
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974410
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974411
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974412
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974413
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974415
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974416
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974417
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974419
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974420
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974422
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974424
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974425
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974427
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974428
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974429
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974431
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974432
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974433
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974434
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974435
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974436
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974437
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974439
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974440
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974442
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=315, mp_start=fork, pid=3974441
+[avg-tol] pool: workers=48 start=fork cpu_max=48 affinity_count=40 pid=2745866
+[avg-tol] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000894
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000895
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000897
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000896
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000899
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000898
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000900
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000901
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000902
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000903
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000918
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000904
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000905
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000906
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000907
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000908
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000909
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000910
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000911
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000912
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000913
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000914
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000915
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000930
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000916
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000934
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000917
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000935
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000936
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000937
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000939
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000940
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000941
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000919
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000920
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000921
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000922
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000923
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000924
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000925
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000926
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000927
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000928
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000929
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000931
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000932
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000933
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=311, mp_start=fork, pid=1000938
+[avg-tol] pool: workers=48 start=fork cpu_max=48 affinity_count=40 pid=2745866
+[avg-tol] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221110
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221111
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221112
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221113
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221117
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221114
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221125
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221115
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221116
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221134
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221118
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221136
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221137
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221119
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221143
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221141
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221120
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221146
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221145
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221147
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221121
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221149
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221122
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221123
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221124
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221126
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221150
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221127
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221152
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221128
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221154
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221129
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221155
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221156
+[solver] Configured n_jobs=48 (cpu_max=48, affinity_count=40, requested=None, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221157
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221130
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221131
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221132
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221133
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221135
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221138
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221139
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221140
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221142
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221144
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221153
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221148
+[solver] parallel: n_jobs=48, m_candidates=303, mp_start=fork, pid=2221151
+[heatmap] pool: workers=48 start=fork cpu_max=48 affinity_count=40 pid=2745866
+[heatmap] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+
+[GRID] Generating world maps...
+Generating heatmaps over target grid...
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441549
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441550
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441551
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441552
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441553
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441554
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441557
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441555
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441561
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441556
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441558
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441569
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441559
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441575
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441560
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441562
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441563
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441564
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441587
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441588
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441565
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441566
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441592
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441593
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441595
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441570
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441567
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441568
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441571
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441572
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441573
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441574
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441576
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441577
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441578
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441579
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441583
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441580
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441581
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441582
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441584
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441585
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441586
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441589
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441590
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441591
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441594
+[solver] sequential: n_jobs=1, m_candidates=327, mp_start=fork, pid=3441596
+
+All plots saved under results/reconfig

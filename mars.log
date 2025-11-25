@@ -1,0 +1,153 @@
+[heatmap] pool: workers=48 start=fork cpu_max=48 affinity_count=40 pid=334754
+[heatmap] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+
+=== Scenario: hG=400 km, i=60.00° ===
+
+[GRID] Generating world maps...
+Generating heatmaps over target grid...
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334794
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334795
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334797
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334798
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334796
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334799
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334808
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334800
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334810
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334801
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334836
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334814
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334802
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334803
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334817
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334804
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334805
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334818
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334806
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334821
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334807
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334823
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334809
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334811
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334828
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334830
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334812
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334813
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334833
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334835
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] Configured n_jobs=1 (cpu_max=48, affinity_count=40, requested=1, env=None, mp_start=fork)
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334815
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334816
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334819
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334820
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334822
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334824
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334825
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334826
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334827
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334829
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334831
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334832
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334834
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334837
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334838
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334839
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334840
+[solver] CPU affinity set: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 42, 43, 44]
+[solver] sequential: n_jobs=1, m_candidates=268, mp_start=fork, pid=334841
+
+All plots saved under results/reconfig

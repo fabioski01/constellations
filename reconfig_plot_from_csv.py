@@ -98,7 +98,7 @@ def plot_timesAvgDeltaA_from_csv(csv_path, outdir="results/reconfig/times_deltaA
 if __name__ == "__main__":
     # Manually specify your list of CSV files here:
     csv_files = [
-        "/scratch/nbruno/constellations/results/reconfig/times_deltaA/TimesAvgDeltaA_36x72_GOM3790_ROM3646_inc50.0_band49.0_dA-200to200_s10.csv",
+        "/scratch/nbruno/constellations/results/reconfig/times_deltaA/TimesAvgDeltaA_13x72_GOM6452_ROM6302_inc60.0_band59.0_dA-200to200_s10.csv",
         # "results/reconfig/times_deltaA/TimesAvgDeltaA_11x36_GOM700_ROM705_inc60.0_band59.0_dA-200to200_s10.csv",
         # Add more CSV paths as needed
     ]
