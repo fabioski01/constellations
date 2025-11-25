@@ -57,25 +57,40 @@ class PhasingRGT:
     for semi-major axes given inclination, eccentricity, and No/Nd ratios.
     """
     
-    def __init__(self, J2=None, Rearth=None, mu=None, rotation_rate_earth=None):
+    def __init__(self, planet='earth', J2=None, Rearth=None, mu=None, rotation_rate_earth=None):
         """
-        Initialize PhasingRGT with Earth constants.
+        Initialize PhasingRGT with planetary constants.
         
         Parameters:
         -----------
+        planet : str, optional
+            'earth' or 'mars' (default: 'earth')
         J2 : float, optional
-            Earth's J2 coefficient (default: from constants)
+            Planet's J2 coefficient (overrides planet default)
         Rearth : float, optional
-            Earth's radius in km (default: from constants)
+            Planet's radius in km (overrides planet default)
         mu : float, optional
-            Earth's gravitational parameter in km³/s² (default: from constants)
+            Planet's gravitational parameter in km³/s² (overrides planet default)
         rotation_rate_earth : float, optional
-            Earth's rotation rate in rad/s (default: 7.2921159e-5)
+            Planet's rotation rate in rad/s (overrides planet default)
         """
-        self.J2 = J2 if J2 is not None else constants.J2_EARTH
-        self.Rearth = Rearth if Rearth is not None else constants.EARTH_RADIUS
-        self.mu = mu if mu is not None else constants.GRAVITATIONAL_CONSTANT
-        self.rotation_rate_earth = rotation_rate_earth if rotation_rate_earth is not None else 7.2921159e-5
+
+        if planet.lower() == 'venus':
+            self.J2 = J2 if J2 is not None else constants.VENUS_J2
+            self.Rearth = Rearth if Rearth is not None else constants.VENUS_RADIUS
+            self.mu = mu if mu is not None else constants.VENUS_MU
+            self.rotation_rate_earth = rotation_rate_earth if rotation_rate_earth is not None else constants.VENUS_ROTATION_RATE
+            self.planet_name = 'Venus'
+        elif planet.lower() == 'mars':
+            self.J2 = J2 if J2 is not None else constants.MARS_J2
+            self.Rearth = Rearth if Rearth is not None else constants.MARS_RADIUS
+            self.mu = mu if mu is not None else constants.MARS_MU
+            self.rotation_rate_earth = rotation_rate_earth if rotation_rate_earth is not None else constants.MARS_ROTATION_RATE
+        else:  # default to Earth
+            self.J2 = J2 if J2 is not None else constants.J2_EARTH
+            self.Rearth = Rearth if Rearth is not None else constants.EARTH_RADIUS
+            self.mu = mu if mu is not None else constants.GRAVITATIONAL_CONSTANT
+            self.rotation_rate_earth = rotation_rate_earth if rotation_rate_earth is not None else 7.2921159e-5
     
     def compute_transfer_time(self, aTRANSF):
         """Compute Hohmann transfer time for given semi-major axis."""
@@ -120,13 +135,25 @@ class PhasingRGT:
         Target function for iterative solver.
         Returns: No/Nd - (M_dot + omega_dot) / (rotation_rate_earth - Omega_dot)
         This should equal zero when the correct semi-major axis 'a' is found.
+        
+        For retrograde planets (Venus), uses absolute value of rotation rate
+        and adjusts sign conventions.
         """
         M_dot = self.compute_precession_M(i, a, e)
         omega_dot = self.compute_precession_omega_argperiapsis(i, a, e)
         Omega_dot = self.compute_precession_Omega_RAAN(i, a, e)
         
         target_ratio = No / Nd
-        computed_ratio = (M_dot + omega_dot) / (self.rotation_rate_earth - Omega_dot)
+        
+        # Handle retrograde rotation (Venus)
+        if self.rotation_rate_earth < 0:
+            # For retrograde planets, use absolute value and flip sign convention
+            denominator = abs(self.rotation_rate_earth) + Omega_dot
+        else:
+            # Normal prograde case (Earth, Mars)
+            denominator = self.rotation_rate_earth - Omega_dot
+            
+        computed_ratio = (M_dot + omega_dot) / denominator
         
         return target_ratio - computed_ratio
     
@@ -198,7 +225,7 @@ class PhasingRGT:
             return a0, True, 0
 
         # Initial bracket around a0
-        R_min = 6200.0
+        R_min = 3000.0
         R_max = 20000.0
         a_low = max(R_min, a0 - 500.0)
         a_high = min(R_max, a0 + 500.0)
@@ -417,27 +444,74 @@ def solve_for_semi_major_axis(i, e, No, Nd, a_initial_guess=None, tolerance=1e-9
 
 
 if __name__ == "__main__":
-    # Example usage
-    phasing = PhasingRGT()
+    # # Example usage
+    # phasing = PhasingRGT()
     
-    # Test parameters
-    i = 51.447684794794995  # degrees
-    e = 0.0
-    No = 15
-    Nd = 1
+    # # Test parameters
+    # i = 51.447684794794995  # degrees
+    # e = 0.0
+    # No = 15
+    # Nd = 1
     
-    print(f"Solving for semi-major axis with inputs:")
-    print(f"Inclination (i): {i}°")
-    print(f"Eccentricity (e): {e}")
-    print(f"No (revolutions): {No}")
-    print(f"Nd (days): {Nd}")
+    # print(f"Solving for semi-major axis with inputs:")
+    # print(f"Inclination (i): {i}°")
+    # print(f"Eccentricity (e): {e}")
+    # print(f"No (revolutions): {No}")
+    # print(f"Nd (days): {Nd}")
     
-    a_solution, converged, iterations = phasing.solve_for_semi_major_axis(i, e, No, Nd)
+    # a_solution, converged, iterations = phasing.solve_for_semi_major_axis(i, e, No, Nd)
     
-    if converged:
-        print(f"\nSolution converged in {iterations} iterations!")
-        phasing.validate_solution(a_solution, i, e, No, Nd)
-    else:
-        print(f"\nSolution did not converge after {iterations} iterations.")
-        print(f"Final semi-major axis estimate: {a_solution:.3f} km")
+    # if converged:
+    #     print(f"\nSolution converged in {iterations} iterations!")
+    #     phasing.validate_solution(a_solution, i, e, No, Nd)
+    # else:
+    #     print(f"\nSolution did not converge after {iterations} iterations.")
+    #     print(f"Final semi-major axis estimate: {a_solution:.3f} km")
 
+    # # For Mars RGT analysis
+    # phasing_mars = PhasingRGT(planet='mars')
+
+    # # Find RGT altitude for Mars orbitS
+    # i_deg = 93.0  # Sun-synchronous-like inclination for Mars
+    # e = 0.0
+    # # ratio = 15.0  # 15 revolutions per Martian day
+    # No = 13
+    # Nd = 1
+
+    # alt_km, a_km = phasing_mars.find_a_for_ratio_at_inclination(i_deg, e, ratio=No/Nd)
+    # print(f"Mars RGT altitude: {alt_km:.1f} km")
+
+    # # Plot RGT altitude vs inclination for Mars
+    # phasing_mars.plot_rgt_vs_inclinations(
+    #     ratios=[10.0, 11.0, 12.0, 13.0, 14.0],
+    #     incl_step=5,
+    #     a_initial_guess_map={
+    #         10.0: constants.MARS_RADIUS + 1000.0,
+    #         11.0: constants.MARS_RADIUS + 700.0,
+    #         12.0: constants.MARS_RADIUS + 500.0,
+    #         13.0: constants.MARS_RADIUS + 300.0,
+    #         14.0: constants.MARS_RADIUS + 100.0,
+    #     },
+    #     e=0.0,
+    #     savefile="results/mars_rgt_vs_inclination.png"
+    # )
+
+    # For Venus RGT analysis
+    phasing_venus = PhasingRGT(planet='venus')
+
+    # Plot RGT altitude vs inclination for Venus
+    # Ratios are typically 3400:1 to 3900:1 for practical altitudes
+    phasing_venus.plot_rgt_vs_inclinations(
+        ratios=[3400.0, 3500.0, 3600.0, 3700.0, 3800.0, 3900.0],
+        incl_step=10,
+        a_initial_guess_map={
+            3400.0: constants.VENUS_RADIUS + 1230.0,  # ~1230 km altitude
+            3500.0: constants.VENUS_RADIUS + 1067.0,  # ~1067 km altitude
+            3600.0: constants.VENUS_RADIUS + 910.0,   # ~910 km altitude
+            3700.0: constants.VENUS_RADIUS + 760.0,   # ~760 km altitude (typical)
+            3800.0: constants.VENUS_RADIUS + 615.0,   # ~615 km altitude
+            3900.0: constants.VENUS_RADIUS + 475.0,   # ~475 km altitude
+        },
+        e=0.0,
+    savefile="results/venus_rgt_vs_inclination.png"
+    )
