@@ -1,0 +1,13 @@
+{
+  "unique_requests": 6300,
+  "accepted_unique_requests": 5974,
+  "source_hashes_agree": true,
+  "failures": [],
+  "maximum_longitude_error_reconstruction_difference_deg": 4.437500367160396e-11,
+  "maximum_latitude_error_reconstruction_difference_deg": 1.496403001510771e-11,
+  "maximum_conditional_mean_difference_s": 1.1641532182693481e-10,
+  "maximum_outbound_cost_difference_m_s": 4.362732397567015e-12,
+  "maximum_transfer_duration_difference_s": 4.547473508864641e-13,
+  "maximum_time_component_error_s": 2.3283064365386963e-10,
+  "scope": "Reconstructed nominal geometry and saved aggregates; not Cartesian execution validation."
+}

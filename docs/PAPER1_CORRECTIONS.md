@@ -1,5 +1,7 @@
 # Paper 1: corrections, verification, and remaining analysis
 
+The initial nine-target verification below is preserved as its own experiment. The later [10 by 6 grid study](PAPER1_GRID10X6.md) focuses on altitude, target location and longitude tolerance using sixty common points and finite coast caps. Its archive and qualifications are documented separately.
+
 This branch starts from repository commit `4e06cbe8df79d0d525df79e5a405ee67ead633d8`. It repairs nominal Earth wait-and-drift targeting and adds reproducible exports. The committed 2026-10-14 study is a small, newly declared experiment. It does not reproduce the original thesis ensembles or validate an executed spacecraft trajectory.
 
 ## Corrections implemented

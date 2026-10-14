@@ -1,0 +1,11 @@
+{
+  "requested": 6720,
+  "unique_solver_requests": 6300,
+  "targets": 60,
+  "accepted": 6394,
+  "numerical_failures": 0,
+  "failures": [],
+  "tolerance_nesting_violations": [],
+  "maximum_time_component_error_s": 0.0,
+  "maximum_accepted_latitude_error_deg": 1.2967404927621828e-11
+}

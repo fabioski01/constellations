@@ -56,7 +56,8 @@ def run_request(task):
             wait_time_cap_hours=0.0 if task['policy'] == 'immediate' else task['wait_cap_hours'],
             response_horizon_hours=task['horizon_hours'],
             scan_discovery=task['scan_discovery'], scan_bracket=task['scan_bracket'],
-            longitude_neighbor_pad=task['longitude_neighbor_pad'])
+            longitude_neighbor_pad=task['longitude_neighbor_pad'],
+            prune_phase_wraps=task.get('prune_phase_wraps', False))
         s = p.solve_min_time([task['tolerance_deg']])
         row.update(success=bool(s['success']), status=s.get('status', 'infeasible'),
                    failure_note=s.get('note', ''), outbound_cost_m_s=outbound_cost_m_s(p.a_G, p.a_D, p.rom_a))

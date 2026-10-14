@@ -1,0 +1,19 @@
+{
+  "requests": 24,
+  "pruning_disagreements": 0,
+  "refinement_disagreements": 0,
+  "maximum_pruning_time_difference_s": 0.0,
+  "maximum_refinement_time_difference_s": 2.9103830456733704e-11,
+  "baseline_scans": [
+    160,
+    160
+  ],
+  "baseline_neighbor_pad": 8,
+  "refined_scans": [
+    320,
+    320
+  ],
+  "refined_neighbor_pad": 12,
+  "time_comparison_allowance_s": 0.01,
+  "scope": "A declared 24-request check, not proof of band-search, altitude or target-grid convergence."
+}

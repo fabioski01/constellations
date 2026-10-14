@@ -1,0 +1,21 @@
+{
+  "data_sha256": {
+    "per_target.csv": "af0a035724314534634564063e6ea2d695782a6a6d3e384e0aa1c66a19b10f95",
+    "summary.csv": "dc0af4a2b2204bf27b51bbb07b2369367a91f6db030d539dd40afe0724f5a722",
+    "targets.csv": "a867a47483e459c0eb3abc25057af7ea7c561f27ee186f8eb4190da8236edba5",
+    "tolerance_paired.csv": "dc6f59afd8101a72a4ed4d1f2b82b1d22737182fbd6b01c82943be932f6c7fa8"
+  },
+  "source_sha256": "0d370558432dddb3dda2fd85d9fa5698245894e92979d9f694b8ea9625cdae6d",
+  "outputs": [
+    "paper_figure_2_altitude.pdf",
+    "paper_figure_2_altitude.png",
+    "paper_figure_3_targets.pdf",
+    "paper_figure_3_targets.png",
+    "paper_figure_4_inclination.pdf",
+    "paper_figure_4_inclination.png",
+    "paper_figure_5_tolerance.pdf",
+    "paper_figure_5_tolerance.png",
+    "paper_figure_7_tolerance_location.pdf",
+    "paper_figure_7_tolerance_location.png"
+  ]
+}

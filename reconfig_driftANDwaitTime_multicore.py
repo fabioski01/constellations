@@ -252,6 +252,7 @@ class AnalyticRaanPhasingPlanner:
         scan_discovery: int = 160,
         scan_bracket: int = 160,
         longitude_neighbor_pad: int = 8,
+        prune_phase_wraps: bool = False,
     ):
         self.gom = gom
         self.rom_a = rom_a_km
@@ -267,6 +268,7 @@ class AnalyticRaanPhasingPlanner:
             if not isfinite(value) or int(value) != value or value < minimum:
                 raise ValueError("Scan counts must be positive integers and neighbor padding nonnegative.")
         self.scan_discovery, self.scan_bracket = int(scan_discovery), int(scan_bracket)
+        self.prune_phase_wraps = bool(prune_phase_wraps)
         self.longitude_neighbor_pad = int(longitude_neighbor_pad)
         for cap in (self.drift_time_cap, self.wait_time_cap, self.response_horizon):
             if cap is not None and (not isfinite(cap) or cap < 0.0):
@@ -517,10 +519,29 @@ class AnalyticRaanPhasingPlanner:
                     ex.shutdown(wait=True)
         else:
             # Sequential evaluation using the same worker
+            best_strict_time = None
+            positive_rates = min(self.du_G, self.du_D) > 0.0
             for m in m_list:
+                if self.prune_phase_wraps and positive_rates and best_strict_time is not None:
+                    # A_m = du_G*Tw + du_D*Td <= max(du_G,du_D)*(Tw+Td).
+                    # m_list increases, so every subsequent m has an equal or
+                    # larger lower bound. Only a candidate meeting the first
+                    # tolerance can prune a tolerance-priority search.
+                    phase_lower_bound = ((const_u + 2.0*pi*m) / max(self.du_G, self.du_D)
+                                         + self.T1 + self.T2)
+                    if phase_lower_bound > best_strict_time + 1e-6:
+                        break
                 chunk = _solve_branch_m_task(state, u_req, const_u, branch_name, m)
                 if chunk:
                     all_candidates.extend(chunk)
+                    if self.prune_phase_wraps:
+                        for candidate in chunk:
+                            candidate['lat_err_deg'] = candidate['latitude_f_deg'] - self.target_lat_deg
+                            if candidate_is_feasible(candidate, LON_TOL_SCHEDULE[0],
+                                                     WAIT_CAP_S, self.drift_time_cap,
+                                                     self.response_horizon):
+                                response = candidate['total_time_s']
+                                best_strict_time = response if best_strict_time is None else min(best_strict_time, response)
 
         for candidate in all_candidates:
             candidate['lat_err_deg'] = candidate['latitude_f_deg'] - self.target_lat_deg

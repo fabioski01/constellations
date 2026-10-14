@@ -1,0 +1,107 @@
+{
+  "checks": {
+    "requested": 6720,
+    "unique_solver_requests": 6300,
+    "targets": 60,
+    "accepted": 6394,
+    "numerical_failures": 0,
+    "failures": [],
+    "tolerance_nesting_violations": [],
+    "maximum_time_component_error_s": 0.0,
+    "maximum_accepted_latitude_error_deg": 1.2967404927621828e-11
+  },
+  "search_checks": {
+    "requests": 24,
+    "pruning_disagreements": 0,
+    "refinement_disagreements": 0,
+    "maximum_pruning_time_difference_s": 0.0,
+    "maximum_refinement_time_difference_s": 2.9103830456733704e-11,
+    "baseline_scans": [
+      160,
+      160
+    ],
+    "baseline_neighbor_pad": 8,
+    "refined_scans": [
+      320,
+      320
+    ],
+    "refined_neighbor_pad": 12,
+    "time_comparison_allowance_s": 0.01,
+    "scope": "A declared 24-request check, not proof of band-search, altitude or target-grid convergence."
+  },
+  "independent_audit": {
+    "unique_requests": 6300,
+    "accepted_unique_requests": 5974,
+    "source_hashes_agree": true,
+    "failures": [],
+    "maximum_longitude_error_reconstruction_difference_deg": 4.437500367160396e-11,
+    "maximum_latitude_error_reconstruction_difference_deg": 1.496403001510771e-11,
+    "maximum_conditional_mean_difference_s": 1.1641532182693481e-10,
+    "maximum_outbound_cost_difference_m_s": 4.362732397567015e-12,
+    "maximum_transfer_duration_difference_s": 4.547473508864641e-13,
+    "maximum_time_component_error_s": 2.3283064365386963e-10,
+    "scope": "Reconstructed nominal geometry and saved aggregates; not Cartesian execution validation."
+  },
+  "e2_location": {
+    "paired_targets": 60,
+    "minus200_earlier": 46,
+    "plus50_earlier": 14,
+    "mean_paired_reduction_h": 21.346431059983882
+  },
+  "e2_tolerance_interactions": [
+    {
+      "offset_km": 50,
+      "tolerance_deg": 0.25,
+      "paired_count": 60,
+      "mean_paired_gain_s": 17992.24599823532,
+      "maximum_paired_gain_s": 224905.08933768628,
+      "minimum_paired_gain_s": 60.579322376070195,
+      "selected_alternative_changes": 12
+    },
+    {
+      "offset_km": 50,
+      "tolerance_deg": 1,
+      "paired_count": 60,
+      "mean_paired_gain_s": 51411.3950310015,
+      "maximum_paired_gain_s": 255213.33136970625,
+      "minimum_paired_gain_s": 126.56078317492211,
+      "selected_alternative_changes": 29
+    },
+    {
+      "offset_km": 50,
+      "tolerance_deg": 5,
+      "paired_count": 60,
+      "mean_paired_gain_s": 113711.92648056516,
+      "maximum_paired_gain_s": 256384.66765889316,
+      "minimum_paired_gain_s": 126.56078317492211,
+      "selected_alternative_changes": 48
+    },
+    {
+      "offset_km": 200,
+      "tolerance_deg": 0.25,
+      "paired_count": 60,
+      "mean_paired_gain_s": 59.25917869314329,
+      "maximum_paired_gain_s": 60.54365790029988,
+      "minimum_paired_gain_s": 11.85380087987869,
+      "selected_alternative_changes": 0
+    },
+    {
+      "offset_km": 200,
+      "tolerance_deg": 1,
+      "paired_count": 60,
+      "mean_paired_gain_s": 6252.439630199749,
+      "maximum_paired_gain_s": 85423.30586399705,
+      "minimum_paired_gain_s": 32.16476370707824,
+      "selected_alternative_changes": 6
+    },
+    {
+      "offset_km": 200,
+      "tolerance_deg": 5,
+      "paired_count": 60,
+      "mean_paired_gain_s": 38976.66147747899,
+      "maximum_paired_gain_s": 86395.89474558801,
+      "minimum_paired_gain_s": 32.16476370707824,
+      "selected_alternative_changes": 37
+    }
+  ]
+}
