@@ -16,6 +16,7 @@ Author: Fabio Meloni - TU Delft MSc Student - NASA JPL Visiting Researcher
 """
 
 from __future__ import annotations
+from reconfig_verification import target_grid, reachable_geodetic_latitude_deg
 import os
 from dataclasses import dataclass
 from typing import Dict, Any, List, Tuple, Optional, Iterable
@@ -334,26 +335,9 @@ def _pareto_frontier_indices(x: np.ndarray, y: np.ndarray) -> np.ndarray:
 # Target grids
 # --------------------------------------------------------------------------------------
 
-def build_target_grid(
-    inclination_deg: float,
-    lat_band_deg: float,
-    n_lat: int,
-    n_lon: int,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Produce a regular lon/lat grid of target points.
-
-    - Latitudes are linearly spaced across [-lat_band, +lat_band] (inclusive).
-      Choose lat_band < inclination for visibility.
-    - Longitudes are spaced across [-180, +180) with n_lon points.
-
-    Returns (lats_deg array shape (n_lat,), lons_deg array shape (n_lon,))
-    """
-    if lat_band_deg >= abs(inclination_deg):
-        raise ValueError("lat_band_deg must be smaller than the inclination to guarantee access.")
-    lats = np.linspace(-lat_band_deg, +lat_band_deg, n_lat, dtype=float)
-    lons = np.linspace(-180.0, 180.0, n_lon, endpoint=False, dtype=float)
-    return lats, lons
+def build_target_grid(inclination_deg, lat_band_deg, n_lat, n_lon):
+    """Uniform coordinate grid restricted to the actual geodetic reach."""
+    return target_grid(inclination_deg, lat_band_deg, n_lat, n_lon)
 
 
 # --------------------------------------------------------------------------------------
@@ -1775,7 +1759,7 @@ def run_reconfig_plots(
 
     # Derived inclination / latitude band for grid-based plots
     use_inc_deg = rad2deg(gom.i_rad) if inclination_deg is None else float(inclination_deg)
-    use_band_deg = min(use_inc_deg - 1.0, 0.9 * use_inc_deg) if (lat_band_deg is None) else float(lat_band_deg)
+    use_band_deg = max(0.0, reachable_geodetic_latitude_deg(use_inc_deg) - 1.0) if (lat_band_deg is None) else float(lat_band_deg)
     if use_band_deg <= 0.0 and (flags.avg_vs_delta_a or flags.avg_vs_tolerance or flags.heatmap or flags.iso_time_contours):
         raise ValueError("Latitude band must be positive and smaller than inclination for grid-based plots.")
 

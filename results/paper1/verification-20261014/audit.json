@@ -1,0 +1,15 @@
+{
+  "requested": 378,
+  "accepted": 266,
+  "infeasible": 112,
+  "regression_tests": 19,
+  "regression_tests_passed": true,
+  "per_target_acceptance_and_time_audit_passed": true,
+  "summary_counts_and_means_audit_passed": true,
+  "code_hashes_match_manifest": true,
+  "paired_policy_nesting_passed": true,
+  "maximum_accepted_latitude_error_deg": 2.4491867710540207e-12,
+  "maximum_accepted_longitude_error_deg": 4.999999994306216,
+  "maximum_time_component_residual_s": 5.820766091346741e-11,
+  "maximum_linear_equation_residual_rad": 2.8421709430404014e-14
+}

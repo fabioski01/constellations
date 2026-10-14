@@ -23,6 +23,12 @@ from math import (
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple, Dict, Any, List
 import constants
+from reconfig_verification import (
+    datetime_to_jd as _precise_jd, gmst_rad as _precise_gmst, earth_angle_elapsed,
+    required_latitude_branches, TargetGeometryError, validate_tolerances,
+    candidate_is_feasible, select_branch_candidate, add_event_metadata, clip_horizon,
+    reachable_geodetic_latitude_deg,
+)
 import numpy as np
 import os
 from concurrent.futures import ProcessPoolExecutor
@@ -41,7 +47,7 @@ FLAG_PARETO_TIME_VS_DV_AVG = False
 FLAG_ISO_TIME_CONTOURS_AVG = False
 
 # If flags are passed as command-line arguments, use those
-if len(sys.argv) > 1:
+if __name__ == '__main__' and len(sys.argv) > 1:
     ALT_LIST_KM = [float(sys.argv[1])]
     if len(sys.argv) > 2:
         FLAG_AVG_VS_DELTA_A = bool(int(sys.argv[2]))
@@ -92,11 +98,13 @@ def _print_core_banner(n_jobs: int, requested, env_jobs_val, mp_start: str) -> N
 # Constants and small helpers
 # ---------------------------
 
-R_EARTH = constants.EARTH_RADIUS            # km (WGS-84 equatorial radius)
+R_EARTH = constants.EARTH_RADIUS            # km (declared spherical/gravity reference radius)
 MU_EARTH = constants.GRAVITATIONAL_CONSTANT      # km^3/s^2 (Earth μ)
 J2 = constants.J2_EARTH            # Earth's J2
 WGS84_f = 1.0 / 298.257223563
 WGS84_e2 = WGS84_f * (2.0 - WGS84_f)
+
+DEFAULT_TOLERANCES = [0.25]
 
 DEG = pi / 180.0
 RAD = 1.0
@@ -130,32 +138,12 @@ def sign_nonzero(x: float) -> float:
 # ---------------------------
 
 def datetime_to_jd(dt: datetime) -> float:
-    """UTC datetime -> Julian Date (UT)."""
-    # Algorithm from Vallado (consistent with SGP4)
-    y = dt.year
-    m = dt.month
-    D = dt.day + (dt.hour + (dt.minute + dt.second / 60.0) / 60.0) / 24.0
-    if m <= 2:
-        y -= 1
-        m += 12
-    A = floor(y / 100)
-    B = 2 - A + floor(A / 4)
-    JD = floor(365.25 * (y + 4716)) + floor(30.6001 * (m + 1)) + D + B - 1524.5
-    return JD
+    """UTC Julian date, preserving fractional seconds and timezone offsets."""
+    return _precise_jd(dt)
 
 def gmst_rad(dt: datetime) -> float:
-    """
-    IAU-82 style GMST at UT1≈UTC (sufficient for planning):
-      GMST [deg] = 280.46061837 + 360.98564736629*(JD-2451545.0)
-                   + 0.000387933*T^2 - T^3/38710000
-      where T = (JD-2451545.0)/36525
-    Return wrapped radians in [0,2π).
-    """
-    JD = datetime_to_jd(dt)
-    D = JD - 2451545.0
-    T = D / 36525.0
-    gmst_deg = 280.46061837 + 360.98564736629 * D + 0.000387933 * T * T - (T**3) / 38710000.0
-    return wrap_2pi(deg2rad(gmst_deg))
+    """Wrapped GMST with fractional seconds; UT1 is approximated by UTC."""
+    return _precise_gmst(dt)
 
 # ---------------------------
 # Geodetic ↔ geocentric latitude
@@ -205,6 +193,10 @@ def hohmann_half(a1: float, a2: float) -> Tuple[float, float, float]:
       Δt_half = π / sqrt(μ / a_tr^3)
     Returns (a_tr, e_tr, Δt_half).
     """
+    if not (isfinite(a1) and isfinite(a2)) or min(a1, a2) <= 0.0:
+        raise ValueError("Transfer radii must be finite and positive.")
+    if a1 == a2:
+        return float(a1), 0.0, 0.0
     a_tr = 0.5 * (a1 + a2)
     e_tr = abs(a2 - a1) / (a1 + a2)
     dt_half = pi / sqrt(MU_EARTH / (a_tr**3))
@@ -215,20 +207,8 @@ def hohmann_half(a1: float, a2: float) -> Tuple[float, float, float]:
 # ---------------------------
 
 def u_required_branches(phi_t_geod_deg: float, i_rad: float) -> Tuple[float, float]:
-    """
-    Target geodetic latitude -> geocentric -> required u at overflight.
-      sin φ = sin i * sin u  =>  u = arcsin(sin φ / sin i) or π - that (desc)
-    Returns (u_asc, u_desc) in radians, wrapped to [0, 2π).
-    """
-    phi_gd = deg2rad(phi_t_geod_deg)
-    # convert to geocentric latitude for the spherical-geometry relation
-    phi_gc = geodetic_to_geocentric_latitude(phi_gd)
-    s = clamp(sin(phi_gc) / max(1e-12, sin(i_rad)), -1.0, 1.0)
-    u_asc = asin(s)                   # in [-π/2, π/2]
-    if u_asc < 0.0:
-        u_asc += 2.0 * pi             # wrap to [0,2π)
-    u_desc = pi - (u_asc % (2.0 * pi))
-    return (wrap_2pi(u_asc), wrap_2pi(u_desc))
+    """Reachable nominal latitude crossings; invalid coordinates raise ValueError."""
+    return required_latitude_branches(phi_t_geod_deg, i_rad)
 
 def ra_of_position(i_rad: float, u_rad: float, Omega_rad: float) -> float:
     """
@@ -267,6 +247,11 @@ class AnalyticRaanPhasingPlanner:
         n_jobs: Optional[int] = None,
         executor: Optional[ProcessPoolExecutor] = None,
         mp_start: Optional[str] = None,
+        wait_time_cap_hours: Optional[float] = 200.0,
+        response_horizon_hours: Optional[float] = None,
+        scan_discovery: int = 160,
+        scan_bracket: int = 160,
+        longitude_neighbor_pad: int = 8,
     ):
         self.gom = gom
         self.rom_a = rom_a_km
@@ -276,6 +261,26 @@ class AnalyticRaanPhasingPlanner:
         self.target_lon_rad = deg2rad(target_lon_deg)
         self.max_wrap = max_wrap
         self.drift_time_cap = drift_time_cap_days * 86400.0  # s
+        self.wait_time_cap = None if wait_time_cap_hours is None else float(wait_time_cap_hours) * 3600.0
+        self.response_horizon = None if response_horizon_hours is None else float(response_horizon_hours) * 3600.0
+        for value, minimum in ((scan_discovery, 1), (scan_bracket, 1), (longitude_neighbor_pad, 0)):
+            if not isfinite(value) or int(value) != value or value < minimum:
+                raise ValueError("Scan counts must be positive integers and neighbor padding nonnegative.")
+        self.scan_discovery, self.scan_bracket = int(scan_discovery), int(scan_bracket)
+        self.longitude_neighbor_pad = int(longitude_neighbor_pad)
+        for cap in (self.drift_time_cap, self.wait_time_cap, self.response_horizon):
+            if cap is not None and (not isfinite(cap) or cap < 0.0):
+                raise ValueError("Coast caps and response horizon must be finite and nonnegative.")
+        if self.wait_time_cap is None and self.response_horizon is None:
+            raise ValueError("An uncapped wait requires a finite response horizon.")
+        if not isfinite(target_lon_deg):
+            raise ValueError("Target longitude must be finite.")
+        if not isfinite(gom.a_km) or not isfinite(rom_a_km) or min(gom.a_km, rom_a_km) <= 0.0:
+            raise ValueError("Initial and regional radii must be finite and positive.")
+        if not all(isfinite(x) for x in (gom.i_rad, gom.Omega_rad, gom.u_rad, gom.e)):
+            raise ValueError("Initial orbit angles and eccentricity must be finite.")
+        if abs(gom.e) > 1e-12:
+            raise ValueError("The wait-and-drift model requires a circular initial orbit.")
         # Parallelism for inner-branch solve (m-grid).
         cpu_max = os.cpu_count() or 1
         env_jobs = os.getenv("RECONFIG_N_JOBS")
@@ -340,7 +345,7 @@ class AnalyticRaanPhasingPlanner:
 
         # Drift orbit is circular with fixed Δa
         self.a_D = self.a_G + self.delta_a
-        if self.a_D <= 0.0:
+        if not isfinite(self.a_D) or self.a_D <= 0.0:
             raise ValueError("Drift semi-major axis must be positive.")
 
         # Transfers
@@ -369,26 +374,27 @@ class AnalyticRaanPhasingPlanner:
     # ------------- core solve -------------
 
     def solve_min_time(self, lon_tol_schedule: list[float] | None = None) -> Dict[str, Any]:
-        u_asc, u_desc = u_required_branches(self.target_lat_deg, self.i)
-
-        asc_sol = self._solve_branch('ascending', u_asc, lon_tol_schedule=lon_tol_schedule)
-        desc_sol = self._solve_branch('descending', u_desc, lon_tol_schedule=lon_tol_schedule)
-
-        # Choose the best feasible
-        candidates = [s for s in [asc_sol, desc_sol] if s.get('success')]
+        schedule = validate_tolerances(lon_tol_schedule, [0.25])
+        try:
+            u_asc, u_desc = u_required_branches(self.target_lat_deg, self.i)
+        except TargetGeometryError as exc:
+            return {'success': False, 'status': exc.status, 'note': str(exc)}
+        asc_sol = self._solve_branch('ascending', u_asc, lon_tol_schedule=schedule)
+        if abs(wrap_pm_pi(u_asc - u_desc)) <= 1e-12:
+            desc_sol = {'success': False, 'status': 'duplicate_branch', 'branch': 'descending'}
+        else:
+            desc_sol = self._solve_branch('descending', u_desc, lon_tol_schedule=schedule)
+        candidates = [s for s in (asc_sol, desc_sol)
+                      if candidate_is_feasible(s, s.get('selection_meta', {}).get('tolerance_used_deg', schedule[0]),
+                                               self.wait_time_cap, self.drift_time_cap, self.response_horizon)]
         if not candidates:
-            return {
-                'success': False,
-                'note': 'No feasible analytic solution; try another Δa or widen max_wrap.',
-                'ascending': asc_sol,
-                'descending': desc_sol
-            }
-
-        best = min(candidates, key=lambda s: s['total_time_s'])
-        best['ascending'] = asc_sol
-        best['descending'] = desc_sol
-        best['branch'] = best['branch']  # already set
-        return best
+            return {'success': False, 'status': 'infeasible',
+                    'note': 'No candidate satisfies the requested region and time limits.',
+                    'ascending': asc_sol, 'descending': desc_sol}
+        # Preserve tolerance-ladder priority across branches and avoid a self-referential result.
+        best = dict(min(candidates, key=lambda s: (s['selection_meta']['tolerance_used_deg'], s['total_time_s'])))
+        best['ascending'], best['descending'] = asc_sol, desc_sol
+        return add_event_metadata(best, self)
 
     ############### Robust branch solve with wait-cap aware search ###############
     def _solve_branch(
@@ -409,12 +415,11 @@ class AnalyticRaanPhasingPlanner:
         - Select the earliest candidate meeting the tolerance ladder.
         """
         # -------- knobs --------
-        NSCAN_KDISC    = 160         # discover k across Td interval 100-160
-        NSCAN_BRACKET  = 160         # bracket across Td for (r==0) and band edges 120-160
-        K_NEIGHBOR_PAD = 8 # 2-5
-        LON_TOL_SCHEDULE = lon_tol_schedule or [0.25]  # deg (tune as you like)
-        WAIT_CAP_HR    = 200       # set None to disable wait cap. Usually is never more than 150 hr
-        WAIT_CAP_S     = None if WAIT_CAP_HR is None else WAIT_CAP_HR * 3600.0
+        NSCAN_KDISC    = self.scan_discovery
+        NSCAN_BRACKET  = self.scan_bracket
+        K_NEIGHBOR_PAD = self.longitude_neighbor_pad
+        LON_TOL_SCHEDULE = validate_tolerances(lon_tol_schedule, [0.25])
+        WAIT_CAP_S = self.wait_time_cap
         # -----------------------
 
         # Build m-range sequentially here; evaluation per-m can be parallelized
@@ -425,9 +430,9 @@ class AnalyticRaanPhasingPlanner:
         const_u = -(self.du_T1 * self.T1 + self.du_T2 * self.T2) + (u_req - self.u0)
         td_base_lo = 0.0
         td_base_hi = self.drift_time_cap
-        if td_base_hi <= td_base_lo + 1e-6:
+        if td_base_hi < td_base_lo:
             return {'success': False, 'branch': branch_name, 'note': 'Invalid drift-time bounds.'}
-        Tw_cap = float('inf') if WAIT_CAP_S is None else WAIT_CAP_S
+        Tw_cap = (self.response_horizon - self.T1 - self.T2) if WAIT_CAP_S is None else WAIT_CAP_S
 
         # Tight m-range from caps: A = du_D*Td + du_G*Tw must hit const_u+2πm
         corners = [(0.0, 0.0), (td_base_hi, 0.0)]
@@ -464,6 +469,7 @@ class AnalyticRaanPhasingPlanner:
             NSCAN_KDISC=NSCAN_KDISC,
             NSCAN_BRACKET=NSCAN_BRACKET,
             K_NEIGHBOR_PAD=K_NEIGHBOR_PAD,
+            response_horizon=self.response_horizon,
         )
 
         # Decide whether to run parallel or sequential
@@ -516,34 +522,10 @@ class AnalyticRaanPhasingPlanner:
                 if chunk:
                     all_candidates.extend(chunk)
 
-        # -------- selection: earliest within tolerance ladder --------
-        if not all_candidates:
-            return {'success': False, 'branch': branch_name,
-                    'note': 'No solution within wait/drift caps.'}
-        tol_used = None
-        best = None
-        for tol_deg in LON_TOL_SCHEDULE:
-            feas = [c for c in all_candidates if abs(c['lon_err_deg']) <= tol_deg]
-            if feas:
-                best = min(feas, key=lambda s: s['total_time_s'])
-                tol_used = tol_deg
-                break
-        if best is None:
-            # No candidate inside the loosest tol: pick smallest error, then earliest
-            best = min(all_candidates, key=lambda s: (abs(s['lon_err_deg']), s['total_time_s']))
-
-        best['selection_meta'] = {
-            'policy': 'earliest_within_tol' if tol_used is not None else 'fallback_tradeoff',
-            'tolerance_used_deg': tol_used,
-            'num_candidates_considered': len(all_candidates),
-            'wait_cap_s': WAIT_CAP_S,
-            'wait_cap_hr': (None if WAIT_CAP_S is None else WAIT_CAP_S/3600.0),
-            'drift_cap_s': self.drift_time_cap,
-            'drift_cap_hr': self.drift_time_cap/3600.0,
-            'chosen_m': best['m_u_wrap'],
-            'chosen_k': best['k_lon_wrap'],
-        }
-        return best
+        for candidate in all_candidates:
+            candidate['lat_err_deg'] = candidate['latitude_f_deg'] - self.target_lat_deg
+        return select_branch_candidate(all_candidates, LON_TOL_SCHEDULE, branch_name,
+                                       WAIT_CAP_S, self.drift_time_cap, self.response_horizon)
 
 
 # ------------- parallel worker plumbing -------------
@@ -577,25 +559,32 @@ class _BranchSolveState:
     NSCAN_KDISC: int
     NSCAN_BRACKET: int
     K_NEIGHBOR_PAD: int
+    response_horizon: Optional[float]
 
 
 def _bisection_root(f, a: float, b: float) -> Optional[float]:
-    fa = f(a)
-    fb = f(b)
-    if fa == 1e9 or fb == 1e9 or fa*fb > 0.0:
+    fa, fb = f(a), f(b)
+    if not (isfinite(fa) and isfinite(fb)) or fa == 1e9 or fb == 1e9 or fa * fb > 0.0:
         return None
+    if abs(fa) <= 1e-12:
+        return a
+    if abs(fb) <= 1e-12:
+        return b
     for _ in range(80):
-        m = 0.5*(a+b)
+        m = 0.5 * (a + b)
         fm = f(m)
-        if fm == 1e9:
-            a = m; fa = f(a); continue
-        if abs(fm) < 1e-12 or (b-a) < 1e-6:
+        if not isfinite(fm) or fm == 1e9:
+            return None
+        if abs(fm) <= 1e-12:
             return m
-        if fa*fm <= 0.0:
-            b = m; fb = fm
+        if b - a <= 1e-6:
+            return m if abs(fm) <= 1e-9 else None
+        if fa * fm <= 0.0:
+            b, fb = m, fm
         else:
-            a = m; fa = fm
-    return 0.5*(a+b)
+            a, fa = m, fm
+    m = 0.5 * (a + b)
+    return m if abs(f(m)) <= 1e-9 else None
 
 
 def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float, branch_name: str, m: int) -> List[Dict[str, Any]]:
@@ -622,7 +611,9 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
     NSCAN_KDISC = state.NSCAN_KDISC
     NSCAN_BRACKET = state.NSCAN_BRACKET
     K_NEIGHBOR_PAD = state.K_NEIGHBOR_PAD
-    tol_rads = [deg2rad(t) for t in state.LON_TOL_SCHEDULE]
+    # Solve just inside each boundary; acceptance still uses the exact request.
+    tol_rads = [max(0.0, deg2rad(t) - min(1e-10, deg2rad(t) * 1e-4))
+                for t in state.LON_TOL_SCHEDULE]
 
     # geometry offset
     psi = atan2(cos(i) * sin(u_req), cos(u_req))
@@ -657,8 +648,10 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
         td_lo = max(td_base_lo, min(t0, tc))
         td_hi = min(td_base_hi, max(t0, tc))
 
-    if td_hi <= td_lo + 1e-6:
+    td_lo, td_hi = clip_horizon(td_lo, td_hi, A_m, du_G, du_D, T1 + T2, state.response_horizon)
+    if td_hi < td_lo - 1e-8:
         return candidates
+    td_hi = max(td_lo, td_hi)
 
     def Tw_of_Td(Td: float, A_m_local: float) -> float:
         return (A_m_local - du_D * Td) / du_G
@@ -672,7 +665,7 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
     def phi_of(Td: float, A_m_local: float) -> Tuple[float, float, datetime]:
         Tw = Tw_of_Td(Td, A_m_local)
         tf = epoch + timedelta(seconds=total_time(Td, Tw))
-        thetaG = gmst_rad(tf)
+        thetaG = earth_angle_elapsed(epoch, total_time(Td, Tw))
         phi = Omega_f_of_Td(Td, Tw) + psi - thetaG
         return phi, Tw, tf
 
@@ -680,9 +673,11 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
         Ttot = total_time(Td_sol, Tw_sol)
         tf   = epoch + timedelta(seconds=Ttot)
         Omega_f = wrap_2pi(Omega_f_of_Td(Td_sol, Tw_sol))
-        u_f = wrap_2pi(u_req)
+        u_f = wrap_2pi(u0 + du_G * Tw_sol + du_T1 * T1 + du_D * Td_sol + du_T2 * T2)
+        phi_gc = asin(clamp(sin(i) * sin(u_f), -1.0, 1.0))
+        phi_gd = atan(tan(phi_gc) / (1.0 - WGS84_e2))
         M_f = u_f
-        thetaG_tf = gmst_rad(tf)
+        thetaG_tf = earth_angle_elapsed(epoch, Ttot)
         psi_final = atan2(cos(i) * sin(u_f), cos(u_f))
         lam_f     = wrap_pm_pi(Omega_f + psi_final - thetaG_tf)
         lon_err   = wrap_pm_pi(lam_f - target_lon)
@@ -696,6 +691,8 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
             'alpha_f_rad': ra_of_position(i, u_f, Omega_f),
             'lambda_f_rad': lam_f, 'lambda_f_deg': rad2deg(lam_f),
             'lon_err_deg': rad2deg(lon_err), 'hit_type': tag,
+            'latitude_f_deg': rad2deg(phi_gd),
+            'phase_err_deg': rad2deg(wrap_pm_pi(u_f - u_req)),
             'final_orbit': {
                 'a_km': rom_a, 'e': 0.0, 'i_rad': i,
                 'Omega_rad': Omega_f, 'omega_rad': 0.0, 'M_rad': M_f, 'epoch': tf
@@ -706,6 +703,13 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
                 'M_deg': rad2deg(M_f), 'epoch': tf
             }
         })
+
+    # Include endpoints, including zero-drift and immediate-departure cases.
+    for edge in (td_lo, td_hi):
+        tw_edge = Tw_of_Td(edge, A_m)
+        if tw_edge >= -1e-8 and (WAIT_CAP_S is None or tw_edge <= WAIT_CAP_S + 1e-8):
+            k_edge = int(round((phi_of(edge, A_m)[0] - target_lon) / (2.0*pi)))
+            package_candidate(edge, max(0.0, tw_edge), k_edge, 'interval_endpoint')
 
     # Discover k across [td_lo, td_hi]
     kset: set[int] = set()
@@ -791,6 +795,9 @@ def _solve_branch_m_task(state: _BranchSolveState, u_req: float, const_u: float,
 # ---------------------------
 
 def print_solution_summary(sol: dict) -> None:
+    if not sol.get('success'):
+        print(f"No accepted solution: {sol.get('status', 'infeasible')} — {sol.get('note', '')}")
+        return
     meta = sol.get('selection_meta', {})
     wait_hr  = sol['T_wait'] / 3600.0
     drift_hr = sol['T_d']    / 3600.0
@@ -1270,7 +1277,7 @@ if __name__ == "__main__":
             # ---------------------------------------------------------
             if FLAG_AVG_VS_DELTA_A or FLAG_AVG_VS_TOLERANCE or FLAG_PARETO_TIME_VS_DV_AVG or FLAG_ISO_TIME_CONTOURS_AVG:
                 # Latitude band (deg): must be < inclination to ensure access
-                lat_band_deg = i_deg -1.0         # must be < inclination to ensure access
+                lat_band_deg = max(0.0, reachable_geodetic_latitude_deg(i_deg) - 1.0)         # must be < inclination to ensure access
 
                 # Default grid
                 n_lat = 72                # number of latitude samples in [-band,+band]
@@ -1333,7 +1340,7 @@ if __name__ == "__main__":
             # 3) Heatmaps & Iso-time map
             # ==========================
             if FLAG_HEATMAP or FLAG_ISO_TIME_CONTOURS:
-                lat_band_deg = i_deg - 1.0
+                lat_band_deg = max(0.0, reachable_geodetic_latitude_deg(i_deg) - 1.0)
                 # Default grid
                 n_lat_heatmap = 220          # across inclination band
                 n_long_heatmap = 720         # around Earth

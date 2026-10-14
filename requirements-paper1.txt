@@ -1,0 +1,4 @@
+# Minimal dependencies for the Paper 1 nominal-model runner and regression checks.
+numpy
+pandas
+matplotlib

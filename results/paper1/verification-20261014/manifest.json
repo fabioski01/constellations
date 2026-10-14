@@ -1,0 +1,168 @@
+{
+  "config": {
+    "source_base_commit": "4e06cbe8df79d0d525df79e5a405ee67ead633d8",
+    "epoch_utc": "2025-05-05T12:00:00+00:00",
+    "node_deg": 0.0,
+    "phase_deg": 0.0,
+    "repeat_revolutions": 15,
+    "repeat_days": 1,
+    "scan_discovery": 160,
+    "scan_bracket": 160,
+    "longitude_neighbor_pad": 8,
+    "horizon_hours": 72.0,
+    "wait_cap_hours": 200.0,
+    "drift_cap_hours": 300.0,
+    "tolerance_deg": 0.25,
+    "targets": [
+      [
+        -40,
+        -120
+      ],
+      [
+        -40,
+        0
+      ],
+      [
+        -40,
+        120
+      ],
+      [
+        0,
+        -120
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        120
+      ],
+      [
+        40,
+        -120
+      ],
+      [
+        40,
+        0
+      ],
+      [
+        40,
+        120
+      ]
+    ],
+    "offsets_km": [
+      -200,
+      0,
+      50,
+      100,
+      200,
+      "regional"
+    ],
+    "cases": [
+      {
+        "case_id": "E1",
+        "global_altitude_km": 500,
+        "inclination_deg": 50
+      },
+      {
+        "case_id": "E2",
+        "global_altitude_km": 700,
+        "inclination_deg": 50
+      },
+      {
+        "case_id": "E3",
+        "global_altitude_km": 1000,
+        "inclination_deg": 50
+      },
+      {
+        "case_id": "E4",
+        "global_altitude_km": 700,
+        "inclination_deg": 60
+      },
+      {
+        "case_id": "E5",
+        "global_altitude_km": 700,
+        "inclination_deg": 98
+      }
+    ],
+    "departure_case_id": "E2",
+    "budgets_m_s": [
+      110,
+      220,
+      400
+    ],
+    "tolerance_cases": [
+      "E2"
+    ],
+    "tolerance_offset_km": 50.0,
+    "tolerances_deg": [
+      0.001,
+      0.005,
+      0.01,
+      0.25,
+      1.0,
+      5.0
+    ]
+  },
+  "actual_cases": [
+    {
+      "case_id": "E1",
+      "global_altitude_km": 500,
+      "inclination_deg": 50,
+      "a_g_km": 6871.0,
+      "a_r_km": 6874.316367790103
+    },
+    {
+      "case_id": "E2",
+      "global_altitude_km": 700,
+      "inclination_deg": 50,
+      "a_g_km": 7071.0,
+      "a_r_km": 6874.316367790103
+    },
+    {
+      "case_id": "E3",
+      "global_altitude_km": 1000,
+      "inclination_deg": 50,
+      "a_g_km": 7371.0,
+      "a_r_km": 6874.316367790103
+    },
+    {
+      "case_id": "E4",
+      "global_altitude_km": 700,
+      "inclination_deg": 60,
+      "a_g_km": 7071.0,
+      "a_r_km": 6884.090533949435
+    },
+    {
+      "case_id": "E5",
+      "global_altitude_km": 700,
+      "inclination_deg": 98,
+      "a_g_km": 7071.0,
+      "a_r_km": 6939.75319480896
+    }
+  ],
+  "generated_utc": "2026-10-14T17:15:24.453971+00:00",
+  "python": "3.12.14",
+  "workers": 4,
+  "requested_records": 378,
+  "package_versions": {
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "matplotlib": "3.10.8"
+  },
+  "constants": {
+    "mu_km3_s2": 398600.4418,
+    "J2": 0.0010826266,
+    "spherical_and_gravity_radius_km": 6371.0
+  },
+  "code_sha256": {
+    "constants.py": "7a78227536d6982c6da5ccd739054a515abcb93bf4a68bd2d048583af9a7bf57",
+    "reconfig_driftANDwaitTime_multicore.py": "435fb21e272cedc13f39d54b572799032cdd41d6dbd22d58eb708a240edf2d97",
+    "reconfig_phasing_RGT.py": "8db82366f90189a112c176ac1bf9406f1068a6d01aab1daf83aa9a58a294b116",
+    "reconfig_verification.py": "4d5cc5f28cd9a09c933f22d13e9060930ae4de17e75a4967c1bb28d54381d3f6",
+    "reconfig_linear_reference.py": "da1c9a3f688a07cb69a4916b138f8ca625b5411da506ab643fd6ca6c6c3f3283",
+    "paper1_analysis.py": "7db3d520e85cde73e884817e12f8931769fa06b4451daa9e7f566b4b2dba9daf"
+  },
+  "scope": "Small declared nominal-model study, not historical reproduction or continuous maneuver validation."
+}

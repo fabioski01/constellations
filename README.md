@@ -137,6 +137,8 @@ Cartopy may require PROJ / GEOS system libraries (on Windows, wheels usually bun
 
 Refer to examples in each script. Most should be ready to run without changes. Some have flags to activate functionalities, such as plots.
 
+For the corrected Paper 1 wait-and-drift workflow, see [corrections, verification, and remaining analysis](docs/PAPER1_CORRECTIONS.md). The new `paper1_analysis.py` runner saves every target's status and geographic errors, feasibility counts, paired departure-policy comparisons, and a reproducibility manifest. Start with `configs/paper1_smoke.json`; committed small-run results are in `results/paper1/verification-20261014/`.
+
 ---
 
 ## 7. Author & License

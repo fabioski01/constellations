@@ -1,0 +1,29 @@
+{
+  "source_base_commit": "4e06cbe8df79d0d525df79e5a405ee67ead633d8",
+  "epoch_utc": "2025-05-05T12:00:00+00:00",
+  "node_deg": 0.0,
+  "phase_deg": 0.0,
+  "repeat_revolutions": 15,
+  "repeat_days": 1,
+  "scan_discovery": 160,
+  "scan_bracket": 160,
+  "longitude_neighbor_pad": 8,
+  "horizon_hours": 72.0,
+  "wait_cap_hours": 200.0,
+  "drift_cap_hours": 300.0,
+  "tolerance_deg": 0.25,
+  "targets": [[-40, -120], [-40, 0], [-40, 120], [0, -120], [0, 0], [0, 120], [40, -120], [40, 0], [40, 120]],
+  "offsets_km": [-200, 0, 50, 100, 200, "regional"],
+  "cases": [
+    {"case_id": "E1", "global_altitude_km": 500, "inclination_deg": 50},
+    {"case_id": "E2", "global_altitude_km": 700, "inclination_deg": 50},
+    {"case_id": "E3", "global_altitude_km": 1000, "inclination_deg": 50},
+    {"case_id": "E4", "global_altitude_km": 700, "inclination_deg": 60},
+    {"case_id": "E5", "global_altitude_km": 700, "inclination_deg": 98}
+  ],
+  "departure_case_id": "E2",
+  "budgets_m_s": [110, 220, 400],
+  "tolerance_cases": ["E2"],
+  "tolerance_offset_km": 50.0,
+  "tolerances_deg": [0.001, 0.005, 0.01, 0.25, 1.0, 5.0]
+}

@@ -1,0 +1,24 @@
+{
+  "file": "results/reconfig/times_deltaA/TimesAvgDeltaA_2x3_GOM6871_ROM6874_inc50.0_band49.0_dA-200to200_s10.csv",
+  "offset_rows": 41,
+  "filename_target_grid": [
+    2,
+    3
+  ],
+  "range_km": [
+    -200.0,
+    200.0
+  ],
+  "peak_offset_km": 0.0,
+  "minimum_h": 16.793464706122048,
+  "reconstructed_transfer_s_range": [
+    5545.873588704824,
+    5793.367533020224
+  ],
+  "strict_acceptance_recoverable": false,
+  "historical_configuration_complete": false,
+  "note": "A four-column six-target aggregate is not the thesis target ensemble or a per-target feasibility record.",
+  "source_base_commit": "4e06cbe8df79d0d525df79e5a405ee67ead633d8",
+  "source_git_blob_sha": "5c0230b14dd7aab985f9882d96822710bc351a60",
+  "reported_peak_h": 344.54556979167825
+}

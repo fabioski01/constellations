@@ -1,0 +1,8 @@
+{
+  "requested": 378,
+  "accepted": 266,
+  "numerical_failures": 0,
+  "tolerance_nesting_violations": [],
+  "reference_cases": 54,
+  "reference_disagreements": 0
+}
