@@ -20,11 +20,24 @@ def hohmann_delta_v(r1_km, r2_km, mu=398600.4418):
     delta_v2 = v2 - v_trans2
     return delta_v1, delta_v2, abs(delta_v1) + abs(delta_v2)
 
-def plot_timesAvgDeltaA_from_csv(csv_path, outdir="results/reconfig/times_deltaA", show=False):
+def plot_timesAvgDeltaA_from_csv(csv_path, outdir="results/reconfig/times_deltaA", show=False,
+                               *, gom_a_km=None, rom_a_km=None,
+                               comparison_csv_path=None, figure_title=None):
+    """Plot saved component means; exact radii and a matched baseline are optional.
+
+    Legacy four-column CSVs remain supported. Dense-study callers pass exact
+    radii rather than deriving propulsion costs from rounded filenames.
+    Each curve is conditional on that solver's accepted targets; counts belong
+    in the accompanying exported summary, not an implied common denominator.
+    """
     df = pd.read_csv(csv_path)
     fname = os.path.basename(csv_path)
     m = re.search(r"GOM(\d+)_ROM(\d+)", fname)
-    if m:
+    if (gom_a_km is None) != (rom_a_km is None):
+        raise ValueError('Supply both exact GOM and ROM radii together.')
+    if gom_a_km is not None and rom_a_km is not None:
+        gom_a_km, rom_a_km = float(gom_a_km), float(rom_a_km)
+    elif m:
         gom_a_km = float(m.group(1))
         rom_a_km = float(m.group(2))
     else:
@@ -41,6 +54,13 @@ def plot_timesAvgDeltaA_from_csv(csv_path, outdir="results/reconfig/times_deltaA
     axs[1].set_ylabel("Wait [h]")
     axs[2].plot(delta_a_km, df["avg_drift_s"]/3600.0, lw=1.8)
     axs[2].set_ylabel("Drift [h]")
+    if comparison_csv_path is not None:
+        baseline = pd.read_csv(comparison_csv_path).sort_values('delta_a_km')
+        for ax, column in zip(axs, ['avg_total_s', 'avg_wait_s', 'avg_drift_s']):
+            ax.lines[0].set_label('Corrected')
+            ax.plot(baseline.delta_a_km, baseline[column]/3600., color='tab:orange',
+                    ls='--', lw=1.5, marker='.', ms=3, label='Original reported')
+        axs[0].legend(loc='upper right', fontsize=9)
 
     # Build "nice" Δa major ticks (avoid -217, 117, etc.)
     dmin = float(delta_a_km.min())
@@ -175,7 +195,7 @@ def plot_timesAvgDeltaA_from_csv(csv_path, outdir="results/reconfig/times_deltaA
     fig.align_ylabels(axs)
 
     fig.suptitle(
-        f"Average Reconfiguration Times vs Δa with GOM={gom_a_km:.0f} km, ROM={rom_a_km:.0f} km",
+        figure_title or f"Average Reconfiguration Times vs Δa with GOM={gom_a_km:.0f} km, ROM={rom_a_km:.0f} km",
         fontsize=10, y=0.96
     )
     axs[0].set_title("Total, Wait, and Drift Times for Orbit Reconfiguration\n", fontsize=10)
@@ -226,12 +246,12 @@ def _parse_scenario(path: str):
     m = _SCENARIO_RE.match(fname)
     if not m:
         return None
-    # Ignore grid in the grouping key
+    # Different spatial grids have different means and must not be merged.
     gom = m.group("gom")
     rom = m.group("rom")
     inc = m.group("inc")
     band = m.group("band")
-    base = f"TimesAvgDeltaA_GOM{gom}_ROM{rom}_inc{inc}_band{band}"
+    base = f"TimesAvgDeltaA_{m.group('grid')}_GOM{gom}_ROM{rom}_inc{inc}_band{band}"
     da_min = -float(m.group("min"))           # dA-200to200 -> min = -200
     da_max = float(m.group("max"))            # supports negative max too
     step = float(m.group("step"))
@@ -239,7 +259,7 @@ def _parse_scenario(path: str):
 
 def merge_scenario_files(csv_paths: list[str]) -> list[str]:
     """
-    Group CSVs by (GOM, ROM, inc, band), ignoring grid size:
+    Group CSVs by (grid size, GOM, ROM, inc, band):
       - Prefer smaller step inside overlaps (smaller step wins)
       - Keep union of Δa ranges
       - Only create a merged file if there are >= 2 files in the group

@@ -24,8 +24,11 @@ import constants
 import inspect
 import time
 
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
+try:
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+except ImportError:
+    ccrs = cfeature = None
 import matplotlib.ticker as mticker
 
 import numpy as np
@@ -64,6 +67,173 @@ except Exception:
     _USING_MULTICORE_SOLVER = False
 
 MU_EARTH = constants.GRAVITATIONAL_CONSTANT  # km^3/s^2
+
+
+def plot_saved_altitude_summary(summary, cases, *, title=None):
+    """Plot saved altitude response, accepted fraction and outbound cost."""
+    fig, axes=plt.subplots(3,1,figsize=(7.5,6.8),sharex=True,
+                          gridspec_kw={'height_ratios':[1.5,.8,1.]})
+    colors=plt.get_cmap('tab10').colors
+    for ci,case in enumerate(cases):
+        ci=int(case['case_id'][1:])-1
+        regional=case['a_r_km']-case['a_g_km']
+        base=summary[(summary.case_id==case['case_id'])&np.isclose(summary.tolerance_deg,.25)]
+        for version,style in [('corrected','-'),('original','--')]:
+            data=base[base.version==version].sort_values('offset_km')
+            regular=data[~np.isclose(data.offset_km,regional,atol=1e-7)]
+            for ax,values in [(axes[0],regular.reported_mean_response_h),
+                              (axes[1],regular.reported_accepted_count/regular.requested_count)]:
+                ax.plot(regular.offset_km,values,style,color=colors[ci],lw=1.5,
+                        label=f'{case["case_id"]} {"corrected" if version=="corrected" else "original reported"}')
+            if version=='corrected':
+                axes[2].plot(regular.offset_km,regular.outbound_cost_m_s,color=colors[ci],lw=1.5)
+                point=data[np.isclose(data.offset_km,regional,atol=1e-7)]
+                if not point.empty:
+                    for ax,values in [(axes[0],point.reported_mean_response_h),
+                                      (axes[1],point.reported_accepted_count/point.requested_count),
+                                      (axes[2],point.outbound_cost_m_s)]:
+                        ax.scatter(point.offset_km,values,marker='*',s=75,color=colors[ci],edgecolor='k',lw=.4,zorder=4)
+    for ax,label in zip(axes,['Conditional mean [h]','Accepted fraction','Outbound ΔV [m/s]']):
+        ax.set_ylabel(label)
+        ax.axvline(0,color='.6',ls=':',lw=.8)
+        ax.grid(alpha=.23)
+        ax.set_ylim(bottom=0)
+    axes[1].set_ylim(-.03,1.06)
+    axes[0].legend(fontsize=9,ncol=3)
+    axes[-1].set_xlabel('Drift offset Δa [km]')
+    fig.suptitle(title or 'Altitude trade on identical target coordinates')
+    fig.tight_layout(rect=(0,0,1,.96))
+    return fig
+
+
+def plot_saved_tolerance_summary(summary, *, case_id, offsets_km, title=None):
+    """Use the existing three-component layout for saved dense-grid means."""
+    fig, axes = plt.subplots(3, 1, figsize=(7.5, 7.2), sharex=True)
+    colors = plt.get_cmap('tab10').colors
+    columns = ['reported_mean_response_h', 'mean_wait_h', 'mean_drift_h']
+    for index, offset in enumerate(offsets_km):
+        for version, style in [('corrected', '-'), ('original', '--')]:
+            rows = summary[(summary.case_id == case_id) &
+                           np.isclose(summary.offset_km, offset) &
+                           (summary.version == version)].sort_values('tolerance_deg')
+            if rows.empty:
+                continue
+            for ax, column in zip(axes, columns):
+                ax.plot(rows.tolerance_deg, rows[column], style, marker='o', ms=3,
+                        color=colors[index], lw=1.7,
+                        label=f'{offset:+g} km, {"corrected" if version == "corrected" else "original reported"}')
+    for ax, label in zip(axes, ['Total [h]', 'Wait [h]', 'Drift [h]']):
+        ax.set_ylabel(label)
+        ax.set_xscale('log')
+        ax.grid(True, which='both', alpha=.25)
+        ax.set_ylim(bottom=0)
+    axes[0].legend(fontsize=9, ncol=2)
+    axes[-1].set_xlabel('Longitude tolerance [deg]')
+    fig.suptitle(title or f'{case_id}: mean response and coast components')
+    fig.tight_layout(rect=(0, 0, 1, .96))
+    return fig
+
+
+def _saved_grid_geography(ax, land_geojson):
+    """Plate carrée background without implicit online Cartopy downloads."""
+    import json
+    from matplotlib.patches import Polygon
+    from matplotlib.collections import PatchCollection
+    from pathlib import Path
+    patches = []
+    for feature in json.loads(Path(land_geojson).read_text())['features']:
+        geometry = feature['geometry']
+        polygons = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
+        for polygon in polygons:
+            patches.append(Polygon(polygon[0], closed=True))
+    ax.add_collection(PatchCollection(patches, facecolor='0.91', edgecolor='0.45',
+                                      linewidth=.35, zorder=0))
+    ax.add_collection(PatchCollection(patches, facecolor='none', edgecolor='0.3',
+                                      linewidth=.3, zorder=2))
+    ax.set_xlim(-180, 180)
+    ax.set_ylim(-90, 90)
+    ax.set_xticks(np.arange(-180, 181, 60))
+    ax.set_yticks(np.arange(-90, 91, 30))
+    ax.tick_params(labelsize=10)
+    ax.grid(alpha=.2, lw=.4)
+    ax.set_ylabel('Latitude [deg]', fontsize=11)
+
+
+def _saved_grid_cells(ax, latitude, longitude, values, *, band, cmap, vmin, vmax):
+    # Preserve the actual requested nodes and periodic longitude cells. The
+    # first and last latitude nodes have half-weight cells within the band.
+    latitude, longitude = np.asarray(latitude), np.asarray(longitude)
+    yedges = np.r_[-band, (latitude[1:] + latitude[:-1])/2, band]
+    dx = 360. / len(longitude)
+    # A repeated first cell closes the antimeridian for display only. It is
+    # never counted twice in statistics or persisted per-target records.
+    xedges = np.r_[longitude-dx/2, longitude[-1]+dx/2, longitude[-1]+1.5*dx]
+    data = np.column_stack([values, values[:, 0]])
+    return ax.pcolormesh(xedges, yedges, np.ma.masked_invalid(data),
+                         shading='flat', cmap=cmap, vmin=vmin, vmax=vmax,
+                         rasterized=True, zorder=1)
+
+
+def plot_saved_heatmaps(grids, *, gom, epoch, land_geojson, title=None):
+    """Render saved total/wait/drift grids with coastlines and initial track.
+
+    ``grids`` contains dictionaries with label, latitude_deg, longitude_deg,
+    latitude_band_deg and component arrays in seconds. No solver is run here.
+    Color limits are shared across columns and include every finite value.
+    """
+    fig=plt.figure(figsize=(4.8*len(grids)+.45, 8.2))
+    layout=fig.add_gridspec(3,len(grids)+1,width_ratios=[1.]*len(grids)+[.045],
+                           left=.075,right=.91,bottom=.075,top=.9,hspace=.29,wspace=.13)
+    axes=np.array([[fig.add_subplot(layout[row,col]) for col in range(len(grids))]
+                   for row in range(3)])
+    gt_lat, gt_lon = _groundtrack_GOM_first_hour(gom, epoch, dt_s=20., hours=1.)
+    # The existing helper returns geocentric latitude. Match the declared
+    # nominal geodetic target-grid convention when drawing that reference.
+    gt_lat = np.degrees(np.arctan(np.tan(np.radians(gt_lat))/(1.-.0066943799901413165)))
+    for row, (key, label) in enumerate([('response_s', 'Total [h]'),
+                                       ('wait_s', 'Wait [h]'), ('drift_s', 'Drift [h]')]):
+        finite = np.concatenate([g[key][np.isfinite(g[key])] / 3600. for g in grids])
+        vmax = float(finite.max()) if len(finite) else 1.
+        for col, grid in enumerate(grids):
+            ax = axes[row, col]
+            _saved_grid_geography(ax, land_geojson)
+            im = _saved_grid_cells(ax, grid['latitude_deg'], grid['longitude_deg'], grid[key]/3600.,
+                                   band=grid['latitude_band_deg'], cmap='viridis', vmin=0., vmax=vmax)
+            _plot_lonwrap_segments(ax, gt_lon, gt_lat, color='k', lw=.8, alpha=.65, zorder=3)
+            ax.set_title(f'{grid["label"]}: {label}', fontsize=11)
+            ax.tick_params(labelbottom=(row==2),labelleft=(col==0))
+            if col < len(grids)-1:
+                ax.set_xticklabels([str(value) if value!=180 else '' for value in ax.get_xticks().astype(int)])
+            if col:
+                ax.set_ylabel('')
+            if row == 2:
+                ax.set_xlabel('Longitude [deg]', fontsize=11)
+        colorbar=fig.colorbar(im,cax=fig.add_subplot(layout[row,-1]))
+        colorbar.set_label(label,fontsize=11)
+        colorbar.ax.tick_params(labelsize=10)
+    fig.suptitle(title or 'Geographic response and coast durations', fontsize=12)
+    return fig
+
+
+def plot_saved_geographic_gain(grid, *, narrow_s, wide_s, land_geojson, title=None):
+    """Plot paired tolerance reductions on the same saved target coordinates."""
+    fig, axes = plt.subplots(2, 1, figsize=(7.8, 5.8), sharex=True, sharey=True)
+    gain = (narrow_s-wide_s)/3600.
+    paired = np.isfinite(narrow_s) & np.isfinite(wide_s)
+    values = [narrow_s/3600., np.where(paired, gain, np.nan)]
+    labels = ['Response at 0.001° [h]', 'Reduction from 0.001° to 5° [h]']
+    for ax, data, label in zip(axes, values, labels):
+        _saved_grid_geography(ax, land_geojson)
+        finite=data[np.isfinite(data)]
+        maximum=float(finite.max()) if len(finite) else 1.
+        im=_saved_grid_cells(ax, grid['latitude_deg'], grid['longitude_deg'], data,
+                             band=grid['latitude_band_deg'], cmap='viridis', vmin=0., vmax=maximum)
+        ax.set_title(label, fontsize=10)
+        fig.colorbar(im, ax=ax, fraction=.025, pad=.02, label='Hours')
+    axes[-1].set_xlabel('Longitude [deg]')
+    fig.suptitle(title or 'Paired effect of longitude tolerance')
+    fig.tight_layout(rect=(0, 0, 1, .96))
+    return fig
 
 # ------------
 # New stuff for parallelization
@@ -796,7 +966,8 @@ def plot_heatmaps_for_case(
     outdir: str = "results/reconfig/heatmaps",
     verbose: bool = False,
 ) -> plt.Figure:
-    
+    if ccrs is None:
+        raise ImportError('This live-solver map requires Cartopy. Saved-grid maps also support Matplotlib with a supplied land GeoJSON.')
     lats_vec, lons_vec = build_target_grid(inclination_deg, lat_band_deg, n_lat, n_lon)
     LAT, LON = np.meshgrid(lats_vec, lons_vec, indexing='ij')
 

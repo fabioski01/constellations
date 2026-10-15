@@ -1,0 +1,6 @@
+{
+  "source_base_commit": "4e06cbe8df79d0d525df79e5a405ee67ead633d8",
+  "file": "reconfig_driftANDwaitTime_multicore.py",
+  "sha256": "42d11f34687901f2e7357db0da8014d04789bd27d9aa7fcd46ba74fa73ebcbef",
+  "scope": "Byte-preserved supplied original multicore solver; linked to the repository baseline by the prior source audit."
+}

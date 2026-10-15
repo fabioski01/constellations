@@ -2,6 +2,8 @@
 
 High-level design, performance evaluation, cost/science multi-objective optimization, and reconfiguration analytics for constellations (Walker / Flower / variants) with J2 phasing.
 
+Paper 1 dense study: [360×180 protocol, original/corrected audit, data and existing plotting entry points](docs/PAPER1_DENSE360X180.md).
+
 ---
 
 ## Table of Contents

@@ -1,0 +1,21 @@
+{
+  "source_base_commit": "70c40d21c333819ae9b1e95f65c3af57b54937ab",
+  "original_source_commit": "4e06cbe8df79d0d525df79e5a405ee67ead633d8",
+  "epoch_utc": "2025-05-05T12:00:00+00:00",
+  "node_deg": 0.0,
+  "phase_deg": 0.0,
+  "n_latitude": 180,
+  "n_longitude": 360,
+  "longitude_start_deg": -180.0,
+  "longitude_endpoint": false,
+  "common_latitude_band_deg": 49.0,
+  "wait_cap_hours": 200.0,
+  "drift_cap_hours": 300.0,
+  "response_horizon_hours": null,
+  "tolerance_deg": 0.25,
+  "tolerances_deg": [0.001, 0.005, 0.01, 0.25, 1.0, 5.0],
+  "matched_offsets_km": [-200, -150, -100, -50, -10, -5, 0, 5, 10, 50, 100, 150, 200, "regional"],
+  "refined_altitude_step_km": 10,
+  "latitude_chunk_size": 10,
+  "scope": "Matched original/corrected dense-grid experiments with source-derived settings; historical source CSV reproduction and selected thesis-grid bridge runs are distinguished from exact reproduction of all thesis figures."
+}
