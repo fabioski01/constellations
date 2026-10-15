@@ -38,7 +38,10 @@ def main():
 
     def save(fig, name):
         for ext in ["png", "pdf"]:
-            fig.savefig(figures / (name + "." + ext), dpi=230)
+            target = figures / (name + "." + ext)
+            temporary = target.with_name(target.name + ".tmp")
+            fig.savefig(temporary, format=ext, dpi=230)
+            temporary.replace(target)
         plt.close(fig)
 
     common = summary[summary.profile.eq("common")]

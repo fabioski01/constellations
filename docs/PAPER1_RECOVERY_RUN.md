@@ -17,6 +17,7 @@ python paper1_dense_audit.py --data-dir ../dense-results/corrected --output-dir 
 python paper1_dense_recovery_figures.py
 python paper1_dense_recovery_run.py --stage paired --output-dir ../dense-results/paired --workers 8
 python paper1_dense_audit.py --data-dir ../dense-results/paired --output-dir ../dense-results/paired/audit
+python paper1_dense_recovery_comparison.py
 ```
 
 Use the same output directory with `--resume` to continue. The corrected stage
@@ -37,3 +38,9 @@ Figures use `reconfig_plot_from_csv.py` and
 `reconfig_plotter_multicore.py`. The saved-data path needs no Cartopy download.
 Numerical data and manuscript files are distributed separately from these
 source changes.
+
+The comparison exporter also requires the completed corrected stage. It
+checks that the repeated corrected arrays agree bitwise, then uses the
+existing component plotter for original/corrected tolerance curves. Figures
+are written atomically; the CSV plotter uses regular minor-tick spacing even
+when the exact regional radius adds an irregular major tick.

@@ -7,6 +7,14 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.ticker as mticker
 import math
 import glob
+from pathlib import Path
+
+
+def _save_figure_atomic(fig, path, *, dpi):
+    path = Path(path)
+    temporary = path.with_name(path.name + '.tmp')
+    fig.savefig(temporary, format=path.suffix.lstrip('.'), dpi=dpi)
+    temporary.replace(path)
 
 def hohmann_delta_v(r1_km, r2_km, mu=398600.4418):
     r1 = r1_km
@@ -138,10 +146,12 @@ def plot_timesAvgDeltaA_from_csv(csv_path, outdir="results/reconfig/times_deltaA
 
 
     for ax in axs:
-        ax.grid(True, which='both', alpha=0.3)
-        ax.grid(True, which='minor', color='0.8', linestyle=':', alpha=0.7)
+        ax.grid(True, which='major', alpha=0.3)
+        ax.grid(True, which='minor', color='0.8', linestyle=':', alpha=0.15)
         ax.axvline(0.0, color='0.7', ls='--', lw=1)
-        ax.xaxis.set_minor_locator(mticker.AutoMinorLocator(5))
+        # The exact regional radius adds an irregular major tick. Deriving
+        # minor spacing from that short interval can create hundreds of ticks.
+        ax.xaxis.set_minor_locator(mticker.MultipleLocator(base/5.))
         ax.yaxis.set_minor_locator(mticker.AutoMinorLocator(5))
         ax.tick_params(axis='both', which='minor', length=4, color='0.5')
         # Ensure zero is a y-tick and visible
@@ -203,7 +213,7 @@ def plot_timesAvgDeltaA_from_csv(csv_path, outdir="results/reconfig/times_deltaA
     os.makedirs(outdir, exist_ok=True)
     fname = os.path.splitext(fname)[0] + "_fromcsv.png"
     outpath = os.path.join(outdir, fname)
-    fig.savefig(outpath, dpi=200)
+    _save_figure_atomic(fig, outpath, dpi=200)
     print(f"Saved figure to {outpath}")
 
     drift = df["avg_drift_s"] / 3600.0
@@ -218,16 +228,16 @@ def plot_timesAvgDeltaA_from_csv(csv_path, outdir="results/reconfig/times_deltaA
     ax_ratio.grid(True, which='both', alpha=0.3)
     ax_ratio.axvline(0.0, color='0.7', ls='--', lw=1)
     ax_ratio.set_xticks(delta_a_ticks)
-    ax_ratio.set_xticklabels([f"{da:.0f}" for da in delta_a_ticks], fontsize=10)
+    ax_ratio.set_xticklabels(labels, fontsize=10, rotation=25, ha='right')
     ax_ratio.set_title("Drift/Wait Time Ratio vs Δa", fontsize=12)
     # Add minor ticks to ratio plot
-    ax_ratio.xaxis.set_minor_locator(mticker.AutoMinorLocator(2))
+    ax_ratio.xaxis.set_minor_locator(mticker.MultipleLocator(base/2.))
     ax_ratio.yaxis.set_minor_locator(mticker.AutoMinorLocator(2))
     ax_ratio.tick_params(axis='both', which='minor', length=4, color='0.5')
 
     # Save the ratio plot
     ratio_outpath = os.path.join(outdir, os.path.splitext(fname)[0] + "_drift_wait_ratio.png")
-    fig_ratio.savefig(ratio_outpath, dpi=200)
+    _save_figure_atomic(fig_ratio, ratio_outpath, dpi=200)
     print(f"Saved drift/wait ratio plot to {ratio_outpath}")
 
     plt.close(fig_ratio)  # Close to avoid display if running many files

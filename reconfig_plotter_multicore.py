@@ -101,10 +101,10 @@ def plot_saved_altitude_summary(summary, cases, *, title=None):
         ax.grid(alpha=.23)
         ax.set_ylim(bottom=0)
     axes[1].set_ylim(-.03,1.06)
-    axes[0].legend(fontsize=9,ncol=3)
+    axes[0].legend(fontsize=9,ncol=3,loc='lower center',bbox_to_anchor=(.5,1.02))
     axes[-1].set_xlabel('Drift offset Δa [km]')
     fig.suptitle(title or 'Altitude trade on identical target coordinates')
-    fig.tight_layout(rect=(0,0,1,.96))
+    fig.tight_layout(rect=(0,0,1,.94))
     return fig
 
 

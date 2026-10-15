@@ -45,7 +45,11 @@ def main():
         'legend.fontsize':8,'xtick.labelsize':9,'ytick.labelsize':9,
         'axes.spines.top':False,'axes.spines.right':False,'savefig.facecolor':'white'})
     def save(fig,name):
-        for extension in ['png','pdf']:fig.savefig(figures/(name+'.'+extension),dpi=250)
+        for extension in ['png','pdf']:
+            target=figures/(name+'.'+extension)
+            temporary=target.with_name(target.name+'.tmp')
+            fig.savefig(temporary,format=extension,dpi=250)
+            temporary.replace(target)
         plt.close(fig)
     common=summary[summary.profile.isin(['common','refined_altitude'])].copy()
     # Retain the original four-column CSV interface, with explicit version and
