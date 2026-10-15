@@ -80,6 +80,8 @@ def plot_saved_altitude_summary(summary, cases, *, title=None):
         base=summary[(summary.case_id==case['case_id'])&np.isclose(summary.tolerance_deg,.25)]
         for version,style in [('corrected','-'),('original','--')]:
             data=base[base.version==version].sort_values('offset_km')
+            if data.empty:
+                continue
             regular=data[~np.isclose(data.offset_km,regional,atol=1e-7)]
             for ax,values in [(axes[0],regular.reported_mean_response_h),
                               (axes[1],regular.reported_accepted_count/regular.requested_count)]:
