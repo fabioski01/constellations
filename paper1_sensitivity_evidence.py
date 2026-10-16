@@ -57,11 +57,15 @@ def identify_archive(path):
 
 
 def bundle(folders,output,source_commit,reader_commit=None):
-    pending=[];metadata=set()
+    pending=[];metadata=set();products=set()
     for folder in folders:
         completion=json.loads((folder/'completion.json').read_text())
         if not completion['complete']:raise ValueError('Only complete campaigns may be bundled.')
         pending.extend(sorted(folder.glob('experiments/*/case_evidence.jsonl.gz')))
+        products.update(p for p in folder.iterdir() if p.is_file() and
+                        p.suffix in ['.csv','.json','.md','.png','.svg','.pdf'])
+        products.update(folder.glob('experiments/*/per_maneuver.csv'))
+        products.update(folder.glob('experiments/*/summary.json'))
     sources={};gzip_hashes={}
     while pending:
         path=pending.pop().resolve()
@@ -117,12 +121,17 @@ def bundle(folders,output,source_commit,reader_commit=None):
             relative=str(path.relative_to(ROOT));member='metadata/'+relative
             content=path.read_bytes();add_bytes(archive,member,content)
             index['metadata'].append(dict(member=member,target_relative_path=relative,sha256=digest(content)))
+        for path in sorted(products-metadata):
+            relative=str(path.relative_to(ROOT));member='products/'+relative
+            content=path.read_bytes();add_bytes(archive,member,content)
+            index['metadata'].append(dict(member=member,target_relative_path=relative,sha256=digest(content),file_kind='readable_result_or_figure'))
         add_bytes(archive,'bundle_index.json',(json.dumps(index,indent=2)+'\n').encode())
         readme=(
             '# Complete validation event and burn evidence\n\n'
             'This archive contains every original saved record for the screening and selected refined grids, plus complete origin archives for reused records. '
             'Portable MessagePack sequences retain all numerical values and object order; no observations, rejected cases, events or burn states are discarded. '
-            'Readable CSV results and figures are distributed with the research repository.\n\n'
+            'All readable CSV/JSON results, reports and raster/vector figures are included under products/. '
+            'The research repository supplies the implementation and reader; these result files are distributed privately.\n\n'
             f'Numerical source: https://github.com/fabioski01/constellations/tree/{source_commit}\n\n'
             f'Reader: https://github.com/fabioski01/constellations/blob/{reader_commit or source_commit}/paper1_sensitivity_evidence.py\n\n'
             'Use the repository reader, with the msgpack Python package installed:\n\n'

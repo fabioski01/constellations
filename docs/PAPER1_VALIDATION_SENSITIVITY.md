@@ -108,9 +108,10 @@ Every newly propagated request is executed twice with the existing primary
 and tighter DOP853 settings; the 0.1 m position, 0.001 s event-time, event-count
 and acceptance-classification convergence gates are unchanged.
 
-Readable CSV/JSON results, source, and SVG figures are saved on the research
-branch. Full compressed event/burn evidence and raster/PDF figure exports
-are distributed separately, rather than publishing opaque binary payloads.
+Implementation source is saved on the research branch. The complete result
+package is distributed privately: readable per-maneuver and aggregate CSV/JSON,
+scientific raster/vector figures, reports and full event/burn evidence.
+Public release of research datasets requires separate explicit authorization.
 
 The optional `paper1_sensitivity_evidence.py` utility creates one private
 lossless MessagePack/XZ bundle. Install `requirements-paper1-evidence.txt` to
