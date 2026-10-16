@@ -76,6 +76,19 @@ python paper1_sensitivity_report.py \
 
 Pass `--refinement-dir` more than once to compare separately saved refinements.
 
+After each numerical process has exited, finalize its compressed containers
+from the SHA256-checked canonical case files and independently audit the result:
+
+```bash
+python paper1_finalize_sensitivity.py --data-dir RESULTS
+python paper1_verify_sensitivity.py --data-dir RESULTS
+```
+
+The finalizer writes containers atomically and verifies both decoded bytes
+and checkpoint hashes; it never plans or propagates a maneuver. A prior
+completion file can remain present while a resume is active, so wait for that
+process to exit before starting dependent finalization or readback.
+
 The common +100 km reference and selected settings with prominent errors or
 acceptance changes are checked on the 36 by 18 grid. These checks assess
 longitude sampling at the same latitude rows; they are not a latitude-grid

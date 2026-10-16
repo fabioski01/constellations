@@ -270,6 +270,52 @@ def refinement_comparison(folder, refinements, output):
     return dict(fine_grids=[m['config']['n_longitude'] for m in fine_manifests],comparisons=rows)
 
 
+def common_target_comparison(output,manifest,table,frames):
+    """Keep the error comparison on the same feasible coordinate cohort."""
+    import matplotlib.pyplot as plt
+    rows=[]
+    for group in ['tolerance','drift_offset','orbit']:
+        entries=[e for e in manifest['experiments'] if group in e['sweeps']]
+        common=set.intersection(*[set(frames[e['experiment_id']].loc[
+            frames[e['experiment_id']].status.eq('completed') &
+            frames[e['experiment_id']].matched_crossing_found,'case_index']) for e in entries])
+        for entry in entries:
+            frame=frames[entry['experiment_id']]
+            subset=frame[frame.case_index.isin(common)]
+            values=distribution(subset.matched_longitude_model_error_deg)
+            rows.append(dict(sweep=group,experiment_id=entry['experiment_id'],common_target_count=len(common),
+                longitude_prediction_mae_deg=values.get('mean_absolute'),
+                longitude_prediction_p95_deg=values.get('absolute_p95'),
+                full_acceptance_percent_of_common_targets=100*subset.matched_access_accepted.sum()/len(common) if common else np.nan))
+    paired=pd.DataFrame(rows)
+    paired.to_csv(output/'common_target_comparison.csv',index=False,float_format='%.15g')
+    data=table.merge(paired[paired.sweep.eq('drift_offset')],on='experiment_id').sort_values('drift_offset_km')
+    count=int(data.common_target_count.iloc[0])
+    figure,axes=plt.subplots(1,2,figsize=(10,4.3))
+    special=data.labels.str.contains('exact_regional_coincidence',na=False) | data.drift_offset_km.eq(0)
+    for ax,primary,shared,ylabel in [
+        (axes[0],'matched_longitude_model_error_deg__mean_absolute','longitude_prediction_mae_deg','Mean absolute prediction error [deg]'),
+        (axes[1],'matched_longitude_model_error_deg__absolute_p95','longitude_prediction_p95_deg','95th absolute prediction error [deg]')]:
+        for field,color,label,style in [(primary,COLORS['error'],'Completed targets at each setting','-'),
+                                       (shared,COLORS['tail'],f'Same {count} targets at every setting','--')]:
+            ax.plot(data.loc[~special,'drift_offset_km'],data.loc[~special,field],color=color,
+                    linestyle=style,marker='o',markersize=3.5,label=label,linewidth=1.2)
+            for mask,marker in [(data.drift_offset_km.eq(0),'D'),
+                                (data.labels.str.contains('exact_regional_coincidence',na=False),'^')]:
+                ax.scatter(data.loc[mask,'drift_offset_km'],data.loc[mask,field],marker=marker,
+                    s=52 if field==shared else 30,facecolors='none' if field==shared else color,
+                    edgecolors=color,linewidths=1.1,zorder=5)
+        ax.set(xlabel='Drift offset Δa [km]',ylabel=ylabel,ylim=(0,None))
+        ax.set_xticks([-200,-100,0,100,200]);ax.grid(alpha=.22)
+        ax.legend(fontsize=7,loc='best',framealpha=.95)
+    figure.suptitle('Drift-offset accuracy with a fixed feasible target cohort\n700 km, 50°, longitude tolerance = 0.25°',fontsize=11)
+    figure.tight_layout(rect=(0,.09,1,.91),w_pad=2)
+    figure.text(.08,.015,'Diamonds: global/drift coincidence; triangles: drift/regional coincidence.\n'
+                'This supplemental error comparison holds coordinates fixed; primary acceptance fractions retain all 324 requests.',fontsize=8)
+    save_figure(figure,output,'sensitivity_common_targets');plt.close(figure)
+    return paired
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir',type=Path,required=True)
@@ -282,6 +328,7 @@ def main():
     if not complete and not args.partial:raise ValueError('The campaign is incomplete; use --partial for provisional plots.')
     table.to_csv(output/'sensitivity_summary.csv',index=False,float_format='%.15g')
     make_figures(output,manifest,table)
+    paired=common_target_comparison(output,manifest,table,frames) if complete else None
     refinement=refinement_comparison(output,[p.resolve() for p in args.refinement_dir],output) if args.refinement_dir else None
     readable=table[['experiment_id','global_altitude_km','inclination_deg','drift_offset_km','longitude_tolerance_deg',
                     'requested','nominal_accepted','numerically_completed','numerical_failures',
@@ -323,6 +370,11 @@ def main():
                  'the maneuver selected by the planner; neither propagated acceptance nor prediction error is assumed to be monotonic.\n',
                  'Coincident global/drift and drift/regional cases remove a transfer and have different insertion/access timing relationships. They are marked separately '
                  'in the drift-offset figure and must not be interpreted as ordinary points on a smooth drift-altitude trend.\n'])
+    if paired is not None:
+        cohort=int(paired.loc[paired.sweep.eq('drift_offset'),'common_target_count'].iloc[0])
+        text.append(f'The supplemental common-target comparison uses the same {cohort} nominally feasible, numerically completed coordinates at every drift offset. '
+                    'It checks the influence of changing target composition on the error distributions. Primary access fractions continue to retain every requested coordinate. '
+                    'Tolerance and orbit cohorts, together with the conditional statistics, are retained in common_target_comparison.csv.\n')
     if refinement:
         text.append('Selected 36×18 longitude-grid refinements are reported in grid_refinement.csv and sensitivity_grid_refinement. '
                     'They retain all 18 latitude rows and reuse only physically identical existing requests with verified numerical source hashes. '
