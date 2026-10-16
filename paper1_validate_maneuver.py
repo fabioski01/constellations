@@ -144,10 +144,25 @@ def compare_integrations(first, second):
     return result
 
 
-def _track(axis, points, **kwargs):
+def _track(axis, points, *, fade_start=False, fade_end=False, **kwargs):
     values = np.asarray(points).copy()
     jumps = np.where(np.abs(np.diff(values[:, 1])) > 180)[0] + 1
     values[jumps] = np.nan
+    if fade_start or fade_end:
+        from matplotlib.collections import LineCollection
+        from matplotlib.colors import to_rgba
+        segments = np.stack((values[:-1, ::-1], values[1:, ::-1]), axis=1)
+        fraction = (np.arange(len(segments)) + .5) / len(segments)
+        opacity = np.ones(len(segments))
+        if fade_start:
+            opacity *= np.clip(fraction / .22, 0, 1)
+        if fade_end:
+            opacity *= np.clip((1 - fraction) / .22, 0, 1)
+        colors = np.tile(to_rgba(kwargs.pop('color')), (len(segments), 1))
+        colors[:, 3] *= opacity
+        collection = LineCollection(segments, colors=colors, **kwargs)
+        axis.add_collection(collection)
+        return [collection]
     return axis.plot(values[:, 1], values[:, 0], **kwargs)
 
 
@@ -184,16 +199,42 @@ def make_figure(config, epoch, planner, solution, schedule, trajectory, evidence
                                        min(trajectory.end_s, schedule.predicted_access_s + 6500),
                                        'Achieved regional orbit')]
     step = config['plot_sample_step_s']
+    omitted_intervals = []
     for index, phase in enumerate(phases):
         color = phase_colors[index % len(phase_colors)]
         windows = [(phase.start_s, phase.end_s)]
         if phase.end_s - phase.start_s > 14400:
             windows = [(phase.start_s, phase.start_s + 3600), (phase.end_s - 3600, phase.end_s)]
+            omitted_start, omitted_end = windows[0][1], windows[1][0]
+            omitted_intervals.append(
+                f'{phase.label}: {(omitted_end-omitted_start)/3600:.2f} h omitted '
+                f'(t = {omitted_start/3600:.2f}\u2013{omitted_end/3600:.2f} h)')
         for j, (lo, hi) in enumerate(windows):
             times = np.linspace(lo, hi, max(2, int((hi - lo) / step) + 1))
             points = [ground_point(trajectory.state(t), epoch, t) for t in times]
             _track(world, points, color=color, linewidth=1.3,
+                   fade_start=len(windows) > 1 and j > 0,
+                   fade_end=len(windows) > 1 and j < len(windows) - 1,
                    label=f'{phase.label} ({(phase.end_s-phase.start_s)/3600:.2f} h)' if j == 0 else None)
+            if len(windows) > 1:
+                cut_time, (cut_lat, cut_lon) = (hi, points[-1]) if j == 0 else (lo, points[0])
+                world.annotate(f'{cut_time/3600:.2f} h', (cut_lon, cut_lat),
+                               xytext=(-8, 12) if j == 0 else (8, 12),
+                               ha='right' if j == 0 else 'left',
+                               textcoords='offset points', fontsize=7, color=color,
+                               arrowprops=dict(arrowstyle='-', color=color, alpha=.6, linewidth=.7),
+                               bbox=dict(facecolor='white', edgecolor='none', alpha=.85, pad=1.5))
+    start_lat, start_lon = ground_point(trajectory.state(0), epoch, 0)
+    world.scatter(start_lon, start_lat, s=42, facecolors='white', edgecolors=phase_colors[0],
+                  linewidths=1.5, zorder=7)
+    world.annotate('Simulation start\n$t = 0$ h', (start_lon, start_lat),
+                   xytext=(-12, -24), ha='right', textcoords='offset points', fontsize=8,
+                   arrowprops=dict(arrowstyle='-', color=phase_colors[0], linewidth=.8),
+                   bbox=dict(facecolor='white', edgecolor='none', alpha=.9, pad=2), zorder=8)
+    if omitted_intervals:
+        world.text(.5, .98, '\n'.join(omitted_intervals) + '\nFaded ends mark the omitted interval.',
+                   transform=world.transAxes, ha='center', va='top', fontsize=7.5,
+                   bbox=dict(facecolor='white', edgecolor='#cccccc', alpha=.95, pad=3), zorder=9)
     for index, burn in enumerate(trajectory.burn_records, 1):
         lat, lon = ground_point(np.array(burn['after_state']), epoch, burn['time_s'])
         world.scatter(lon, lat, s=25, color='black', marker='^', zorder=5)
@@ -283,7 +324,7 @@ def make_figure(config, epoch, planner, solution, schedule, trajectory, evidence
     footer = (f'Nominal response {schedule.predicted_access_s/3600:.3f} h; {nearest_text}.\n'
               f'{access_text.capitalize()}. {repeat_text}.\n'
               'Initial state: numerical mean matched. Fixed RTN-T impulses; no orbit resets or targeting corrections. '
-              'Long coasts: first/last hour displayed. Radial WGS84 surface coordinates.')
+              'Long coasts: first/last hour displayed, with faded ends at time gaps. Radial WGS84 surface coordinates.')
     figure.text(.055, .025, footer, fontsize=8.3, va='bottom', linespacing=1.5)
     figure.subplots_adjust(left=.065, right=.98, bottom=.18, top=.93, hspace=.36, wspace=.27)
     for extension in ['png', 'svg']:

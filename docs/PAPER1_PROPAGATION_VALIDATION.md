@@ -106,6 +106,10 @@ formulation before extending validation to those cases.
   close-up, and latitude/longitude residuals near predicted access. A dashed
   nominal regional reference is labelled as a mean-model reference. Long wait
   and drift coasts are propagated fully; only their first/last hour is plotted.
+  A labelled marker identifies the simulation start. The visible coasts fade out
+  and back in at each omitted interval, with endpoint times and the omitted
+  duration labelled on the map. The gap is a display omission; no artificial
+  ground-track connector is drawn across it.
 - `summary.json`: scenario, nominal timings, initial-state convention, force
   model, actual access events, terminal osculating and numerical-mean elements,
   repeat closure, convergence comparison, versions and component source hashes.
