@@ -147,6 +147,9 @@ def make_figures(output, manifest, table):
         if len(data)<2: continue
         figure,axes=plt.subplots(3,1,figsize=(7.2,8.2),sharex=True)
         plot_column(axes,data,xfield,xlabel,log=log,special=group=='drift_offset')
+        if group=='drift_offset':
+            axes[1].legend(fontsize=7,loc='upper center',bbox_to_anchor=(.5,-.02),
+                           ncol=2,framealpha=.95)
         for i,ax in enumerate(axes):ax.set_title(['(a) Prediction accuracy','(b) Access acceptance','(c) Event timing'][i],loc='left')
         figure.suptitle(title+'\n'+f'{n} common targets ({grid}); re-planned at every setting',fontsize=11)
         figure.tight_layout(rect=(0,.055,1,.94),h_pad=1.6)
@@ -217,14 +220,15 @@ def make_figures(output, manifest, table):
             else:
                 ax.plot(x,data[field],marker='o',markersize=4,color=COLORS['error'],linewidth=1.1)
             ax.set(xlabel=xlabel,ylabel=ylabel)
-            ax.set_ylim(bottom=0)
+            ax.set_ylim(0,1.12*float(data[field].max()))
             if group=='tolerance':ax.set_xscale('log')
             if group=='orbit':
                 ax.set_xticks(x,data['_case_label'])
             ax.grid(alpha=.22)
     figure.suptitle(f'Terminal-orbit and repeat diagnostics: {n} common targets per setting',fontsize=12)
-    figure.tight_layout(rect=(0,.035,1,.96),h_pad=1.8)
-    figure.text(.08,.01,'Numerical-mean convention unchanged. No terminal-element or repeat-closure acceptance limit is prescribed.',fontsize=8)
+    figure.tight_layout(rect=(0,.055,1,.96),h_pad=1.8)
+    figure.text(.08,.01,'Numerical-mean convention unchanged. No terminal-element or repeat-closure acceptance limit is prescribed.\n'
+                'Diamonds: global/drift coincidence; triangles: drift/regional coincidence.',fontsize=8)
     save_figure(figure,output,'sensitivity_terminal_repeat');plt.close(figure)
 
 
@@ -305,9 +309,10 @@ def common_target_comparison(output,manifest,table,frames):
                 ax.scatter(data.loc[mask,'drift_offset_km'],data.loc[mask,field],marker=marker,
                     s=52 if field==shared else 30,facecolors='none' if field==shared else color,
                     edgecolors=color,linewidths=1.1,zorder=5)
-        ax.set(xlabel='Drift offset Δa [km]',ylabel=ylabel,ylim=(0,None))
+        upper=1.15*float(data[[primary,shared]].max().max())
+        ax.set(xlabel='Drift offset Δa [km]',ylabel=ylabel,ylim=(0,upper))
         ax.set_xticks([-200,-100,0,100,200]);ax.grid(alpha=.22)
-        ax.legend(fontsize=7,loc='best',framealpha=.95)
+        ax.legend(fontsize=7,loc='lower left',framealpha=.95)
     figure.suptitle('Drift-offset accuracy with a fixed feasible target cohort\n700 km, 50°, longitude tolerance = 0.25°',fontsize=11)
     figure.tight_layout(rect=(0,.09,1,.91),w_pad=2)
     figure.text(.08,.015,'Diamonds: global/drift coincidence; triangles: drift/regional coincidence.\n'
