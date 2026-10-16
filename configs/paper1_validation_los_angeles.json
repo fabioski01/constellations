@@ -1,0 +1,40 @@
+{
+  "case_id": "E2_LosAngeles_plus50",
+  "source_base_commit": "2c3669878197df133ceaf947d68e5d3f9c3791ba",
+  "epoch_utc": "2025-05-05T12:00:00+00:00",
+  "global_altitude_km": 700.0,
+  "inclination_deg": 50.0,
+  "node_deg": 0.0,
+  "phase_deg": 0.0,
+  "drift_offset_km": 50.0,
+  "repeat_revolutions": 15,
+  "repeat_earth_rotations": 1,
+  "earth_rotation_rate_rad_s": 7.2921159e-5,
+  "target_latitude_deg": 34.0522,
+  "target_longitude_deg": -118.2437,
+  "longitude_tolerance_deg": 0.25,
+  "wait_cap_hours": 200.0,
+  "drift_cap_hours": 300.0,
+  "response_horizon_hours": null,
+  "post_access_repeat_intervals": 1.15,
+  "initialization": "numerical_mean",
+  "gravity": {
+    "mu": 398600.4418,
+    "radius_km": 6371.0,
+    "j2": 0.0010826266
+  },
+  "integration": {
+    "rtol": 2e-11,
+    "position_atol_km": 1e-9,
+    "velocity_atol_km_s": 1e-12,
+    "max_step_s": 60.0
+  },
+  "convergence": {
+    "rtol": 2e-12,
+    "position_atol_km": 1e-10,
+    "velocity_atol_km_s": 1e-13,
+    "max_step_s": 30.0
+  },
+  "plot_sample_step_s": 30.0,
+  "scope": "First worked-example diagnostic, not a multi-case or high-fidelity validation. The four fixed-magnitude Hohmann impulses are applied in the instantaneous RTN transverse direction; no trajectory is reset or corrected to hit the target. Surface coordinates use the radial WGS84 subpoint convention declared by the planner."
+}

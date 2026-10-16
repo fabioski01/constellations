@@ -4,6 +4,8 @@ High-level design, performance evaluation, cost/science multi-objective optimiza
 
 Paper 1 dense study: [360×180 protocol, original/corrected audit, data and existing plotting entry points](docs/PAPER1_DENSE360X180.md).
 
+Paper 1 maneuver execution: [connected Cartesian propagation, one worked-example figure, measured access errors, and numerical controls](docs/PAPER1_PROPAGATION_VALIDATION.md).
+
 ---
 
 ## Table of Contents
@@ -148,3 +150,4 @@ For the corrected Paper 1 wait-and-drift workflow, see [corrections, verificatio
 Author: Fabio Meloni – TU Delft MSc Student – NASA Jet Propulsion Laboratory Visiting Researcher
 
 License: Not for public distribution.
+

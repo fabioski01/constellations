@@ -1,0 +1,2 @@
+-r requirements-paper1.txt
+scipy>=1.10
