@@ -58,6 +58,9 @@ grid; physical evidence remains unchanged and retains its origin archive
 hash and original index. This avoids recomputing the existing +50 km requests
 and nested-grid requests. Reuse is never allowed across different tolerances
 or different maneuvers. Full evidence archives are distributed separately.
+Reuse a campaign only after it has completed. When other settings are still
+running, isolate the manifest and archive of a fully completed setting first;
+an archive being written is not a completed input dataset.
 
 ## Selected refinement
 
@@ -70,6 +73,8 @@ python paper1_sensitivity_report.py \
   --data-dir results/paper1/validation-sensitivity-plus100 \
   --refinement-dir results/paper1/validation-sensitivity-refinement-plus100
 ```
+
+Pass `--refinement-dir` more than once to compare separately saved refinements.
 
 The common +100 km reference and selected settings with prominent errors or
 acceptance changes are checked on the 36 by 18 grid. These checks assess
@@ -106,3 +111,18 @@ and acceptance-classification convergence gates are unchanged.
 Readable CSV/JSON results, source, and SVG figures are saved on the research
 branch. Full compressed event/burn evidence and raster/PDF figure exports
 are distributed separately, rather than publishing opaque binary payloads.
+
+The optional `paper1_sensitivity_evidence.py` utility creates one private
+lossless MessagePack/XZ bundle. Install `requirements-paper1-evidence.txt` to
+read it. The bundle includes full origin archives for reused records and
+all source/checkpoint metadata, without dropping events or burn states.
+Restoration is checked against the original JSONL and gzip SHA256 hashes:
+
+```bash
+python paper1_sensitivity_evidence.py restore ARCHIVE.tar.xz --verify-only
+python paper1_sensitivity_evidence.py restore ARCHIVE.tar.xz --destination REPOSITORY_ROOT
+```
+
+The JSONL bytes preserve every scientific value independently of transport
+compression. Reproducing gzip bytes also requires a compatible Python/zlib
+runtime, recorded in the archive. Existing differing files are never overwritten.

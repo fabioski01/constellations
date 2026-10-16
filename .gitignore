@@ -9,5 +9,8 @@ results/paper1/validation-sensitivity*/experiments/*/cases/
 results/paper1/validation-sensitivity*/experiments/*/*.gz
 results/paper1/validation-sensitivity*/*.gz
 results/paper1/validation-sensitivity*/*.png
+results/paper1/validation-sensitivity*/*.pdf
+results/paper1/validation-sensitivity-reference-reuse/
+results/paper1/validation-sensitivity-*-reuse/
 results/paper1/validation-sensitivity-probes/
 

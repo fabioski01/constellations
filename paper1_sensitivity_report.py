@@ -46,6 +46,9 @@ def load_campaign(folder):
                       regional_altitude_km=entry['context']['a_r_km']-6371.,
                       **summary['counts'], **summary['rates'])
         record['nominal_acceptance_percent'] = 100*record['nominal_accepted']/record['requested']
+        margins=pd.to_numeric(frame.get('nominal_longitude_margin_deg',pd.Series(dtype=float)),errors='coerce').dropna()
+        record['near_boundary_nominal_count']=int((margins<1e-6).sum())
+        record['near_boundary_percent_of_nominal']=100*record['near_boundary_nominal_count']/record['nominal_accepted'] if record['nominal_accepted'] else np.nan
         for field, values in summary['statistics'].items():
             for stat, value in values.items():
                 record[field+'__'+stat] = value
@@ -104,11 +107,12 @@ def plot_column(axes, data, xfield, xlabel, *, log=False, special=False):
         extra=[Line2D([],[],marker=marker,color='#444444',linestyle='',markerfacecolor='white',label=label)
                for marker,label in [('D','Global/drift coincidence'),('^','Drift/regional coincidence')]]
         handles,labels=error.get_legend_handles_labels()
-        error.legend(handles=handles+extra,fontsize=7,loc='best')
+        error.legend(handles=handles+extra,fontsize=7,loc='center right',framealpha=.95)
     else:
-        error.legend(fontsize=7,loc='best')
+        error.legend(fontsize=7,loc='center right',framealpha=.95)
     acceptance.set_ylim(-3,105)
-    acceptance.legend(fontsize=7,loc='best',ncol=2,framealpha=.95)
+    acceptance.legend(fontsize=7,loc='upper left',bbox_to_anchor=(.01,.92),
+                      borderaxespad=.2,ncol=2,framealpha=.95)
     timing.legend(fontsize=7,loc='best')
     error.set_ylabel('Longitude prediction error [deg]')
     error.set_ylim(bottom=0)
@@ -129,7 +133,8 @@ def make_figures(output, manifest, table):
                          'axes.spines.top':False,'axes.spines.right':False,
                          'svg.hashsalt':'paper1-sensitivity-plus100'})
     n=manifest['target_count_per_experiment']
-    grid=f'{manifest["config"]["n_longitude"]} × {manifest["config"]["n_latitude"]}'
+    grid=('geographic probes only' if manifest.get('probe') else
+          f'{manifest["config"]["n_longitude"]} × {manifest["config"]["n_latitude"]}')
     subsets={name:table[table.sweeps.str.split(';').apply(lambda values:name in values)]
              for name in ['tolerance','drift_offset','orbit']}
     specifications=[
@@ -145,10 +150,12 @@ def make_figures(output, manifest, table):
         for i,ax in enumerate(axes):ax.set_title(['(a) Prediction accuracy','(b) Access acceptance','(c) Event timing'][i],loc='left')
         figure.suptitle(title+'\n'+f'{n} common targets ({grid}); re-planned at every setting',fontsize=11)
         figure.tight_layout(rect=(0,.055,1,.94),h_pad=1.6)
-        figure.text(.10,.015,
+        footer=(
                     'Fixed request state; connected Cartesian gravity + J2; unchanged numerical mean convention and impulses.\n'
                     'Extended-window access may be delayed. Errors use completed requests; acceptance retains all requests.\n'
-                    'Connections join sampled settings and do not establish continuous trends.',fontsize=7,va='bottom')
+                    'Connections join sampled settings and do not establish continuous trends.')
+        if group=='drift_offset':footer+='\nAt regional coincidence, access can follow insertion; a negative prediction-time error can remain eligible.'
+        figure.text(.10,.015,footer,fontsize=7,va='bottom')
         save_figure(figure,output,name);plt.close(figure)
     orbit=subsets['orbit']
     if len(orbit)>=3:
@@ -189,17 +196,31 @@ def make_figures(output, manifest, table):
         ('orbit','labels','Orbit configuration')]):
         data=subsets[group].sort_values('drift_offset_km' if group=='drift_offset' else
                                         'longitude_tolerance_deg' if group=='tolerance' else 'global_altitude_km')
+        if group=='orbit':
+            data=data.copy()
+            data['_case_label']=[next((p for p in str(value).split(';') if p in ['E1','E2','E3','E4','E5']),str(value)) for value in data.labels]
+            data=data.sort_values('_case_label')
         x=np.arange(len(data)) if group=='orbit' else data[xfield].to_numpy(float)
         for column,field,ylabel in [
             (0,'terminal_mean_a_error_m__mean_absolute','Terminal semimajor-axis MAE [m]'),
             (1,'repeat_node_closure_km__mean','Mean 15-node surface closure [km]')]:
             ax=axes[row,column]
-            ax.plot(x,data[field],marker='o',markersize=4,color=COLORS['error'],linewidth=1.1)
+            if group=='drift_offset':
+                ordinary=data[~data.labels.str.contains('exact_regional_coincidence',na=False) & data.drift_offset_km.ne(0)]
+                ax.plot(ordinary[xfield],ordinary[field],marker='o',markersize=4,color=COLORS['error'],linewidth=1.1)
+                for mask,marker in [(data.drift_offset_km.eq(0),'D'),
+                                    (data.labels.str.contains('exact_regional_coincidence',na=False),'^')]:
+                    ax.scatter(data.loc[mask,xfield],data.loc[mask,field],marker=marker,s=34,
+                               color=COLORS['error'],edgecolors='#222222',linewidths=.6,zorder=5)
+            elif group=='orbit':
+                ax.bar(x,data[field],color=COLORS['error'],width=.55)
+            else:
+                ax.plot(x,data[field],marker='o',markersize=4,color=COLORS['error'],linewidth=1.1)
             ax.set(xlabel=xlabel,ylabel=ylabel)
+            ax.set_ylim(bottom=0)
             if group=='tolerance':ax.set_xscale('log')
             if group=='orbit':
-                labels=[next((p for p in str(value).split(';') if p in ['E1','E2','E3','E4','E5']),str(value)) for value in data.labels]
-                ax.set_xticks(x,labels)
+                ax.set_xticks(x,data['_case_label'])
             ax.grid(alpha=.22)
     figure.suptitle(f'Terminal-orbit and repeat diagnostics: {n} common targets per setting',fontsize=12)
     figure.tight_layout(rect=(0,.035,1,.96),h_pad=1.8)
@@ -207,10 +228,15 @@ def make_figures(output, manifest, table):
     save_figure(figure,output,'sensitivity_terminal_repeat');plt.close(figure)
 
 
-def refinement_comparison(folder, refinement, output):
+def refinement_comparison(folder, refinements, output):
     import matplotlib.pyplot as plt
     _,coarse,_=load_campaign(folder)
-    fine_manifest,fine,_=load_campaign(refinement)
+    fine_tables=[];fine_manifests=[]
+    for refinement in refinements:
+        fine_manifest,fine,_=load_campaign(refinement)
+        fine_tables.append(fine);fine_manifests.append(fine_manifest)
+    fine=pd.concat(fine_tables,ignore_index=True)
+    if fine.experiment_id.duplicated().any():raise ValueError('An experiment has multiple refinement inputs.')
     common=coarse.merge(fine,on='experiment_id',suffixes=('_coarse','_fine'))
     fields=['matched_longitude_model_error_deg__mean_absolute',
             'matched_longitude_within_tolerance_percent_of_requested',
@@ -236,17 +262,18 @@ def refinement_comparison(folder, refinement, output):
     for ax in axes:
         ax.set_xticks(x,labels,fontsize=8);ax.legend(fontsize=8);ax.grid(alpha=.2)
     axes[0].set_ylabel('Longitude prediction MAE [deg]')
+    axes[0].set_ylim(bottom=0)
     axes[1].set_ylabel('Full matched access [% of requested]')
     figure.suptitle('Selected longitude-grid refinement checks',fontsize=11)
     figure.tight_layout(rect=(0,0,1,.93))
     save_figure(figure,output,'sensitivity_grid_refinement');plt.close(figure)
-    return dict(fine_grid=fine_manifest['config']['n_longitude'],comparisons=rows)
+    return dict(fine_grids=[m['config']['n_longitude'] for m in fine_manifests],comparisons=rows)
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir',type=Path,required=True)
-    parser.add_argument('--refinement-dir',type=Path)
+    parser.add_argument('--refinement-dir',type=Path,action='append')
     parser.add_argument('--partial',action='store_true')
     args=parser.parse_args()
     output=args.data_dir.resolve()
@@ -255,7 +282,7 @@ def main():
     if not complete and not args.partial:raise ValueError('The campaign is incomplete; use --partial for provisional plots.')
     table.to_csv(output/'sensitivity_summary.csv',index=False,float_format='%.15g')
     make_figures(output,manifest,table)
-    refinement=refinement_comparison(output,args.refinement_dir.resolve(),output) if args.refinement_dir else None
+    refinement=refinement_comparison(output,[p.resolve() for p in args.refinement_dir],output) if args.refinement_dir else None
     readable=table[['experiment_id','global_altitude_km','inclination_deg','drift_offset_km','longitude_tolerance_deg',
                     'requested','nominal_accepted','numerically_completed','numerical_failures',
                     'matched_longitude_model_error_deg__mean_absolute',
@@ -263,7 +290,8 @@ def main():
                     'matched_longitude_within_tolerance_percent_of_requested',
                     'matched_access_accepted_percent_of_requested',
                     'post_insertion_window_accepted_percent_of_requested',
-                    'matched_time_error_s__mean_absolute','terminal_mean_a_error_m__mean_absolute','repeat_node_closure_km__mean']]
+                    'matched_time_error_s__mean_absolute','terminal_mean_a_error_m__mean_absolute','repeat_node_closure_km__mean',
+                    'near_boundary_percent_of_nominal']]
     readable.to_csv(output/'comparison_table.csv',index=False,float_format='%.15g')
     text=['# Controlled propagation sensitivity study',
           f'\nStatus: {"complete" if complete else "PROVISIONAL; incomplete sweep"}. {len(table)} unique completed settings; '
