@@ -153,3 +153,13 @@ Author: Fabio Meloni – TU Delft MSc Student – NASA Jet Propulsion Laboratory
 
 License: Not for public distribution.
 
+# Controlled propagation sensitivity
+
+The +100 km reference sweeps are specified in
+`configs/paper1_validation_sensitivity.json`. Run
+`paper1_validate_sensitivity.py` for checkpointed execution and
+`paper1_sensitivity_report.py --data-dir RESULTS` for scientific trend figures.
+The unchanged physical worker is used for every request, including a tighter
+integration check. See `docs/PAPER1_VALIDATION_SENSITIVITY.md` for the common
+target grid, denominators, coincidence cases, reuse rules and refinements.
+

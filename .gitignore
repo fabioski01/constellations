@@ -5,4 +5,9 @@ results/paper1/validation-36x18/cases/
 results/paper1/validation-36x18/evidence_parts/
 results/paper1/validation-36x18/*.gz
 results/paper1/validation-36x18/*.png
+results/paper1/validation-sensitivity*/experiments/*/cases/
+results/paper1/validation-sensitivity*/experiments/*/*.gz
+results/paper1/validation-sensitivity*/*.gz
+results/paper1/validation-sensitivity*/*.png
+results/paper1/validation-sensitivity-probes/
 

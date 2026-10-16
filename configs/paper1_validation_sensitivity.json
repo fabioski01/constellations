@@ -1,0 +1,28 @@
+{
+  "study_id": "connected_J2_sensitivity_plus100_18x18",
+  "source_base_commit": "91b702a6b7d146a10c02ae45697407aefbdb3436",
+  "scenario_template": "configs/paper1_validation_los_angeles.json",
+  "n_longitude": 18,
+  "n_latitude": 18,
+  "longitude_start_deg": -180.0,
+  "latitude_band_deg": 49.0,
+  "matched_event_half_window_nodal_periods": 0.5,
+  "check_convergence_every_case": true,
+  "reference": {
+    "global_altitude_km": 700.0,
+    "inclination_deg": 50.0,
+    "drift_offset_km": 100.0,
+    "longitude_tolerance_deg": 0.25
+  },
+  "tolerances_deg": [0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 1.0, 5.0],
+  "drift_offsets_km": [-200.0, -100.0, -50.0, -10.0, 0.0, 10.0, 50.0, 100.0, 200.0],
+  "include_exact_regional_coincidence": true,
+  "orbit_cases": [
+    {"label": "E1", "global_altitude_km": 500.0, "inclination_deg": 50.0},
+    {"label": "E2", "global_altitude_km": 700.0, "inclination_deg": 50.0},
+    {"label": "E3", "global_altitude_km": 1000.0, "inclination_deg": 50.0},
+    {"label": "E4", "global_altitude_km": 700.0, "inclination_deg": 60.0},
+    {"label": "E5", "global_altitude_km": 700.0, "inclination_deg": 98.0}
+  ],
+  "scope": "Three controlled sweeps on identical targets. Re-plan every request for every setting; unchanged J2 force model, numerical mean convention, fixed RTN Hohmann impulses and numerical convergence checks. The five orbit cases provide separate altitude and inclination slices, not a full factorial interaction study."
+}
