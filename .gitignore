@@ -1,3 +1,8 @@
 __pycache__/
 *.py[cod]
 .venv/
+results/paper1/validation-36x18/cases/
+results/paper1/validation-36x18/evidence_parts/
+results/paper1/validation-36x18/*.gz
+results/paper1/validation-36x18/*.png
+

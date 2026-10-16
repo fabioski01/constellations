@@ -1,0 +1,12 @@
+{
+  "study_id": "E2_plus50_connected_J2_36x18",
+  "source_base_commit": "baefbb4375c2eec66d5d434d6783297a2b2a9e63",
+  "scenario_template": "configs/paper1_validation_los_angeles.json",
+  "n_longitude": 36,
+  "n_latitude": 18,
+  "longitude_start_deg": -180.0,
+  "latitude_band_deg": 49.0,
+  "matched_event_half_window_nodal_periods": 0.5,
+  "check_convergence_every_case": true,
+  "scope": "One unchanged E2 +50 km configuration at 0.25 degree longitude tolerance. All 648 grid targets are planned and executed; no targeting corrections or empirical margins. This is independent of the unavailable 360x180 per-target archive."
+}

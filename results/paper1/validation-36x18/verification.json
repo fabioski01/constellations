@@ -1,0 +1,14 @@
+{
+  "requested": 648,
+  "all_source_and_output_hashes_verified": true,
+  "all_events_matched": true,
+  "nominal_band_edge_count": 597,
+  "geographic_pass": 385,
+  "full_pass": 15,
+  "before_insertion": 563,
+  "independently_recomputed_classification": true,
+  "all_648_convergence_controls_passed": true,
+  "regression_tests_passed": 34,
+  "los_angeles_replay_matches_original_evidence_exactly": true,
+  "zero_pending_resume_byte_identical": true
+}
