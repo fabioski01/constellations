@@ -70,41 +70,108 @@ MU_EARTH = constants.GRAVITATIONAL_CONSTANT  # km^3/s^2
 
 
 def plot_saved_altitude_summary(summary, cases, *, title=None):
-    """Plot saved altitude response, accepted fraction and outbound cost."""
-    fig, axes=plt.subplots(3,1,figsize=(7.5,6.8),sharex=True,
-                          gridspec_kw={'height_ratios':[1.5,.8,1.]})
+    """Plot sampled offsets and isolated regional limits in separate columns.
+
+    The right column is categorical: each star is evaluated at that case's
+    exact regional-coincidence offset, printed below its case identifier.
+    These isolated limits never expand the regular sweep's horizontal axis.
+    Rows share vertical limits across columns so their values remain directly
+    comparable. Lines join samples only; they do not imply solver evaluation
+    or interpolation at intermediate offsets.
+    """
+    if not cases:
+        raise ValueError('At least one orbit case is required.')
+    selected=summary[summary.case_id.isin([case['case_id'] for case in cases]) &
+                     np.isclose(summary.tolerance_deg,.25,rtol=0,atol=1e-12)].copy()
+    if selected.duplicated(['case_id','version','offset_km']).any():
+        raise ValueError('Each case, version and offset must have one summary row; select a single grid/profile.')
+    available=set(selected.version.unique())
+    if not available.issubset({'corrected','original'}):
+        raise ValueError('Unknown saved-model version.')
+    fig=plt.figure(figsize=(9.0,7.2))
+    grid=fig.add_gridspec(3,2,width_ratios=[3.5,1.25],height_ratios=[1.5,.8,1.],
+                         left=.105,right=.98,bottom=.16,top=.80,hspace=.24,wspace=.12)
+    axes=[];limits=[]
+    for row in range(3):
+        axes.append(fig.add_subplot(grid[row,0],sharex=axes[0] if axes else None))
+        limits.append(fig.add_subplot(grid[row,1],sharey=axes[-1],
+                                      sharex=limits[0] if limits else None))
     colors=plt.get_cmap('tab10').colors
-    for ci,case in enumerate(cases):
-        ci=int(case['case_id'][1:])-1
+    markers=['o','s','^','D','v']
+    inclinations={case['inclination_deg'] for case in cases}
+    same_inclination=len(inclinations)==1
+    regular_offsets=[]
+    for position,case in enumerate(cases):
+        index=int(case['case_id'][1:])-1
         regional=case['a_r_km']-case['a_g_km']
-        base=summary[(summary.case_id==case['case_id'])&np.isclose(summary.tolerance_deg,.25)]
+        base=selected[selected.case_id==case['case_id']]
+        parameter=(f'{case["a_g_km"]-R_EARTH:g} km' if same_inclination
+                   else f'{case["inclination_deg"]:g}°')
         for version,style in [('corrected','-'),('original','--')]:
             data=base[base.version==version].sort_values('offset_km')
             if data.empty:
                 continue
-            regular=data[~np.isclose(data.offset_km,regional,atol=1e-7)]
-            for ax,values in [(axes[0],regular.reported_mean_response_h),
-                              (axes[1],regular.reported_accepted_count/regular.requested_count)]:
-                ax.plot(regular.offset_km,values,style,color=colors[ci],lw=1.5,
-                        label=f'{case["case_id"]} {"corrected" if version=="corrected" else "original reported"}')
-            if version=='corrected':
-                axes[2].plot(regular.offset_km,regular.outbound_cost_m_s,color=colors[ci],lw=1.5)
-                point=data[np.isclose(data.offset_km,regional,atol=1e-7)]
-                if not point.empty:
-                    for ax,values in [(axes[0],point.reported_mean_response_h),
-                                      (axes[1],point.reported_accepted_count/point.requested_count),
-                                      (axes[2],point.outbound_cost_m_s)]:
-                        ax.scatter(point.offset_km,values,marker='*',s=75,color=colors[ci],edgecolor='k',lw=.4,zorder=4)
-    for ax,label in zip(axes,['Conditional mean [h]','Accepted fraction','Outbound ΔV [m/s]']):
+            is_regional=np.isclose(data.offset_km,regional,rtol=0,atol=1e-7)
+            regular=data[~is_regional]
+            regular_offsets.extend(regular.offset_km.to_list())
+            version_label=('' if len(available)==1 else
+                           (' · revised' if version=='corrected' else ' · original reported'))
+            label=f'{case["case_id"]}: {parameter}{version_label}'
+            values=[regular.reported_mean_response_h,
+                    regular.reported_accepted_count/regular.requested_count,
+                    regular.outbound_cost_m_s]
+            for row,(ax,y) in enumerate(zip(axes,values)):
+                # Propulsion is independent of implementation version.
+                if row==2 and version=='original' and 'corrected' in available:
+                    continue
+                ax.plot(regular.offset_km,y,style,color=colors[index],lw=1.3,
+                        marker=markers[index%len(markers)],ms=4.0,
+                        markerfacecolor='white',markeredgewidth=.9,
+                        label=label if row==0 else None)
+            point=data[is_regional]
+            if not point.empty:
+                point_values=[point.reported_mean_response_h.iloc[0],
+                              (point.reported_accepted_count/point.requested_count).iloc[0],
+                              point.outbound_cost_m_s.iloc[0]]
+                for row,(ax,value) in enumerate(zip(limits,point_values)):
+                    if row==2 and version=='original' and 'corrected' in available:
+                        continue
+                    ax.scatter([position],[value],marker='*',s=85,
+                               facecolor=colors[index] if version=='corrected' else 'white',
+                               edgecolor=colors[index] if version=='original' else 'black',
+                               linewidth=.55,zorder=4)
+    if not regular_offsets:
+        raise ValueError('No regular drift-offset samples are available.')
+    lower,upper=min(regular_offsets),max(regular_offsets)
+    padding=max((upper-lower)*.035,1.)
+    axes[0].set_xlim(lower-padding,upper+padding)
+    for row,(ax,side,label) in enumerate(zip(axes,limits,
+                ['Conditional mean [h]','Accepted fraction','Outbound ΔV [m/s]'])):
         ax.set_ylabel(label)
-        ax.axvline(0,color='.6',ls=':',lw=.8)
+        ax.axvline(0,color='.55',ls=':',lw=.8,zorder=0)
         ax.grid(alpha=.23)
+        side.grid(axis='y',alpha=.23)
         ax.set_ylim(bottom=0)
+        ax.tick_params(labelbottom=row==2)
+        side.tick_params(axis='y',left=False,labelleft=False)
+        side.tick_params(axis='x',length=0,labelbottom=row==2)
+        side.set_xlim(-.55,len(cases)-.45)
+        side.set_xticks(range(len(cases)))
     axes[1].set_ylim(-.03,1.06)
-    axes[0].legend(fontsize=9,ncol=3,loc='lower center',bbox_to_anchor=(.5,1.02))
+    # Padding preserves complete markers at zero or nearly zero cost.
+    axes[2].set_ylim(bottom=-.035*axes[2].get_ylim()[1])
+    limits[-1].set_xticklabels([f'{case["case_id"]}\n{case["a_r_km"]-case["a_g_km"]:+.3f}'
+                                for case in cases],fontsize=8)
     axes[-1].set_xlabel('Drift offset Δa [km]')
-    fig.suptitle(title or 'Altitude trade on identical target coordinates')
-    fig.tight_layout(rect=(0,0,1,.94))
+    limits[-1].set_xlabel('Case and drift offset\nΔa [km]',fontsize=9)
+    axes[0].set_title('Sampled drift-offset sweep',fontsize=10,pad=9)
+    limits[0].set_title('Direct-transfer limits\n$a_D = a_R$',fontsize=10,pad=9)
+    handles,labels=axes[0].get_legend_handles_labels()
+    fig.legend(handles,labels,loc='upper center',bbox_to_anchor=(.55,.925),
+               ncol=min(3,len(handles)),fontsize=9,frameon=False)
+    fig.suptitle(title or 'Altitude trade on identical target coordinates',fontsize=11,y=.985)
+    fig.text(.105,.025,'Symbols show computed settings; line segments guide comparison. '
+             'Stars are evaluated separately at each exact regional offset.',fontsize=8)
     return fig
 
 

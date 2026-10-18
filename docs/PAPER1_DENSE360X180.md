@@ -92,3 +92,38 @@ rejecting a near miss may delay accepted access, while recovering a missed
 band entry can make it earlier. Representative grid differences quantify
 sampling sensitivity; near-zero masks, additional request states, continuous
 altitude optimization and executed Cartesian propagation remain separate work.
+
+## Main-paper altitude and inclination figures
+
+Figures 2 and 4 compare the current nominal model on the same 360 by 180
+coordinate grid, longitude band and coast caps. Figure 2 holds inclination at
+50 degrees and compares initial altitudes of 500, 700 and 1000 km. Figure 4
+holds initial altitude at 700 km and compares inclinations of 50, 60 and 98
+degrees; each case retains its own 15/1 regional radius. The target domain is
+always the common geodetic latitude band of plus or minus 49 degrees.
+
+The left column shows the 13 common drift offsets from -200 to +200 km, with
+case-specific marker shapes at every evaluated setting. Connecting segments
+are visual guides, not additional simulations. The right column uses categorical
+case positions for the separately evaluated direct-transfer limits at exact
+`a_D = a_R`. Their drift offsets are printed rounded to three decimals. This
+keeps E3's isolated limit near -496.684 km from stretching an otherwise
+-200 to +200 km sweep. Both columns share each row's vertical scale.
+Legends identify the physical case parameters and omit implementation-version
+labels when only one version is displayed. Historical implementation comparisons
+retain explicit labels in their separate figures.
+
+To regenerate these two figures from an available dense study without running
+any solver:
+
+```bash
+python paper1_altitude_figure_report.py --input-dir analysis/paper1-dense-360x180-20261015 --output-dir results/paper1/altitude-figures
+```
+
+If those saved inputs are unavailable, omit `--input-dir` to checkpoint only
+the 70 current-model nominal configurations needed here (4,536,000 requests).
+Use `--resume` with unchanged inputs and numerical source hashes. The original
+implementation and Cartesian validation are not rerun. Save this output directory
+with the private study data; it includes the raw arrays, summary CSV, exact case
+configuration, checkpoint hashes and vector/bitmap figures. The existing
+`paper1_dense_audit.py` audits these regenerated records independently.

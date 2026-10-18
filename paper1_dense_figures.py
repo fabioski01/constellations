@@ -69,10 +69,15 @@ def main():
             figure_title=f'{case["case_id"]} | 360 × 180 targets | 0.25° longitude tolerance')
         plt.close(fig)
         (tables/f'{case["case_id"]}_exact_configuration.json').write_text(json.dumps(case,indent=2)+'\n')
-    save(plot_saved_altitude_summary(common,cases[:3],title='Altitude trade | 64,800 common target coordinates'),
+    # Main-paper comparisons use the common sampled settings of the current
+    # nominal model. Historical implementation comparisons remain separate.
+    nominal_altitude=common[common.profile.eq('common') & common.version.eq('corrected')]
+    save(plot_saved_altitude_summary(nominal_altitude,cases[:3],
+         title='Initial altitude comparison | inclination 50°\n64,800 common targets | longitude tolerance 0.25°'),
          'paper_figure_2_altitude')
-    save(plot_saved_altitude_summary(common,[cases[i] for i in [1,3,4]],
-         title='Inclination configurations | identical ±49° geographic domain'),'paper_figure_4_inclination')
+    save(plot_saved_altitude_summary(nominal_altitude,[cases[i] for i in [1,3,4]],
+         title='Inclination comparison | initial altitude 700 km\n64,800 common targets | longitude tolerance 0.25°'),
+         'paper_figure_4_inclination')
     def select(case,offset,profile='common'):
         return next(e for e in experiments if e['profile']==profile and e['case']['case_id']==case and
                     np.isclose(e['offset_km'],offset,atol=1e-8,rtol=0))
