@@ -1,5 +1,8 @@
 """Check that plot presentation preserves the evaluated domain and cohort."""
 import unittest
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import matplotlib
 matplotlib.use('Agg')
@@ -7,7 +10,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from paper1_altitude_figure_report import study, validate_existing_summary
+from paper1_altitude_figure_report import study, validate_existing_summary, reuse_chunks
+from paper1_dense_analysis import digest
 from reconfig_plotter_multicore import plot_saved_altitude_summary
 
 
@@ -82,6 +86,75 @@ class AltitudeFigureTests(unittest.TestCase):
         saved.loc[0, 'n_lon'] = 18
         with self.assertRaisesRegex(ValueError, 'different target grid'):
             validate_existing_summary(saved, self.experiments)
+
+    def test_extension_adds_only_the_requested_higher_orbit_offsets(self):
+        _, cases, experiments = study(True)
+        self.assertEqual(len(experiments), 94)
+        base_ids = {e['experiment_id'] for e in self.experiments}
+        additions = [e for e in experiments if e['experiment_id'] not in base_ids]
+        self.assertEqual(len(additions), 24)
+        self.assertEqual({e['case']['case_id'] for e in additions}, {'E2', 'E3', 'E4', 'E5'})
+        for case in cases[1:]:
+            self.assertEqual(sorted(e['offset_km'] for e in additions if e['case'] == case),
+                             [-500., -450., -400., -350., -300., -250.])
+        self.assertTrue(all(e['n_lat'] * e['n_lon'] == 64800 and e['tolerances_deg'] == [.25]
+                            for e in additions))
+
+    def test_extended_samples_appear_on_the_sweep(self):
+        additions = pd.DataFrame([dict(self.summary.iloc[0], case_id=case['case_id'],
+                                      offset_km=offset)
+                                  for case in self.cases[1:]
+                                  for offset in (-500., -400., -300.)])
+        figure = plot_saved_altitude_summary(pd.concat([self.summary, additions]), self.cases)
+        lines = [line for line in figure.axes[0].lines if line.get_label().startswith('E')]
+        self.assertEqual(min(lines[0].get_xdata()), -200.)
+        self.assertEqual(min(lines[1].get_xdata()), -500.)
+        self.assertEqual(min(lines[2].get_xdata()), -500.)
+        self.assertLess(figure.axes[0].get_xlim()[0], -500.)
+        self.assertGreater(figure.axes[0].get_xlim()[1], 200.)
+
+    def make_reuse_fixture(self, root):
+        config, _, experiments = study()
+        source, output = root / 'source', root / 'output'
+        for directory in (source, output):
+            (directory / 'per_target').mkdir(parents=True)
+        experiment = experiments[0]
+        path = source / 'per_target' / 'complete.npz'
+        np.savez_compressed(path, latitude_deg=np.linspace(-49, 49, 180))
+        sources = {'constants.py': 'same-core', 'paper1_altitude_figure_report.py': 'new-runner'}
+        manifest = dict(config=config, experiments=[experiment],
+                        source_sha256=dict(sources, **{'paper1_altitude_figure_report.py': 'old-runner'}))
+        (source / 'manifest.json').write_text(json.dumps(manifest))
+        checkpoint = dict(experiment_id=experiment['experiment_id'], latitude_start=0,
+                          latitude_stop=180, relative_path=path.name, sha256=digest(path))
+        (source / 'checkpoint.jsonl').write_text(json.dumps(checkpoint) + '\n')
+        return source, output, config, [experiment], sources, path
+
+    def test_compatible_raw_chunks_reuse_exact_bytes_with_provenance(self):
+        with TemporaryDirectory() as directory:
+            source, output, config, experiments, sources, path = self.make_reuse_fixture(Path(directory))
+            records = list(reuse_chunks(source, output, config, experiments, sources, {}))
+            self.assertEqual(len(records), 1)
+            self.assertEqual(digest(output / 'per_target' / path.name), digest(path))
+            self.assertEqual(records[0]['reused_from']['manifest_sha256'], digest(source / 'manifest.json'))
+            completed = {records[0]['experiment_id']: records[0]}
+            self.assertEqual(list(reuse_chunks(source, output, config, experiments, sources, completed)), [])
+
+    def test_reuse_rejects_changed_physics_or_numerical_source(self):
+        with TemporaryDirectory() as directory:
+            source, output, config, experiments, sources, _ = self.make_reuse_fixture(Path(directory))
+            with self.assertRaisesRegex(ValueError, 'different inputs: wait_cap_hours'):
+                list(reuse_chunks(source, output, dict(config, wait_cap_hours=100.), experiments, sources, {}))
+            with self.assertRaisesRegex(ValueError, 'different numerical source: constants.py'):
+                list(reuse_chunks(source, output, config, experiments, dict(sources, **{'constants.py': 'changed'}), {}))
+
+    def test_reuse_rejects_corrupted_raw_chunk(self):
+        with TemporaryDirectory() as directory:
+            source, output, config, experiments, sources, path = self.make_reuse_fixture(Path(directory))
+            path.write_bytes(path.read_bytes() + b'changed')
+            with self.assertRaisesRegex(ValueError, 'failed its checksum'):
+                list(reuse_chunks(source, output, config, experiments, sources, {}))
+            self.assertFalse((output / 'per_target' / path.name).exists())
 
 
 if __name__ == '__main__':

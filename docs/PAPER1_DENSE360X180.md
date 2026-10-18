@@ -102,13 +102,18 @@ holds initial altitude at 700 km and compares inclinations of 50, 60 and 98
 degrees; each case retains its own 15/1 regional radius. The target domain is
 always the common geodetic latitude band of plus or minus 49 degrees.
 
-The left column shows the 13 common drift offsets from -200 to +200 km, with
-case-specific marker shapes at every evaluated setting. Connecting segments
-are visual guides, not additional simulations. The right column uses categorical
+The left column marks every evaluated drift offset. The original study has
+13 common offsets from -200 to +200 km. The expanded figures also evaluate
+-500, -450, -400, -350, -300 and -250 km for E2--E5 (700 or 1000 km initial
+altitude). E1 (500 km) retains its original -200 to +200 km sweep. Thus the
+extended study has 94 configurations: 70 existing settings and 24 additions,
+each on the same 64,800 requested coordinates. Connecting segments are visual
+guides, not additional simulations. The right column uses categorical
 case positions for the separately evaluated direct-transfer limits at exact
 `a_D = a_R`. Their drift offsets are printed rounded to three decimals. This
-keeps E3's isolated limit near -496.684 km from stretching an otherwise
--200 to +200 km sweep. Both columns share each row's vertical scale.
+keeps exact reduced maneuvers distinct from the regularly sampled sweep,
+including the separate -500 km sample next to E3's -496.684 km limit.
+Both columns share each row's vertical scale.
 Legends identify the physical case parameters and omit implementation-version
 labels when only one version is displayed. Historical implementation comparisons
 retain explicit labels in their separate figures.
@@ -117,11 +122,22 @@ To regenerate these two figures from an available dense study without running
 any solver:
 
 ```bash
-python paper1_altitude_figure_report.py --input-dir analysis/paper1-dense-360x180-20261015 --output-dir results/paper1/altitude-figures
+python paper1_altitude_figure_report.py --extend-negative-offsets --input-dir results/paper1/altitude-extended --output-dir results/paper1/altitude-figures
 ```
 
-If those saved inputs are unavailable, omit `--input-dir` to checkpoint only
-the 70 current-model nominal configurations needed here (4,536,000 requests).
+To extend an existing 70-configuration archive, reuse its raw chunks and
+evaluate only the missing settings:
+
+```bash
+python paper1_altitude_figure_report.py --extend-negative-offsets --reuse-dir results/paper1/altitude-figure-refresh-20261018 --output-dir results/paper1/altitude-extended --workers 6
+```
+
+Reuse requires matching epoch, orbit, target grid, coast caps, numerical core
+source hashes and per-chunk checksums. The output is self-contained and records
+the original manifest and chunk hashes. The extension adds 1,555,200 requests,
+bringing the altitude study to 6,091,200 requests. Omitting
+`--extend-negative-offsets` preserves the original 70-configuration study.
+Without either input option, all selected nominal configurations are evaluated.
 Use `--resume` with unchanged inputs and numerical source hashes. The original
 implementation and Cartesian validation are not rerun. Save this output directory
 with the private study data; it includes the raw arrays, summary CSV, exact case

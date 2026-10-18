@@ -1,19 +1,20 @@
 """Recover the nominal inputs for Figures 2 and 4 and plot explicit samples.
 
-Only the 70 common-grid, 0.25-degree nominal configurations are evaluated.
-This does not rerun the historical implementation or Cartesian validation.
-Raw arrays, summaries and verification records are checkpointed together.
+The original study contains 70 common-grid, 0.25-degree configurations.
+An optional extension samples six further negative offsets for E2--E5,
+bringing the total to 94. Compatible raw chunks can be reused after checking
+all numerical inputs and core source hashes. This does not rerun the
+historical implementation or Cartesian validation.
 """
 from __future__ import annotations
 
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from copy import deepcopy
 from datetime import datetime, timezone
-import hashlib
 import json
 from pathlib import Path
 import platform
+import shutil
 
 import matplotlib
 matplotlib.use('Agg')
@@ -27,6 +28,7 @@ from reconfig_plotter_multicore import plot_saved_altitude_summary
 
 ROOT = Path(__file__).resolve().parent
 OFFSETS = [-200., -150., -100., -50., -10., -5., 0., 5., 10., 50., 100., 150., 200.]
+EXTENDED_NEGATIVE_OFFSETS = [-500., -450., -400., -350., -300., -250.]
 NUMERICAL_SOURCES = [
     'paper1_dense_solver.py', 'paper1_dense_checks.py', 'paper1_dense_analysis.py',
     'paper1_dense_audit.py', 'paper1_analysis.py',
@@ -36,23 +38,75 @@ NUMERICAL_SOURCES = [
 ]
 
 
-def study():
+def study(extend_negative_offsets=False):
     config = dict(epoch_utc='2025-05-05T12:00:00+00:00', node_deg=0., phase_deg=0.,
                   n_latitude=180, n_longitude=360, longitude_start_deg=-180.,
                   common_latitude_band_deg=49., wait_cap_hours=200.,
                   drift_cap_hours=300., latitude_chunk_size=180,
                   tolerance_deg=.25, matched_offsets_km=OFFSETS + ['regional'])
     cases = [dict(case, node_deg=0., phase_deg=0.) for case in CASES]
+    if extend_negative_offsets:
+        config['additional_offsets_by_case_km'] = {
+            case['case_id']: ([] if case['case_id'] == 'E1' else EXTENDED_NEGATIVE_OFFSETS)
+            for case in cases}
     experiments = []
     for case in cases:
         regional = case['a_r_km'] - case['a_g_km']
-        for offset in OFFSETS + [regional]:
+        extra = (EXTENDED_NEGATIVE_OFFSETS
+                 if extend_negative_offsets and case['case_id'] != 'E1' else [])
+        for offset in extra + OFFSETS + [regional]:
             slug = f'{offset:+.8f}'.replace('+', 'p').replace('-', 'm').replace('.', 'd')
             experiments.append(dict(experiment_id=f'common_{case["case_id"]}_{slug}',
                 profile='common', case=case, offset_km=offset, n_lat=180, n_lon=360,
                 latitude_band_deg=49., longitude_shift_deg=0.,
                 tolerances_deg=[.25], original=False))
     return config, cases, experiments
+
+
+def reuse_chunks(source, output, config, experiments, sources, completed):
+    """Copy verified compatible whole-grid chunks, preserving their provenance."""
+    prior = json.loads((source / 'manifest.json').read_text())
+    for key in ('epoch_utc', 'node_deg', 'phase_deg', 'n_latitude', 'n_longitude',
+                'longitude_start_deg', 'common_latitude_band_deg', 'wait_cap_hours',
+                'drift_cap_hours', 'latitude_chunk_size', 'tolerance_deg'):
+        if prior['config'][key] != config[key]:
+            raise ValueError('Saved chunks use different inputs: ' + key)
+    # The orchestration file changes when a study is extended; every numerical
+    # dependency that actually produces or summarizes the arrays must match.
+    for name, expected in sources.items():
+        if name != Path(__file__).name and prior['source_sha256'].get(name) != expected:
+            raise ValueError('Saved chunks use a different numerical source: ' + name)
+    prior_experiments = {item['experiment_id']: item for item in prior['experiments']}
+    indexed = {}
+    for line in (source / 'checkpoint.jsonl').read_text().splitlines():
+        item = json.loads(line)
+        indexed.setdefault(item['experiment_id'], []).append(item)
+    manifest_hash = digest(source / 'manifest.json')
+    for experiment in experiments:
+        identifier = experiment['experiment_id']
+        if identifier in completed or identifier not in prior_experiments:
+            continue
+        if prior_experiments[identifier] != experiment:
+            raise ValueError('Saved chunks use a different experiment: ' + identifier)
+        entries = indexed.get(identifier, [])
+        if (len(entries) != 1 or entries[0]['latitude_start'] != 0 or
+                entries[0]['latitude_stop'] != experiment['n_lat']):
+            raise ValueError('Saved experiment needs one complete grid chunk: ' + identifier)
+        entry = entries[0]
+        name = entry['relative_path']
+        if Path(name).name != name:
+            raise ValueError('Saved chunk path is not a basename.')
+        original = source / 'per_target' / name
+        if digest(original) != entry['sha256']:
+            raise ValueError('A reused nominal chunk failed its checksum: ' + identifier)
+        target = output / 'per_target' / name
+        temporary = target.with_name(target.name + '.tmp')
+        shutil.copyfile(original, temporary)
+        if digest(temporary) != entry['sha256']:
+            raise ValueError('A copied nominal chunk failed its checksum: ' + identifier)
+        temporary.replace(target)
+        yield dict(entry, reused_from=dict(directory=str(source),
+                   manifest_sha256=manifest_hash, chunk_sha256=entry['sha256']))
 
 
 def validate_existing_summary(summary, experiments):
@@ -100,10 +154,17 @@ def plot_figures(summary, cases, output):
             temporary.replace(target)
             outputs.append(dict(path=str(target.relative_to(output)), sha256=digest(target)))
         plt.close(figure)
+    offsets_by_case = {}
+    for case in cases:
+        selected = summary[summary.case_id.eq(case['case_id'])]
+        regional = case['a_r_km'] - case['a_g_km']
+        regular = selected[~np.isclose(selected.offset_km, regional, rtol=0, atol=1e-7)]
+        offsets_by_case[case['case_id']] = sorted(regular.offset_km.unique().tolist())
     atomic_json(figures / 'figure_manifest.json', dict(
         numerical_summary_sha256=digest(output / 'summary.csv'),
         plot_source_sha256=digest(ROOT / 'reconfig_plotter_multicore.py'),
-        outputs=outputs, regular_offsets_km=OFFSETS,
+        outputs=outputs, common_regular_offsets_km=OFFSETS,
+        regular_offsets_by_case_km=offsets_by_case,
         isolated_limits='Each exact a_D=a_R point is categorical in the right column.',
         scope='Nominal secular predictions; no Cartesian execution or interpolation.'))
 
@@ -111,8 +172,13 @@ def plot_figures(summary, cases, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output-dir', type=Path, required=True)
-    parser.add_argument('--input-dir', type=Path,
+    inputs = parser.add_mutually_exclusive_group()
+    inputs.add_argument('--input-dir', type=Path,
                         help='Read a complete saved dense study instead of evaluating nominal cases.')
+    inputs.add_argument('--reuse-dir', type=Path,
+                        help='Reuse compatible saved raw chunks and evaluate only missing configurations.')
+    parser.add_argument('--extend-negative-offsets', action='store_true',
+                        help='Add -500 through -250 km at 50 km intervals for E2--E5.')
     parser.add_argument('--workers', type=int, default=4)
     parser.add_argument('--resume', action='store_true')
     parser.add_argument('--source-commit', default=None)
@@ -121,7 +187,7 @@ def main():
         raise ValueError('workers must be positive')
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    config, cases, experiments = study()
+    config, cases, experiments = study(args.extend_negative_offsets)
     sources = {name: digest(ROOT / name) for name in NUMERICAL_SOURCES}
     identity = dict(config=config, cases=cases, source_sha256=sources,
                     experiments=experiments)
@@ -137,7 +203,8 @@ def main():
             generated_utc=datetime.now(timezone.utc).isoformat(),
             source_commit=args.source_commit, python=platform.python_version(),
             numpy=np.__version__, pandas=pd.__version__,
-            scope='Recovery of the 70 existing common-grid nominal configurations for Figures 2 and 4.'))
+            scope=('Common-grid nominal configurations for Figures 2 and 4; '
+                   f'{len(experiments)} orbit-drift settings. No Cartesian execution.')))
     if args.input_dir:
         source = args.input_dir.resolve()
         prior = json.loads((source / 'manifest.json').read_text())
@@ -165,6 +232,18 @@ def main():
                 if digest(shards / item['relative_path']) != item['sha256']:
                     raise ValueError('A nominal checkpoint failed its checksum.')
                 completed[item['experiment_id']] = item
+        if args.reuse_dir:
+            source = args.reuse_dir.resolve()
+            with checkpoint.open('a', buffering=1) as stream:
+                for item in reuse_chunks(source, output, config, experiments, sources, completed):
+                    stream.write(json.dumps(item) + '\n')
+                    stream.flush()
+                    completed[item['experiment_id']] = item
+            atomic_json(output / 'reuse_provenance.json', dict(
+                source_directory=str(source), source_manifest_sha256=digest(source / 'manifest.json'),
+                reused_experiments=[identifier for identifier, item in completed.items()
+                                    if 'reused_from' in item],
+                scope='Raw chunks reused only with identical numerical sources, inputs and checksums.'))
         tasks = [(experiment, 0, 180, config,
                   str(shards / (experiment['experiment_id'] + '_lat000.npz')))
                  for experiment in experiments if experiment['experiment_id'] not in completed]
@@ -189,7 +268,8 @@ def main():
         atomic_json(output / 'completion.json', dict(
             complete=len(completed) == len(experiments),
             finished_experiments=list(completed), total_experiments=len(experiments),
-            finished_chunks=len(completed), requested_records=70 * 64800,
+            finished_chunks=len(completed),
+            requested_records=sum(e['n_lat'] * e['n_lon'] * len(e['tolerances_deg']) for e in experiments),
             bytes_in_raw_shards=sum(path.stat().st_size for path in shards.glob('*.npz'))))
     summary.to_csv(output / 'summary.csv', index=False)
     atomic_json(output / 'cases.json', cases)
